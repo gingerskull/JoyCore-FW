@@ -3,7 +3,7 @@
 #include "Config.h"
 #include <RotaryEncoder.h>
 
-// Internal storage
+// Internal encoder state
 static RotaryEncoder** encoders = nullptr;
 static EncoderButtons* encoderBtnMap = nullptr;
 static int* lastPositions = nullptr;
@@ -27,7 +27,7 @@ void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_
     encoderBtnMap[i] = buttons[i];
     lastPositions[i] = encoders[i]->getPosition();
     pressStartTimes[i] = 0;
-    activeBtns[i] = 255;
+    activeBtns[i] = 255;  // 255 = no active press
   }
 }
 
@@ -37,9 +37,10 @@ void updateEncoders() {
     int newPos = encoders[i]->getPosition();
 
     if (newPos != lastPositions[i] && activeBtns[i] == 255) {
-      activeBtns[i] = (newPos > lastPositions[i]) ? encoderBtnMap[i].cw : encoderBtnMap[i].ccw;
-      Joystick.setButton(activeBtns[i], 1);
+      uint8_t btn = (newPos > lastPositions[i]) ? encoderBtnMap[i].cw : encoderBtnMap[i].ccw;
+      Joystick.setButton(btn, 1);
       pressStartTimes[i] = millis();
+      activeBtns[i] = btn;
       lastPositions[i] = newPos;
     }
 
