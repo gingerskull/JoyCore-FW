@@ -1,5 +1,9 @@
 #pragma once
 #include <Arduino.h>
+#include "Config.h"
 
-void initButtons(const uint8_t* pins, uint8_t count);
+// Initializes all buttons using the config array
+void initButtons(const ButtonConfig* configs, uint8_t count);
+
+// Updates button states and sends HID events
 void updateButtons();
