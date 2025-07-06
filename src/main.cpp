@@ -1,4 +1,6 @@
-//GNGR ButtonBox
+//GNGR ButtonBox - Initial code
+//Basic Button and Encoder Input for Joystick
+//This code is designed to work with the Arduino Leonardo and similar boards
 
 #include "Config.h"
 #include "JoystickWrapper.h"
