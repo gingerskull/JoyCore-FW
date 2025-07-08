@@ -3,6 +3,7 @@
 #include "JoystickWrapper.h"
 #include "ButtonInput.h"
 #include "EncoderInput.h"
+#include "MatrixInput.h"
 
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
                    32, 0, false, false, false,
@@ -11,11 +12,13 @@ Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
 
 void setup() {
   Joystick.begin();
-  initButtons(buttonConfigs, buttonCount);
-  initEncoders(encoderPins, encoderButtons, encoderCount);
+  initButtonsFromLogical(logicalInputs, logicalInputCount);
+  initEncodersFromLogical(logicalInputs, logicalInputCount);
+  initMatrixFromLogical(logicalInputs, logicalInputCount);
 }
 
 void loop() {
   updateButtons();
   updateEncoders();
+  updateMatrix();
 }

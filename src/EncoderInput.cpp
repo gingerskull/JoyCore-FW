@@ -50,3 +50,25 @@ void updateEncoders() {
     }
   }
 }
+
+void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
+  // Count encoders
+  uint8_t count = 0;
+  for (uint8_t i = 0; i < logicalCount; ++i)
+    if (logicals[i].type == LOGICAL_ENCODER) count++;
+
+  EncoderPins* pins = new EncoderPins[count];
+  EncoderButtons* buttons = new EncoderButtons[count];
+  uint8_t idx = 0;
+  for (uint8_t i = 0; i < logicalCount; ++i) {
+    if (logicals[i].type == LOGICAL_ENCODER) {
+      pins[idx].pinA = logicals[i].u.encoder.pinA;
+      pins[idx].pinB = logicals[i].u.encoder.pinB;
+      buttons[idx].cw = logicals[i].u.encoder.joyCw;
+      buttons[idx].ccw = logicals[i].u.encoder.joyCcw;
+      idx++;
+    }
+  }
+  initEncoders(pins, buttons, count);
+  // Optionally: delete[] pins, buttons after initEncoders copies data
+}
