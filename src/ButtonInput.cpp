@@ -24,21 +24,41 @@ void updateButtons() {
     bool isLow = currentState == LOW;
 
     switch (buttons[i].behavior) {
-      case MOM:
+      case NORMAL:
         Joystick.setButton(buttons[i].joyButtonID, isLow);
         break;
 
-      case LATCH:
-  // Trigger a one-shot press+release on LOW edge only
-  if (!wasLow && isLow) {
-    Joystick.setButton(buttons[i].joyButtonID, 1);
-    delay(10);  // brief press duration
-    Joystick.setButton(buttons[i].joyButtonID, 0);
-  }
-  break;
-
+      case MOMENTARY:
+        // Trigger a one-shot press+release on LOW edge only
+        if (!wasLow && isLow) {
+          Joystick.setButton(buttons[i].joyButtonID, 1);
+          delay(10);  // brief press duration
+          Joystick.setButton(buttons[i].joyButtonID, 0);
+        }
+        break;
     }
 
     lastStates[i] = currentState;
   }
 }
+
+void initButtonsFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
+  // Count buttons
+  uint8_t count = 0;
+  for (uint8_t i = 0; i < logicalCount; ++i)
+    if (logicals[i].type == LOGICAL_BTN) count++;
+
+  ButtonConfig* configs = new ButtonConfig[count];
+  uint8_t idx = 0;
+  for (uint8_t i = 0; i < logicalCount; ++i) {
+    if (logicals[i].type == LOGICAL_BTN) {
+      configs[idx].pin = logicals[i].u.btn.pin;
+      configs[idx].joyButtonID = logicals[i].u.btn.joyButtonID;
+      configs[idx].behavior = logicals[i].u.btn.behavior;
+      idx++;
+    }
+  }
+  initButtons(configs, count);
+  // Optionally: delete[] configs after initButtons copies data
+}
+
