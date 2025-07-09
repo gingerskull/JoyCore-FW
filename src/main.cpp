@@ -21,13 +21,18 @@
 #include "ButtonInput.h"
 #include "EncoderInput.h"
 #include "MatrixInput.h"
+#include "ShiftRegister165.h"
 
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
                    32, 0, false, false, false,
                    false, false, false,
                    false, false, false);
 
+extern ShiftRegister165* shiftReg;
+extern uint8_t* shiftRegBuffer;
+
 void setup() {
+  Serial.begin(9600);
   Joystick.begin();
   initButtonsFromLogical(logicalInputs, logicalInputCount);
   initEncodersFromLogical(logicalInputs, logicalInputCount);
@@ -36,6 +41,10 @@ void setup() {
 
 
 void loop() {
+  // Read shift register buffer ONCE per loop (if present)
+  if (shiftReg && shiftRegBuffer) {
+    shiftReg->read(shiftRegBuffer);
+  }
   updateButtons();
   updateMatrix();
   updateEncoders();
