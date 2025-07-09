@@ -22,7 +22,8 @@ constexpr PinType hardwarePins[] = {
   /* 4 */ BTN_ROW,  // Can be used for encoder or matrix
   /* 5 */ BTN_ROW,  // Can be used for encoder or matrix  
   /* 6 */ BTN_ROW,
-  /* 7 */ BTN_COL
+  /* 7 */ BTN_COL,
+  /* 8 */ BTN_COL
   // ...add more pins as needed
 };
 
@@ -68,7 +69,11 @@ constexpr LogicalInput logicalInputs[] = {
   
   // Encoders within matrix positions - encoder system will claim the pins
   { LOGICAL_MATRIX,  { .matrix = {2, 0, 26, ENC_A} } },  // Row 2 (pin 5) -> Joy 26 (CW)
-  { LOGICAL_MATRIX,  { .matrix = {3, 0, 27, ENC_B} } }   // Row 3 (pin 6) -> Joy 27 (CCW)
+  { LOGICAL_MATRIX,  { .matrix = {3, 0, 27, ENC_B} } },   // Row 3 (pin 6) -> Joy 27 (CCW)
+  { LOGICAL_MATRIX,  { .matrix = {0, 1, 28, ENC_A} } },  // Row 2 (pin 5) -> Joy 26 (CW)
+  { LOGICAL_MATRIX,  { .matrix = {1, 1, 29, ENC_B} } },   // Row 3 (pin 6) -> Joy 27 (CCW)
+  { LOGICAL_MATRIX,  { .matrix = {2, 1, 30, MOMENTARY} } },  // Row 2 (pin 5) -> Joy 26 (CW)
+  { LOGICAL_MATRIX,  { .matrix = {3, 1, 31, NORMAL} } }   // Row 3 (pin 6) -> Joy 27 (CCW)
   
 };
 constexpr uint8_t logicalInputCount = sizeof(logicalInputs) / sizeof(logicalInputs[0]);
