@@ -101,6 +101,7 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
 }
 
 void updateMatrix() {
+    // First, do the regular keypad scanning
     if (keypad->getKeys()) {
         // Process key events
         for (int i = 0; i < LIST_MAX; i++) {
@@ -125,11 +126,9 @@ void updateMatrix() {
 
                 switch (behavior) {
                     case NORMAL:
-                        // Update joystick button state based on key state
                         Joystick.setButton(joyButtonIDs[idx], pressed);
                         break;
                     case MOMENTARY:
-                        // Only trigger on press, not release
                         if (pressed && !lastMomentaryStates[idx]) {
                             Joystick.setButton(joyButtonIDs[idx], 1);
                             delay(10);
@@ -139,32 +138,44 @@ void updateMatrix() {
                         break;
                     case ENC_A:
                     case ENC_B:
-                        // Encoder behaviors should be filtered out above
-                        // This case should never be reached
                         break;
                 }
                 lastStates[idx] = pressed;
             }
         }
     }
-    // After scanning each row, update encoder pin states
-    for (uint8_t r = 0; r < ROWS; r++) {
-        // Set the current row LOW, others HIGH (simulate scan)
-        for (uint8_t i = 0; i < ROWS; i++) {
-            pinMode(rowPins[i], OUTPUT);
-            digitalWrite(rowPins[i], (i == r) ? LOW : HIGH);
+    
+    // Now do a separate scan specifically for encoder pin states
+    // This scans each column independently to get the true state of each row pin
+    for (uint8_t c = 0; c < COLS; c++) {
+        // Set this column LOW
+        pinMode(colPins[c], OUTPUT);
+        digitalWrite(colPins[c], LOW);
+        
+        // Set all other columns HIGH
+        for (uint8_t otherC = 0; otherC < COLS; otherC++) {
+            if (otherC != c) {
+                pinMode(colPins[otherC], OUTPUT);
+                digitalWrite(colPins[otherC], HIGH);
+            }
         }
-        // Read all columns for this row
-        for (uint8_t c = 0; c < COLS; c++) {
-            pinMode(colPins[c], INPUT_PULLUP);
-            // bool pressed = (digitalRead(colPins[c]) == LOW); // Remove unused variable
-            // ...existing key processing...
+        
+        // Small delay for pin states to stabilize
+        delayMicroseconds(10);
+        
+        // Now read all row pins - they will be LOW if connected to the active column
+        for (uint8_t r = 0; r < ROWS; r++) {
+            pinMode(rowPins[r], INPUT_PULLUP);
+            // Update the encoder pin state for this row pin
+            g_encoderMatrixPinStates[rowPins[r]] = digitalRead(rowPins[r]);
         }
-        // Save the state of this row pin for encoder code
-        g_encoderMatrixPinStates[rowPins[r]] = (digitalRead(rowPins[r]) == LOW) ? 0 : 1;
     }
-    // Restore all row pins to input after scan
-    for (uint8_t i = 0; i < ROWS; i++) {
-        pinMode(rowPins[i], INPUT_PULLUP);
+    
+    // Restore all pins to their default state
+    for (uint8_t r = 0; r < ROWS; r++) {
+        pinMode(rowPins[r], INPUT_PULLUP);
+    }
+    for (uint8_t c = 0; c < COLS; c++) {
+        pinMode(colPins[c], INPUT_PULLUP);
     }
 }
