@@ -23,14 +23,10 @@ constexpr PinType hardwarePins[] = {
   /* 3 */ BTN,
   /* 4 */ ENC_A,
   /* 5 */ ENC_B,
-  /* 6 */ ENC_A,
-  /* 7 */ ENC_B,
-  /* 8 */ BTN,
-  /* 9 */ BTN_ROW,
-  /*10 */ BTN_ROW,
-  /*11 */ BTN_COL,
-  /*12 */ BTN_COL,
-  /*13 */ BTN_COL
+  /* 6 */ BTN_ROW,
+  /* 7 */ BTN_ROW,
+  /* 8 */ BTN_COL,
+  /* 9 */ BTN_COL
   // ...add more pins as needed
 };
 
@@ -63,16 +59,15 @@ constexpr LogicalInput logicalInputs[] = {
   // Buttons
   { LOGICAL_BTN,     { .btn = {2, 0, NORMAL} } },
   { LOGICAL_BTN,     { .btn = {3, 1, NORMAL} } },
-  { LOGICAL_BTN,     { .btn = {8, 2, MOMENTARY} } },
+  
   // Encoders
   { LOGICAL_ENCODER, { .encoder = {4, 5, 20, 21} } },
-  { LOGICAL_ENCODER, { .encoder = {6, 7, 22, 23} } },
+  
   // Matrix buttons (row, col, joyButtonID, behavior)
   { LOGICAL_MATRIX,  { .matrix = {0, 0, 24, NORMAL} } },
   { LOGICAL_MATRIX,  { .matrix = {0, 1, 25, NORMAL} } },
-  { LOGICAL_MATRIX,  { .matrix = {0, 2, 26, NORMAL} } },
-  { LOGICAL_MATRIX,  { .matrix = {1, 0, 27, NORMAL} } },
-  { LOGICAL_MATRIX,  { .matrix = {1, 1, 28, NORMAL} } },
-  { LOGICAL_MATRIX,  { .matrix = {1, 2, 29, NORMAL} } }
+  { LOGICAL_MATRIX,  { .matrix = {1, 0, 26, NORMAL} } },
+  { LOGICAL_MATRIX,  { .matrix = {1, 1, 27, NORMAL} } }
+  
 };
 constexpr uint8_t logicalInputCount = sizeof(logicalInputs) / sizeof(logicalInputs[0]);
