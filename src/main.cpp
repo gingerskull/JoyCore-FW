@@ -11,6 +11,7 @@ Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
                    false, false, false);
 
 void setup() {
+  Serial.begin(115200);
   Joystick.begin();
   initButtonsFromLogical(logicalInputs, logicalInputCount);
   initEncodersFromLogical(logicalInputs, logicalInputCount);
@@ -46,7 +47,7 @@ void setup() {
 
 void loop() {
   updateButtons();
-  updateEncoders();
   updateMatrix();
- // printPin34567State();
+  updateEncoders();
+  // printPin34567State();
 }
