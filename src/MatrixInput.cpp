@@ -15,6 +15,8 @@ static ButtonBehavior* behaviors = nullptr;
 static bool* lastStates = nullptr;
 static bool* lastMomentaryStates = nullptr;
 
+bool g_encoderMatrixPinStates[20] = {1}; // indexed by pin number, default HIGH
+
 void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     // Find max row/col and count matrix buttons
     uint8_t maxRow = 0, maxCol = 0, count = 0;
@@ -45,11 +47,25 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     lastStates = new bool[ROWS * COLS]{}; // All false (not pressed)
     lastMomentaryStates = new bool[ROWS * COLS]{}; // All false
 
-    // Fill row/col pins from hardwarePins
+    // Fill row/col pins from hardwarePins, but exclude encoder pins
     uint8_t rowIdx = 0, colIdx = 0;
-    for (uint8_t pin = 0; pin < sizeof(hardwarePins)/sizeof(hardwarePins[0]); ++pin) {
-        if (hardwarePins[pin] == BTN_ROW && rowIdx < ROWS) rowPins[rowIdx++] = pin;
-        if (hardwarePins[pin] == BTN_COL && colIdx < COLS) colPins[colIdx++] = pin;
+    for (uint8_t pin = 0; pin < hardwarePinsCount; ++pin) {
+        // Check if this pin is used by an encoder
+        bool isEncoderPin = false;
+        for (uint8_t i = 0; i < logicalCount; ++i) {
+            if (logicals[i].type == LOGICAL_BTN && 
+                (logicals[i].u.btn.behavior == ENC_A || logicals[i].u.btn.behavior == ENC_B) &&
+                logicals[i].u.btn.pin == pin) {
+                isEncoderPin = true;
+                break;
+            }
+        }
+        
+        // Only add to matrix if not used by encoder
+        if (!isEncoderPin) {
+            if (hardwarePins[pin] == BTN_ROW && rowIdx < ROWS) rowPins[rowIdx++] = pin;
+            if (hardwarePins[pin] == BTN_COL && colIdx < COLS) colPins[colIdx++] = pin;
+        }
     }
 
     // Fill keymap, joyButtonIDs, behaviors
@@ -70,7 +86,7 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     }
 
     // Create keypad - pass the flat keymap directly
-    if (keypad) delete keypad;
+    //if (keypad) delete keypad;
     keypad = new Keypad(keymap, rowPins, colPins, ROWS, COLS);
 
     // Initialize lastStates to current state (like ButtonInput.cpp does)
@@ -104,6 +120,9 @@ void updateMatrix() {
                 if (joyButtonIDs[idx] == 0xFF) continue; // skip unused
                 ButtonBehavior behavior = behaviors[idx];
 
+                // Skip encoder behaviors in matrix (they should be handled by EncoderInput)
+                if (behavior == ENC_A || behavior == ENC_B) continue;
+
                 switch (behavior) {
                     case NORMAL:
                         // Update joystick button state based on key state
@@ -118,9 +137,34 @@ void updateMatrix() {
                         }
                         lastMomentaryStates[idx] = pressed;
                         break;
+                    case ENC_A:
+                    case ENC_B:
+                        // Encoder behaviors should be filtered out above
+                        // This case should never be reached
+                        break;
                 }
                 lastStates[idx] = pressed;
             }
         }
+    }
+    // After scanning each row, update encoder pin states
+    for (uint8_t r = 0; r < ROWS; r++) {
+        // Set the current row LOW, others HIGH (simulate scan)
+        for (uint8_t i = 0; i < ROWS; i++) {
+            pinMode(rowPins[i], OUTPUT);
+            digitalWrite(rowPins[i], (i == r) ? LOW : HIGH);
+        }
+        // Read all columns for this row
+        for (uint8_t c = 0; c < COLS; c++) {
+            pinMode(colPins[c], INPUT_PULLUP);
+            // bool pressed = (digitalRead(colPins[c]) == LOW); // Remove unused variable
+            // ...existing key processing...
+        }
+        // Save the state of this row pin for encoder code
+        g_encoderMatrixPinStates[rowPins[r]] = (digitalRead(rowPins[r]) == LOW) ? 0 : 1;
+    }
+    // Restore all row pins to input after scan
+    for (uint8_t i = 0; i < ROWS; i++) {
+        pinMode(rowPins[i], INPUT_PULLUP);
     }
 }
