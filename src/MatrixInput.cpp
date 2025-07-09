@@ -146,17 +146,21 @@ void updateMatrix() {
     }
     
     // Now do a separate scan specifically for encoder pin states
-    // This scans each column independently to get the true state of each row pin
+    // Initialize all encoder pin states to HIGH (default pullup state)
+    for (uint8_t pin = 0; pin < 20; pin++) {
+        g_encoderMatrixPinStates[pin] = 1;
+    }
+    
+    // Scan each column independently to get the true state of each row pin
     for (uint8_t c = 0; c < COLS; c++) {
         // Set this column LOW
         pinMode(colPins[c], OUTPUT);
         digitalWrite(colPins[c], LOW);
         
-        // Set all other columns HIGH
+        // Set all other columns as INPUT_PULLUP (floating high)
         for (uint8_t otherC = 0; otherC < COLS; otherC++) {
             if (otherC != c) {
-                pinMode(colPins[otherC], OUTPUT);
-                digitalWrite(colPins[otherC], HIGH);
+                pinMode(colPins[otherC], INPUT_PULLUP);
             }
         }
         
@@ -166,8 +170,13 @@ void updateMatrix() {
         // Now read all row pins - they will be LOW if connected to the active column
         for (uint8_t r = 0; r < ROWS; r++) {
             pinMode(rowPins[r], INPUT_PULLUP);
-            // Update the encoder pin state for this row pin
-            g_encoderMatrixPinStates[rowPins[r]] = digitalRead(rowPins[r]);
+            bool pinState = digitalRead(rowPins[r]);
+            
+            // Only update to LOW if we detect a LOW state
+            // This preserves the state across multiple column scans
+            if (pinState == LOW) {
+                g_encoderMatrixPinStates[rowPins[r]] = 0;
+            }
         }
     }
     
