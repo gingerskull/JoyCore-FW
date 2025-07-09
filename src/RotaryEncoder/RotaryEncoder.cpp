@@ -169,4 +169,35 @@ unsigned long RotaryEncoder::getRPM()
   return 60000.0 / ((float)(t * 20));
 }
 
+// Simple quadrature decoder implementation
+SimpleQuadratureDecoder::SimpleQuadratureDecoder(uint8_t pinA, uint8_t pinB, RotaryEncoder::PinReadFn pinRead)
+    : _pinA(pinA), _pinB(pinB), _pinReadFn(pinRead) {
+    _lastStateA = _pinReadFn ? _pinReadFn(_pinA) : digitalRead(_pinA);
+    _lastStateB = _pinReadFn ? _pinReadFn(_pinB) : digitalRead(_pinB);
+}
+
+int8_t SimpleQuadratureDecoder::tick() {
+    uint8_t stateA = _pinReadFn ? _pinReadFn(_pinA) : digitalRead(_pinA);
+    uint8_t stateB = _pinReadFn ? _pinReadFn(_pinB) : digitalRead(_pinB);
+    
+    uint8_t currentState = (stateA << 1) | stateB;
+    uint8_t lastState = (_lastStateA << 1) | _lastStateB;
+    
+    int8_t result = 0;
+    if (currentState != lastState) {
+        // Look for specific quadrature patterns
+        // CW: 11 -> 01 (trigger on 11 -> 01)
+        // CCW: 11 -> 10 (trigger on 11 -> 10)
+        if (lastState == 3 && currentState == 1) {
+            result = 1; // CW
+        } else if (lastState == 3 && currentState == 2) {
+            result = -1; // CCW
+        }
+    }
+    
+    _lastStateA = stateA;
+    _lastStateB = stateB;
+    return result;
+}
+
 // End
