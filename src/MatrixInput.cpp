@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 #include "MatrixInput.h"
 #include "Config.h"
 #include "JoystickWrapper.h"

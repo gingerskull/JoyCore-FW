@@ -672,3 +672,28 @@ may consider it more useful to permit linking proprietary applications with
 the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <http://www.gnu.org/philosophy/why-not-lgpl.html>.
+
+
+ADDITIONAL TERMS FOR GNGR-BUTTONBOX
+
+This project incorporates and links to third-party libraries as follows:
+
+- @MHeironimus/ArduinoJoystickLibrary
+  - Linked externally.
+  - Licensed under LGPL-3.0.
+  - See: https://github.com/MHeironimus/ArduinoJoystickLibrary
+
+- @mathertel/RotaryEncoder
+  - Distributed with source and modified.
+  - Original author: Matthias Hertel, http://www.mathertel.de
+  - Original license is retained in src/RotaryEncoder.* files.
+  - All modifications are clearly marked and described.
+
+- @Chris--A/Keypad
+  - Linked externally.
+  - Licensed under GPL-3.0.
+  - See: https://github.com/Chris--A/Keypad
+
+Because this project links with GPL-3.0 and LGPL-3.0 libraries, the entire project is licensed under the GPL-3.0-or-later to ensure compatibility and compliance.
+
+Refer to the original licenses of the libraries for details.
