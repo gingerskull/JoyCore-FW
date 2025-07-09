@@ -1,15 +1,13 @@
 #include "EncoderInput.h"
 #include "JoystickWrapper.h"
 #include "Config.h"
-#include <RotaryEncoder.h>
+#include "RotaryEncoder/RotaryEncoder.h"
 
 // External variable for matrix pin states
 extern bool g_encoderMatrixPinStates[20];
 
 // Helper to get pin state for encoder (matrix-aware)
-static inline int encoderReadPin(uint8_t pin) {
-    // If the pin is a matrix row pin, use the last scanned state
-    // (You may want to check hardwarePins[pin] == BTN_ROW here if needed)
+static int encoderReadPin(uint8_t pin) {
     return g_encoderMatrixPinStates[pin];
 }
 
@@ -31,7 +29,10 @@ void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_
   activeBtns = new uint8_t[count];
 
   for (uint8_t i = 0; i < count; i++) {
-    encoders[i] = new RotaryEncoder(pins[i].pinA, pins[i].pinB, RotaryEncoder::LatchMode::FOUR3);
+    // Use encoderReadPin for all encoders (works for both matrix and direct pins)
+    encoders[i] = new RotaryEncoder(
+      pins[i].pinA, pins[i].pinB, RotaryEncoder::LatchMode::FOUR3, encoderReadPin
+    );
     pinMode(pins[i].pinA, INPUT_PULLUP);
     pinMode(pins[i].pinB, INPUT_PULLUP);
     encoderBtnMap[i] = buttons[i];
@@ -45,9 +46,24 @@ void updateEncoders() {
   for (uint8_t i = 0; i < encoderTotal; i++) {
     encoders[i]->tick();
     int newPos = encoders[i]->getPosition();
+    int diff = newPos - lastPositions[i];
 
-    if (newPos != lastPositions[i] && activeBtns[i] == 255) {
-      uint8_t btn = (newPos > lastPositions[i]) ? encoderBtnMap[i].cw : encoderBtnMap[i].ccw;
+    if (diff != 0 && activeBtns[i] == 255) {
+      uint8_t btn = (diff > 0) ? encoderBtnMap[i].cw : encoderBtnMap[i].ccw;
+      
+      // Debug output
+      Serial.print("Encoder ");
+      Serial.print(i);
+      Serial.print(": diff=");
+      Serial.print(diff);
+      Serial.print(", btn=");
+      Serial.print(btn);
+      Serial.print(" (cw=");
+      Serial.print(encoderBtnMap[i].cw);
+      Serial.print(", ccw=");
+      Serial.print(encoderBtnMap[i].ccw);
+      Serial.println(")");
+      
       Joystick.setButton(btn, 1);
       pressStartTimes[i] = millis();
       activeBtns[i] = btn;
@@ -141,8 +157,9 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
     if (isEncA && isEncB) {
       pins[idx].pinA = pinA;
       pins[idx].pinB = pinB;
-      buttons[idx].cw = joyA;
-      buttons[idx].ccw = joyB;
+      // Fix: ENC_A should be clockwise, ENC_B should be counter-clockwise
+      buttons[idx].cw = joyA;   // ENC_A joystick button for clockwise
+      buttons[idx].ccw = joyB;  // ENC_B joystick button for counter-clockwise
       idx++;
     }
   }
@@ -151,4 +168,3 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
   delete[] pins;
   delete[] buttons;
 }
-  
