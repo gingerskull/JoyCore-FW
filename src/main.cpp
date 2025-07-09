@@ -36,9 +36,6 @@ extern ShiftRegister165* shiftReg;
 extern uint8_t* shiftRegBuffer;
 
 void setup() {
-  // Initialize serial communication for debugging
-  Serial.begin(9600);
-  
   // Start the USB joystick interface
   Joystick.begin();
   
@@ -77,6 +74,4 @@ void loop() {
   // Process all encoder types (matrix, direct pin, and shift register)
   updateEncoders();
   
-  // Optional: Uncomment for debugging matrix pin states
-  // printPin34567State();
 }
