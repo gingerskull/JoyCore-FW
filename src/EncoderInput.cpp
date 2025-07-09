@@ -50,20 +50,7 @@ void updateEncoders() {
 
     if (diff != 0 && activeBtns[i] == 255) {
       uint8_t btn = (diff > 0) ? encoderBtnMap[i].cw : encoderBtnMap[i].ccw;
-      
-      // Debug output
-      Serial.print("Encoder ");
-      Serial.print(i);
-      Serial.print(": diff=");
-      Serial.print(diff);
-      Serial.print(", btn=");
-      Serial.print(btn);
-      Serial.print(" (cw=");
-      Serial.print(encoderBtnMap[i].cw);
-      Serial.print(", ccw=");
-      Serial.print(encoderBtnMap[i].ccw);
-      Serial.println(")");
-      
+            
       Joystick.setButton(btn, 1);
       pressStartTimes[i] = millis();
       activeBtns[i] = btn;
