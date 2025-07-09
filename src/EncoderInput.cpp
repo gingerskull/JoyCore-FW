@@ -77,13 +77,6 @@ void updateCustomEncoders() {
             uint8_t btn = (direction > 0) ? customEncoders[i].joyButtonCW : customEncoders[i].joyButtonCCW;
             uint8_t joyIdx = btn - 1;
             
-            Serial.print("Custom encoder ");
-            Serial.print(i);
-            Serial.print(" detected: btn=");
-            Serial.print(btn);
-            Serial.print(" dir=");
-            Serial.println((direction > 0) ? "CW" : "CCW");
-            
             // Release any active button first
             if (customEncoders[i].activeBtn != 255) {
                 Joystick.setButton((customEncoders[i].activeBtn > 0) ? (customEncoders[i].activeBtn - 1) : 0, 0);
@@ -119,20 +112,6 @@ void updateEncoders() {
           uint8_t joyIdxCW = (btnCW > 0) ? (btnCW - 1) : 0;
           uint8_t joyIdxCCW = (btnCCW > 0) ? (btnCCW - 1) : 0;
 
-          // Debug output
-          Serial.begin(9600);
-          Serial.print("Encoder ");
-          Serial.print(i);
-          Serial.print(" moved: diff=");
-          Serial.print(diff);
-          Serial.print(" pos=");
-          Serial.print(newPos);
-          Serial.print(" btnCW=");
-          Serial.print(btnCW);
-          Serial.print(" btnCCW=");
-          Serial.print(btnCCW);
-          Serial.println();
-
           // Always release both possible encoder buttons before sending a new press
           Joystick.setButton(joyIdxCW, 0);
           Joystick.setButton(joyIdxCCW, 0);
@@ -140,12 +119,6 @@ void updateEncoders() {
 
           uint8_t btn = (diff > 0) ? btnCW : btnCCW;
           uint8_t joyIdx = (btn > 0) ? (btn - 1) : 0;
-
-          Serial.print("Setting button ");
-          Serial.print(btn);
-          Serial.print(" (joyIdx=");
-          Serial.print(joyIdx);
-          Serial.println(") HIGH");
 
           Joystick.setButton(joyIdx, 1);
           pressStartTimes[i] = millis();
@@ -155,11 +128,6 @@ void updateEncoders() {
 
         if (activeBtns[i] != 255 && millis() - pressStartTimes[i] > 10) {
           uint8_t joyIdx = (activeBtns[i] > 0) ? (activeBtns[i] - 1) : 0;
-          Serial.print("Setting button ");
-          Serial.print(activeBtns[i]);
-          Serial.print(" (joyIdx=");
-          Serial.print(joyIdx);
-          Serial.println(") LOW");
           Joystick.setButton(joyIdx, 0);
           activeBtns[i] = 255;
         }
