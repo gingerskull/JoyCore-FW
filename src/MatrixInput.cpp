@@ -71,8 +71,8 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
         // Only add to matrix if not used by encoder
         PinType type = getPinType(pinName);
         if (!isEncoderPin) {
-            if (type == BTN_ROW && rowIdx < ROWS) rowPins[rowIdx++] = i; // store index or map as needed
-            if (type == BTN_COL && colIdx < COLS) colPins[colIdx++] = i;
+            if (type == BTN_ROW && rowIdx < ROWS) rowPins[rowIdx++] = atoi(pinName); // store Arduino pin number
+            if (type == BTN_COL && colIdx < COLS) colPins[colIdx++] = atoi(pinName);
         }
     }
 
@@ -129,18 +129,19 @@ void updateMatrix() {
                 if (joyButtonIDs[idx] == 0xFF) continue; // skip unused
                 ButtonBehavior behavior = behaviors[idx];
 
+                uint8_t joyIdx = (joyButtonIDs[idx] > 0) ? (joyButtonIDs[idx] - 1) : 0;
                 // Skip encoder behaviors in matrix (they should be handled by EncoderInput)
                 if (behavior == ENC_A || behavior == ENC_B) continue;
 
                 switch (behavior) {
                     case NORMAL:
-                        Joystick.setButton(joyButtonIDs[idx], pressed);
+                        Joystick.setButton(joyIdx, pressed);
                         break;
                     case MOMENTARY:
                         if (pressed && !lastMomentaryStates[idx]) {
-                            Joystick.setButton(joyButtonIDs[idx], 1);
+                            Joystick.setButton(joyIdx, 1);
                             delay(10);
-                            Joystick.setButton(joyButtonIDs[idx], 0);
+                            Joystick.setButton(joyIdx, 0);
                         }
                         lastMomentaryStates[idx] = pressed;
                         break;
