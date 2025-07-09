@@ -30,17 +30,19 @@ void updateButtons() {
     bool wasLow = lastStates[i] == LOW;
     bool isLow = currentState == LOW;
 
+    uint8_t joyIdx = (buttons[i].joyButtonID > 0) ? (buttons[i].joyButtonID - 1) : 0;
+
     switch (buttons[i].behavior) {
       case NORMAL:
-        Joystick.setButton(buttons[i].joyButtonID, isLow);
+        Joystick.setButton(joyIdx, isLow);
         break;
 
       case MOMENTARY:
         // Trigger a one-shot press+release on LOW edge only
         if (!wasLow && isLow) {
-          Joystick.setButton(buttons[i].joyButtonID, 1);
+          Joystick.setButton(joyIdx, 1);
           delay(10);  // brief press duration
-          Joystick.setButton(buttons[i].joyButtonID, 0);
+          Joystick.setButton(joyIdx, 0);
         }
         break;
 
