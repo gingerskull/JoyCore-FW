@@ -5,10 +5,8 @@
 // ===========================
 
 static const PinMapEntry hardwarePinMap[] = {
-  // Example entries (expand as needed)
-  {"0", PIN_UNUSED},
-  {"1", PIN_UNUSED},
-  {"2", PIN_UNUSED},
+  // Only specify used pins; unused pins do not need to be listed.
+  // Available pin types: PIN_UNUSED, BTN, BTN_ROW, BTN_COL
   {"3", BTN_ROW},
   {"4", BTN_ROW},
   {"5", BTN_ROW},
