@@ -50,15 +50,17 @@ void updateEncoders() {
 
     if (diff != 0 && activeBtns[i] == 255) {
       uint8_t btn = (diff > 0) ? encoderBtnMap[i].cw : encoderBtnMap[i].ccw;
-            
-      Joystick.setButton(btn, 1);
+      uint8_t joyIdx = (btn > 0) ? (btn - 1) : 0;
+
+      Joystick.setButton(joyIdx, 1);
       pressStartTimes[i] = millis();
       activeBtns[i] = btn;
       lastPositions[i] = newPos;
     }
 
     if (activeBtns[i] != 255 && millis() - pressStartTimes[i] > 10) {
-      Joystick.setButton(activeBtns[i], 0);
+      uint8_t joyIdx = (activeBtns[i] > 0) ? (activeBtns[i] - 1) : 0;
+      Joystick.setButton(joyIdx, 0);
       activeBtns[i] = 255;
     }
   }
@@ -112,7 +114,7 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
         PinName pinName = hardwarePinMap[j].name;
         if (getPinType(pinName) == BTN_ROW) {
           if (rowIdx == logicals[i].u.matrix.row) {
-            pinA = j; // or store pinName as needed
+            pinA = atoi(pinName); // use Arduino pin number
             break;
           }
           rowIdx++;
@@ -133,7 +135,7 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
         PinName pinName = hardwarePinMap[j].name;
         if (getPinType(pinName) == BTN_ROW) {
           if (rowIdx == logicals[i + 1].u.matrix.row) {
-            pinB = j; // or store pinName as needed
+            pinB = atoi(pinName); // use Arduino pin number
             break;
           }
           rowIdx++;
