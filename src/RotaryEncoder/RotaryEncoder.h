@@ -1,3 +1,8 @@
+// RotaryEncoder - modified for GNGR-ButtonBox by gingerskull, 2025
+// Original: Copyright (c) Matthias Hertel, http://www.mathertel.de
+// Licensed under the terms of the original project and the GNU General Public License v3.0 or later.
+// See LICENSE for details. All modifications are marked and described below.
+
 // -----
 // RotaryEncoder.h - Library for using rotary encoders.
 // This class is implemented for use with the Arduino environment.
