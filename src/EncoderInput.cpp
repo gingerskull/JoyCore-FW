@@ -3,6 +3,16 @@
 #include "Config.h"
 #include <RotaryEncoder.h>
 
+// External variable for matrix pin states
+extern bool g_encoderMatrixPinStates[20];
+
+// Helper to get pin state for encoder (matrix-aware)
+static inline int encoderReadPin(uint8_t pin) {
+    // If the pin is a matrix row pin, use the last scanned state
+    // (You may want to check hardwarePins[pin] == BTN_ROW here if needed)
+    return g_encoderMatrixPinStates[pin];
+}
+
 // Internal encoder state
 static RotaryEncoder** encoders = nullptr;
 static EncoderButtons* encoderBtnMap = nullptr;
@@ -52,23 +62,93 @@ void updateEncoders() {
 }
 
 void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
-  // Count encoders
+  // Find encoder pairs (adjacent ENC_A and ENC_B from ANY source)
   uint8_t count = 0;
-  for (uint8_t i = 0; i < logicalCount; ++i)
-    if (logicals[i].type == LOGICAL_ENCODER) count++;
+  
+  // Check for adjacent encoders (button OR matrix)
+  for (uint8_t i = 0; i < logicalCount - 1; ++i) {
+    bool isEncA = false, isEncB = false;
+    
+    // Check if current is ENC_A
+    if ((logicals[i].type == LOGICAL_BTN && logicals[i].u.btn.behavior == ENC_A) ||
+        (logicals[i].type == LOGICAL_MATRIX && logicals[i].u.matrix.behavior == ENC_A)) {
+      isEncA = true;
+    }
+    
+    // Check if next is ENC_B
+    if ((logicals[i + 1].type == LOGICAL_BTN && logicals[i + 1].u.btn.behavior == ENC_B) ||
+        (logicals[i + 1].type == LOGICAL_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B)) {
+      isEncB = true;
+    }
+    
+    if (isEncA && isEncB) count++;
+  }
+
+  if (count == 0) return;
 
   EncoderPins* pins = new EncoderPins[count];
   EncoderButtons* buttons = new EncoderButtons[count];
   uint8_t idx = 0;
-  for (uint8_t i = 0; i < logicalCount; ++i) {
-    if (logicals[i].type == LOGICAL_ENCODER) {
-      pins[idx].pinA = logicals[i].u.encoder.pinA;
-      pins[idx].pinB = logicals[i].u.encoder.pinB;
-      buttons[idx].cw = logicals[i].u.encoder.joyCw;
-      buttons[idx].ccw = logicals[i].u.encoder.joyCcw;
+  
+  // Process all encoder pairs
+  for (uint8_t i = 0; i < logicalCount - 1; ++i) {
+    bool isEncA = false, isEncB = false;
+    uint8_t pinA = 0, pinB = 0;
+    uint8_t joyA = 0, joyB = 0;
+    
+    // Get ENC_A info
+    if (logicals[i].type == LOGICAL_BTN && logicals[i].u.btn.behavior == ENC_A) {
+      isEncA = true;
+      pinA = logicals[i].u.btn.pin;
+      joyA = logicals[i].u.btn.joyButtonID;
+    } else if (logicals[i].type == LOGICAL_MATRIX && logicals[i].u.matrix.behavior == ENC_A) {
+      isEncA = true;
+      // Find the actual pin for this matrix position
+      uint8_t rowIdx = 0;
+      for (uint8_t pin = 0; pin < hardwarePinsCount; ++pin) {
+        if (hardwarePins[pin] == BTN_ROW) {
+          if (rowIdx == logicals[i].u.matrix.row) {
+            pinA = pin;
+            break;
+          }
+          rowIdx++;
+        }
+      }
+      joyA = logicals[i].u.matrix.joyButtonID;
+    }
+    
+    // Get ENC_B info
+    if (logicals[i + 1].type == LOGICAL_BTN && logicals[i + 1].u.btn.behavior == ENC_B) {
+      isEncB = true;
+      pinB = logicals[i + 1].u.btn.pin;
+      joyB = logicals[i + 1].u.btn.joyButtonID;
+    } else if (logicals[i + 1].type == LOGICAL_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B) {
+      isEncB = true;
+      // Find the actual pin for this matrix position
+      uint8_t rowIdx = 0;
+      for (uint8_t pin = 0; pin < hardwarePinsCount; ++pin) {
+        if (hardwarePins[pin] == BTN_ROW) {
+          if (rowIdx == logicals[i + 1].u.matrix.row) {
+            pinB = pin;
+            break;
+          }
+          rowIdx++;
+        }
+      }
+      joyB = logicals[i + 1].u.matrix.joyButtonID;
+    }
+    
+    if (isEncA && isEncB) {
+      pins[idx].pinA = pinA;
+      pins[idx].pinB = pinB;
+      buttons[idx].cw = joyA;
+      buttons[idx].ccw = joyB;
       idx++;
     }
   }
+  
   initEncoders(pins, buttons, count);
-  // Optionally: delete[] pins, buttons after initEncoders copies data
+  delete[] pins;
+  delete[] buttons;
 }
+  
