@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 #include "EncoderInput.h"
 #include "JoystickWrapper.h"
 #include "Config.h"

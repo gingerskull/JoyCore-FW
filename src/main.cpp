@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 /*
  * Custom Button Box Controller for Flight Simulators and Gaming
  * 
