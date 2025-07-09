@@ -17,6 +17,13 @@ static bool* lastMomentaryStates = nullptr;
 
 bool g_encoderMatrixPinStates[20] = {1}; // indexed by pin number, default HIGH
 
+// Helper: compare numeric pin to pin name string
+static bool pinEqualsName(uint8_t pin, const char* pinName) {
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%u", pin);
+    return strcmp(buf, pinName) == 0;
+}
+
 void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     // Find max row/col and count matrix buttons
     uint8_t maxRow = 0, maxCol = 0, count = 0;
@@ -47,24 +54,25 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     lastStates = new bool[ROWS * COLS]{}; // All false (not pressed)
     lastMomentaryStates = new bool[ROWS * COLS]{}; // All false
 
-    // Fill row/col pins from hardwarePins, but exclude encoder pins
+    // Fill row/col pins from hardwarePinMap, but exclude encoder pins
     uint8_t rowIdx = 0, colIdx = 0;
-    for (uint8_t pin = 0; pin < hardwarePinsCount; ++pin) {
+    for (uint8_t i = 0; i < hardwarePinMapCount; ++i) {
+        PinName pinName = hardwarePinMap[i].name;
         // Check if this pin is used by an encoder
         bool isEncoderPin = false;
-        for (uint8_t i = 0; i < logicalCount; ++i) {
-            if (logicals[i].type == LOGICAL_BTN && 
-                (logicals[i].u.btn.behavior == ENC_A || logicals[i].u.btn.behavior == ENC_B) &&
-                logicals[i].u.btn.pin == pin) {
+        for (uint8_t j = 0; j < logicalCount; ++j) {
+            if (logicals[j].type == LOGICAL_BTN && 
+                (logicals[j].u.btn.behavior == ENC_A || logicals[j].u.btn.behavior == ENC_B) &&
+                pinEqualsName(logicals[j].u.btn.pin, pinName)) {
                 isEncoderPin = true;
                 break;
             }
         }
-        
         // Only add to matrix if not used by encoder
+        PinType type = getPinType(pinName);
         if (!isEncoderPin) {
-            if (hardwarePins[pin] == BTN_ROW && rowIdx < ROWS) rowPins[rowIdx++] = pin;
-            if (hardwarePins[pin] == BTN_COL && colIdx < COLS) colPins[colIdx++] = pin;
+            if (type == BTN_ROW && rowIdx < ROWS) rowPins[rowIdx++] = i; // store index or map as needed
+            if (type == BTN_COL && colIdx < COLS) colPins[colIdx++] = i;
         }
     }
 
