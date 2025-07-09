@@ -8,7 +8,7 @@ static uint8_t ROWS = 0;
 static uint8_t COLS = 0;
 static byte* rowPins = nullptr;
 static byte* colPins = nullptr;
-static char** keys = nullptr;
+static char* keymap = nullptr;  // Changed from char** to char*
 static Keypad* keypad = nullptr;
 static uint8_t* joyButtonIDs = nullptr;
 static ButtonBehavior* behaviors = nullptr;
@@ -31,10 +31,7 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     // Allocate arrays
     if (rowPins) delete[] rowPins;
     if (colPins) delete[] colPins;
-    if (keys) {
-        for (uint8_t i = 0; i < ROWS; ++i) delete[] keys[i];
-        delete[] keys;
-    }
+    if (keymap) delete[] keymap;  // Changed from keys cleanup
     if (joyButtonIDs) delete[] joyButtonIDs;
     if (behaviors) delete[] behaviors;
     if (lastStates) delete[] lastStates;
@@ -42,12 +39,11 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
 
     rowPins = new byte[ROWS];
     colPins = new byte[COLS];
-    keys = new char*[ROWS];
-    for (uint8_t i = 0; i < ROWS; ++i) keys[i] = new char[COLS];
+    keymap = new char[ROWS * COLS];  // Flat array for keymap
     joyButtonIDs = new uint8_t[ROWS * COLS];
     behaviors = new ButtonBehavior[ROWS * COLS];
-    lastStates = new bool[ROWS * COLS]{};
-    lastMomentaryStates = new bool[ROWS * COLS]{};
+    lastStates = new bool[ROWS * COLS]{}; // All false (not pressed)
+    lastMomentaryStates = new bool[ROWS * COLS]{}; // All false
 
     // Fill row/col pins from hardwarePins
     uint8_t rowIdx = 0, colIdx = 0;
@@ -59,7 +55,7 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     // Fill keymap, joyButtonIDs, behaviors
     for (uint8_t r = 0; r < ROWS; ++r)
         for (uint8_t c = 0; c < COLS; ++c)
-            keys[r][c] = 'A' + r * COLS + c; // unique char
+            keymap[r * COLS + c] = 'A' + r * COLS + c; // unique char
 
     for (uint8_t i = 0; i < ROWS * COLS; ++i) {
         joyButtonIDs[i] = 0xFF; // default invalid
@@ -73,37 +69,58 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
         }
     }
 
-    // Create keypad
+    // Create keypad - pass the flat keymap directly
     if (keypad) delete keypad;
-    keypad = new Keypad(makeKeymap(*keys), rowPins, colPins, ROWS, COLS);
+    keypad = new Keypad(keymap, rowPins, colPins, ROWS, COLS);
+
+    // Initialize lastStates to current state (like ButtonInput.cpp does)
+    keypad->getKeys();
+    for (uint8_t r = 0; r < ROWS; ++r) {
+        for (uint8_t c = 0; c < COLS; ++c) {
+            uint8_t idx = r * COLS + c;
+            char keyChar = keymap[idx];
+            lastStates[idx] = keypad->isPressed(keyChar);
+        }
+    }
 }
 
 void updateMatrix() {
-    for (uint8_t r = 0; r < ROWS; r++) {
-        for (uint8_t cidx = 0; cidx < COLS; cidx++) {
-            uint8_t idx = r * COLS + cidx;
-            if (joyButtonIDs[idx] == 0xFF) continue; // skip unused
-            char keyChar = keys[r][cidx];
-            bool pressed = keypad->isPressed(keyChar);
-            ButtonBehavior behavior = behaviors[idx];
+    if (keypad->getKeys()) {
+        // Process key events
+        for (int i = 0; i < LIST_MAX; i++) {
+            if (keypad->key[i].stateChanged) {
+                char keyChar = keypad->key[i].kchar;
+                bool pressed = (keypad->key[i].kstate == PRESSED || keypad->key[i].kstate == HOLD);
+                
+                // Find the index for this key
+                uint8_t idx = 0;
+                for (uint8_t j = 0; j < ROWS * COLS; j++) {
+                    if (keymap[j] == keyChar) {
+                        idx = j;
+                        break;
+                    }
+                }
+                
+                if (joyButtonIDs[idx] == 0xFF) continue; // skip unused
+                ButtonBehavior behavior = behaviors[idx];
 
-            switch (behavior) {
-                case NORMAL:
-                    if (pressed != lastStates[idx]) {
+                switch (behavior) {
+                    case NORMAL:
+                        // Update joystick button state based on key state
                         Joystick.setButton(joyButtonIDs[idx], pressed);
-                        lastStates[idx] = pressed;
-                    }
-                    break;
-                case MOMENTARY:
-                    if (!lastMomentaryStates[idx] && pressed) {
-                        Joystick.setButton(joyButtonIDs[idx], 1);
-                        delay(10);
-                        Joystick.setButton(joyButtonIDs[idx], 0);
-                    }
-                    lastMomentaryStates[idx] = pressed;
-                    break;
+                        break;
+                    case MOMENTARY:
+                        // Only trigger on press, not release
+                        if (pressed && !lastMomentaryStates[idx]) {
+                            Joystick.setButton(joyButtonIDs[idx], 1);
+                            delay(10);
+                            Joystick.setButton(joyButtonIDs[idx], 0);
+                        }
+                        lastMomentaryStates[idx] = pressed;
+                        break;
+                }
+                lastStates[idx] = pressed;
             }
         }
     }
-    keypad->getKeys(); // Update keypad state
 }
