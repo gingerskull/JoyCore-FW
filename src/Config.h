@@ -11,7 +11,10 @@ enum PinType : uint8_t {
   PIN_UNUSED = 0,
   BTN,
   BTN_ROW,
-  BTN_COL
+  BTN_COL,
+  SHIFTREG_PL,   // Parallel load (SH/LD)
+  SHIFTREG_CLK,  // Clock
+  SHIFTREG_QH    // Serial data out
 };
 
 // Helper: Pin name type (string)
@@ -39,12 +42,27 @@ enum ButtonBehavior : uint8_t {
   ENC_B   // Encoder channel B (counter-clockwise)
 };
 
+enum LogicalSource : uint8_t {
+    SRC_PIN,
+    SRC_MATRIX,
+    SRC_SHIFTREG
+};
+
+struct LogicalShiftReg {
+    uint8_t regIndex;    // 0-based shift register index (0..SHIFTREG_COUNT-1)
+    uint8_t bitIndex;    // 0..7
+    uint8_t joyButtonID;
+    ButtonBehavior behavior;
+};
+
 struct LogicalInput {
   LogicalType type;
   union {
     struct { uint8_t pin; uint8_t joyButtonID; ButtonBehavior behavior; } btn;
     struct { uint8_t row; uint8_t col; uint8_t joyButtonID; ButtonBehavior behavior; } matrix;
+    LogicalShiftReg shiftreg;
   } u;
+  LogicalSource source;
 };
 
 // --- USER CONFIGURATION ---
