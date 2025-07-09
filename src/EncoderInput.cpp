@@ -108,10 +108,11 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
       isEncA = true;
       // Find the actual pin for this matrix position
       uint8_t rowIdx = 0;
-      for (uint8_t pin = 0; pin < hardwarePinsCount; ++pin) {
-        if (hardwarePins[pin] == BTN_ROW) {
+      for (uint8_t j = 0; j < hardwarePinMapCount; ++j) {
+        PinName pinName = hardwarePinMap[j].name;
+        if (getPinType(pinName) == BTN_ROW) {
           if (rowIdx == logicals[i].u.matrix.row) {
-            pinA = pin;
+            pinA = j; // or store pinName as needed
             break;
           }
           rowIdx++;
@@ -127,12 +128,12 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
       joyB = logicals[i + 1].u.btn.joyButtonID;
     } else if (logicals[i + 1].type == LOGICAL_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B) {
       isEncB = true;
-      // Find the actual pin for this matrix position
       uint8_t rowIdx = 0;
-      for (uint8_t pin = 0; pin < hardwarePinsCount; ++pin) {
-        if (hardwarePins[pin] == BTN_ROW) {
+      for (uint8_t j = 0; j < hardwarePinMapCount; ++j) {
+        PinName pinName = hardwarePinMap[j].name;
+        if (getPinType(pinName) == BTN_ROW) {
           if (rowIdx == logicals[i + 1].u.matrix.row) {
-            pinB = pin;
+            pinB = j; // or store pinName as needed
             break;
           }
           rowIdx++;
