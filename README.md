@@ -1,81 +1,147 @@
 # GNGR-ButtonBox
 
-GNGR-ButtonBox is an Arduino-based USB game controller designed for flight simulator enthusiasts. It supports multiple input types, including matrix buttons, rotary encoders, direct pin buttons, and shift register inputs. This project allows users to build their own customizable button box for enhanced simulator control.
+GNGR-ButtonBox is an Arduino-based USB game controller for flight simulator enthusiasts. It supports matrix buttons, rotary encoders, direct pin buttons, and shift register inputs, letting you build a highly customizable button box for your cockpit.
 
 ---
 
-## Features
+## ✨ Features
 
-- **Matrix Button Scanning**: Efficient row/column multiplexing for handling large numbers of buttons.
-- **Rotary Encoder Support**: Includes custom quadrature decoding for shift register-based encoders and standard encoder handling.
-- **Shift Register Integration**: Uses 74HC165 chips to expand input capabilities while minimizing pin usage.
-- **USB HID Game Controller**: Implements a native USB interface using the [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary).
-- **Modular Design**: Separate modules for button input, encoder input, and matrix scanning ensure clean and maintainable code.
-
----
-
-## Technologies and Libraries
-
-- **Arduino Framework**: Core platform for embedded development.
-- **USB HID (Joystick)**: [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary) for USB game controller functionality.
-- **Keypad Library**: Handles matrix scanning for button inputs.
-- **RotaryEncoder Library**: [Matthias Hertel's RotaryEncoder](https://github.com/mathertel/RotaryEncoder), extended to support shift register inputs.
-- **74HC165 Shift Registers**: Serial-to-parallel conversion for additional input handling.
-- **C++ Function Pointers**: Enables flexible hardware abstraction for pin reading.
+- **Matrix Button Scanning**: Efficient row/column multiplexing for large button arrays.
+- **Rotary Encoder Support**: Handles both direct/matrix and shift register-based encoders.
+- **Shift Register Integration**: Expand inputs with [74HC165](https://www.ti.com/lit/ds/symlink/sn74hc165.pdf) chips.
+- **USB HID Game Controller**: Native USB interface via the [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary).
+- **Modular Design**: Clean separation for button, encoder, and matrix logic.
 
 ---
 
-## Project Structure
+## 🛠️ Technologies and Libraries
+
+- **Arduino Framework**
+- **[Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)**
+- **[Keypad Library](https://playground.arduino.cc/Code/Keypad/)**
+- **[RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)** (customized for shift register support)
+- **74HC165 Shift Registers**
+- **C++ Function Pointers** for flexible pin reading
+
+---
+
+## 📁 Project Structure
 
 ```
 GNGR-ButtonBox/
 ├── src/
-│   ├── RotaryEncoder/
-│   ├── lib/
-├── include/
-├── docs/
+│   ├── RotaryEncoder/      # Modified encoder library
+│   ├── lib/                # (Optional) External libraries
+├── include/                # Configuration headers (UserConfig.h)
+├── docs/                   # Documentation and guides
 ```
 
-**src/**: Contains the core application code, including input handlers, configuration systems, and hardware abstraction layers. The [RotaryEncoder/](src/RotaryEncoder/) directory includes the modified encoder library with shift register support.
-
-**include/**: Header files and configuration definitions for hardware setup.
-
-**docs/**: Documentation for the project, including setup instructions and technical details.
+- **src/**: Core logic for input handling and hardware abstraction.
+- **include/**: User-editable configuration files.
+- **docs/**: Additional documentation.
 
 ---
 
-## How to Use
+## 🚀 How to Use
 
-### Configuration
+### 1. Hardware Pin Mapping
 
-The project relies on the `UserConfig.h` file to define hardware pin mappings and input behaviors. This file is located in the `include/` directory. It allows users to specify:
-
-- **Button Pins**: Define pins for direct buttons and matrix rows/columns.
-- **Encoder Pins**: Assign pins for rotary encoders, including shift register-based encoders.
-- **Shift Register Pins**: Specify pins for `PL`, `CLK`, and `QH` connections to 74HC165 chips.
-
-### Example Structure
+Edit [`src/UserConfig.h`](src/UserConfig.h) to match your hardware. Each entry in `hardwarePinMap` defines a pin and its function:
 
 ```cpp
-// UserConfig.h
-#define BTN_PIN_1 2
-#define BTN_PIN_2 3
-#define ENC_PIN_A 4
-#define ENC_PIN_B 5
-#define SHIFTREG_PL 6
-#define SHIFTREG_CLK 7
-#define SHIFTREG_QH 8
+static const PinMapEntry hardwarePinMap[] = {
+  {"2", BTN_ROW},         // Matrix row
+  {"3", BTN_ROW},
+  {"4", BTN_ROW},
+  {"5", BTN_ROW},
+  {"6", BTN_COL},         // Matrix column
+  {"16", SHIFTREG_QH},    // 74HC165 QH (serial out)
+  {"14", SHIFTREG_PL},    // 74HC165 PL (parallel load)
+  {"15", SHIFTREG_CLK}    // 74HC165 CLK (clock)
+  // Add more as needed...
+};
 ```
 
-### Steps to Build
-
-1. **Clone the Repository**: Download the project files to your local machine.
-2. **Install Dependencies**: Ensure the Arduino IDE has the required libraries installed:
-   - [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)
-   - [Keypad Library](https://playground.arduino.cc/Code/Keypad/)
-3. **Customize `UserConfig.h`**: Modify the file to match your hardware setup.
-4. **Upload to Arduino**: Compile and upload the code to your Arduino board.
+**Pin Types:**
+- `BTN_ROW`, `BTN_COL`: For matrix scanning
+- `SHIFTREG_PL`, `SHIFTREG_CLK`, `SHIFTREG_QH`: For shift register chips
+- `BTN`: For direct-wired buttons
 
 ---
 
-This project is ideal for flight simulator enthusiasts looking to build a customizable button box or input device. It demonstrates advanced techniques for handling multiple input types efficiently while maintaining modularity and flexibility.
+### 2. Shift Register Configuration
+
+Set the number of chained 74HC165 chips:
+
+```cpp
+#define SHIFTREG_COUNT    1  // Number of 74HC165 chips
+```
+
+---
+
+### 3. Logical Inputs
+
+Define your logical inputs in the `logicalInputs` array. Each entry describes a button or encoder and how it maps to the joystick.
+
+```cpp
+constexpr LogicalInput logicalInputs[] = {
+  // Matrix buttons: row, col, joystick button ID, behavior
+  { LOGICAL_MATRIX,  { .matrix = {0, 0, 24, NORMAL} }, SRC_MATRIX },
+  { LOGICAL_MATRIX,  { .matrix = {1, 0, 25, NORMAL} }, SRC_MATRIX },
+
+  // Matrix encoder: adjacent matrix positions, each with a unique joystick button
+  { LOGICAL_MATRIX,  { .matrix = {2, 0, 26, ENC_A} }, SRC_MATRIX },
+  { LOGICAL_MATRIX,  { .matrix = {3, 0, 27, ENC_B} }, SRC_MATRIX },
+
+  // Shift register button: regIndex, bitIndex, joystick button ID, behavior
+  { LOGICAL_BTN, { .shiftreg = {0, 0, 5, NORMAL} }, SRC_SHIFTREG },
+
+  // Shift register encoder: two adjacent bits, each mapped to a joystick button
+  { LOGICAL_BTN, { .shiftreg = {0, 1, 6, ENC_A} }, SRC_SHIFTREG },
+  { LOGICAL_BTN, { .shiftreg = {0, 2, 7, ENC_B} }, SRC_SHIFTREG }
+};
+```
+
+**Behavior options:**
+- `NORMAL`: Standard button (press/release)
+- `MOMENTARY`: Sends a quick pulse on press
+- `ENC_A`, `ENC_B`: Used for rotary encoder channels (must be paired as A/B)
+
+---
+
+### 4. Example: Adding a New Encoder
+
+To add a rotary encoder on pins 8 and 9, mapped to joystick buttons 10 (CW) and 11 (CCW):
+
+```cpp
+// In hardwarePinMap:
+{"8", BTN}, {"9", BTN},
+
+// In logicalInputs:
+{ LOGICAL_BTN, { .btn = {8, 10, ENC_A} }, SRC_PIN },
+{ LOGICAL_BTN, { .btn = {9, 11, ENC_B} }, SRC_PIN },
+```
+
+---
+
+### 5. Build & Upload
+
+1. **Clone the repo** and open in Arduino IDE.
+2. **Install dependencies**:
+   - [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)
+   - [Keypad Library](https://playground.arduino.cc/Code/Keypad/)
+   - [RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)
+3. **Edit `UserConfig.h`** to match your hardware.
+4. **Upload** to your Arduino board.
+
+---
+
+## 🧩 Tips
+
+- Use unique joystick button IDs for each input.
+- For encoders, always define A and B channels as consecutive entries.
+- You can mix matrix, direct, and shift register inputs freely.
+
+---
+
+This project is ideal for anyone building a custom button box or input device for flight simulation. It demonstrates efficient input handling, modular design, and flexible configuration for advanced DIY cockpit builders.
