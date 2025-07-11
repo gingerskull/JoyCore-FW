@@ -3,16 +3,36 @@
 #include <Arduino.h>
 #include "Config.h"
 
-// Define ButtonConfig locally for button input handling
+/**
+ * @brief Configuration for a single button input
+ */
 struct ButtonConfig {
     uint8_t pin;
     uint8_t joyButtonID;
     ButtonBehavior behavior;
 };
 
-// Initializes all buttons using the config array
+/**
+ * @brief Initialize buttons with configuration array
+ * @param configs Array of button configurations
+ * @param count Number of buttons to initialize
+ */
 void initButtons(const ButtonConfig* configs, uint8_t count);
+
+/**
+ * @brief Initialize buttons from logical input configuration
+ * @param logicals Array of logical input definitions
+ * @param logicalCount Number of logical inputs
+ */
 void initButtonsFromLogical(const LogicalInput* logicals, uint8_t logicalCount);
 
-// Updates button states and sends HID events
+/**
+ * @brief Update button states and send joystick events
+ */
 void updateButtons();
+
+// Helper functions for button initialization
+void updateShiftRegisterButtons();
+bool isRegularButton(const LogicalInput& input);
+void initRegularButtons(const LogicalInput* logicals, uint8_t logicalCount, uint8_t count);
+void initShiftRegisterIfNeeded(const LogicalInput* logicals, uint8_t logicalCount);
