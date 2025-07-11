@@ -123,7 +123,3 @@ To add a rotary encoder on pins 8 and 9, mapped to joystick buttons 10 (CW) and 
 - Use unique joystick button IDs for each input.
 - For encoders, always define A and B channels as consecutive entries.
 - You can mix matrix, direct, and shift register inputs freely.
-
----
-
-This project is ideal for anyone building a custom button box or input device for flight simulation. It demonstrates efficient input handling, modular design, and flexible configuration for advanced DIY cockpit builders.
