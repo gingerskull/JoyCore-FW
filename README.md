@@ -7,38 +7,20 @@ GNGR-ButtonBox is an Arduino-based USB game controller for flight simulator enth
 ## ✨ Features
 
 - **Matrix Button Scanning**: Efficient row/column multiplexing for large button arrays.
-- **Rotary Encoder Support**: Handles both direct/matrix and shift register-based encoders.
-- **Shift Register Integration**: Expand inputs with [74HC165](https://www.ti.com/lit/ds/symlink/sn74hc165.pdf) chips.
+- **Rotary Encoders**: Handles both direct/matrix and shift register-based encoders.
+- **Shift Registers**: Expand inputs with [74HC165](https://www.ti.com/lit/ds/symlink/sn74hc165.pdf) chips.
 - **USB HID Game Controller**: Native USB interface via the [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary).
-- **Modular Design**: Clean separation for button, encoder, and matrix logic.
+
 
 ---
 
-## 🛠️ Technologies and Libraries
+## 🛠️ Libraries
 
-- **Arduino Framework**
+
 - **[Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)**
 - **[Keypad Library](https://playground.arduino.cc/Code/Keypad/)**
 - **[RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)** (customized for shift register support)
-- **74HC165 Shift Registers**
-- **C++ Function Pointers** for flexible pin reading
 
----
-
-## 📁 Project Structure
-
-```
-GNGR-ButtonBox/
-├── src/
-│   ├── RotaryEncoder/      # Modified encoder library
-│   ├── lib/                # (Optional) External libraries
-├── include/                # Configuration headers (UserConfig.h)
-├── docs/                   # Documentation and guides
-```
-
-- **src/**: Core logic for input handling and hardware abstraction.
-- **include/**: User-editable configuration files.
-- **docs/**: Additional documentation.
 
 ---
 
