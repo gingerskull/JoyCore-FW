@@ -689,11 +689,6 @@ This project incorporates and links to third-party libraries as follows:
   - Original license is retained in src/RotaryEncoder.* files.
   - All modifications are clearly marked and described.
 
-- @Chris--A/Keypad
-  - Linked externally.
-  - Licensed under GPL-3.0.
-  - See: https://github.com/Chris--A/Keypad
-
-Because this project links with GPL-3.0 and LGPL-3.0 libraries, the entire project is licensed under the GPL-3.0-or-later to ensure compatibility and compliance.
+Because this project links with LGPL-3.0 libraries, the entire project is licensed under the GPL-3.0-or-later to ensure compatibility and compliance.
 
 Refer to the original licenses of the libraries for details.
