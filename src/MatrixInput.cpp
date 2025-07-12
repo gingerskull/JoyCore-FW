@@ -2,7 +2,7 @@
 #include "MatrixInput.h"
 #include "Config.h"
 #include "JoystickWrapper.h"
-#include "Keypad.h"
+#include "ButtonMatrix.h"
 
 // Dynamic matrix config
 static uint8_t ROWS = 0;
@@ -10,7 +10,7 @@ static uint8_t COLS = 0;
 static byte* rowPins = nullptr;
 static byte* colPins = nullptr;
 static char* keymap = nullptr;  // Changed from char** to char*
-static Keypad* keypad = nullptr;
+static ButtonMatrix* buttonMatrix = nullptr;
 static uint8_t* joyButtonIDs = nullptr;
 static ButtonBehavior* behaviors = nullptr;
 static bool* lastStates = nullptr;
@@ -94,29 +94,28 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
         }
     }
 
-    // Create keypad - pass the flat keymap directly
-    //if (keypad) delete keypad;
-    keypad = new Keypad(keymap, rowPins, colPins, ROWS, COLS);
+    // Create button matrix - pass the flat keymap directly
+    buttonMatrix = new ButtonMatrix(keymap, rowPins, colPins, ROWS, COLS);
 
     // Initialize lastStates to current state (like ButtonInput.cpp does)
-    keypad->getKeys();
+    buttonMatrix->getKeys();
     for (uint8_t r = 0; r < ROWS; ++r) {
         for (uint8_t c = 0; c < COLS; ++c) {
             uint8_t idx = r * COLS + c;
             char keyChar = keymap[idx];
-            lastStates[idx] = keypad->isPressed(keyChar);
+            lastStates[idx] = buttonMatrix->isPressed(keyChar);
         }
     }
 }
 
 void updateMatrix() {
-    // First, do the regular keypad scanning
-    if (keypad->getKeys()) {
+    // First, do the regular button matrix scanning
+    if (buttonMatrix->getKeys()) {
         // Process key events
-        for (int i = 0; i < LIST_MAX; i++) {
-            if (keypad->key[i].stateChanged) {
-                char keyChar = keypad->key[i].kchar;
-                bool pressed = (keypad->key[i].kstate == PRESSED || keypad->key[i].kstate == HOLD);
+        for (int i = 0; i < MATRIX_MAX_KEYS; i++) {
+            if (buttonMatrix->key[i].stateChanged) {
+                char keyChar = buttonMatrix->key[i].kchar;
+                bool pressed = (buttonMatrix->key[i].kstate == MATRIX_PRESSED || buttonMatrix->key[i].kstate == MATRIX_HELD);
                 
                 // Find the index for this key
                 uint8_t idx = 0;

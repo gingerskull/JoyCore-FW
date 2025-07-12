@@ -1,4 +1,4 @@
-                    GNU GENERAL PUBLIC LICENSE
+GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
  Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
@@ -674,26 +674,32 @@ Public License instead of this License.  But first, please read
 <http://www.gnu.org/philosophy/why-not-lgpl.html>.
 
 
-ADDITIONAL TERMS FOR GNGR-BUTTONBOX
+// ...existing code...
+ADDITIONAL TERMS FOR JOYCORE-FW
 
-This project incorporates and links to third-party libraries as follows:
+This project incorporates, builds upon, and modifies several third-party libraries:
 
 - @MHeironimus/ArduinoJoystickLibrary
-  - Linked externally.
-  - Licensed under LGPL-3.0.
-  - See: https://github.com/MHeironimus/ArduinoJoystickLibrary
+  - Now built-in and expanded upon.
+  - Originally licensed under LGPL-3.0.
+  - Source: https://github.com/MHeironimus/ArduinoJoystickLibrary
+
 
 - @mathertel/RotaryEncoder
-  - Distributed with source and modified.
+  - Built-in and modified.
   - Original author: Matthias Hertel, http://www.mathertel.de
-  - Original license is retained in src/RotaryEncoder.* files.
-  - All modifications are clearly marked and described.
+  - Original license is retained in relevant source files.
+
 
 - @Chris--A/Keypad
-  - Linked externally.
-  - Licensed under GPL-3.0.
-  - See: https://github.com/Chris--A/Keypad
+  - Built-in and modified.
+  - Originally licensed under LGPL-3.0.
+  - Source: https://github.com/Chris--A/Keypad
+  - Original authors: Mark Stanley, Alexander Brevig
 
-Because this project links with GPL-3.0 and LGPL-3.0 libraries, the entire project is licensed under the GPL-3.0-or-later to ensure compatibility and compliance.
 
-Refer to the original licenses of the libraries for details.
+All libraries have been substantially modified and expanded to enhance functionality for this project. Original copyright notices and attribution have been preserved within the relevant source files.
+
+As this project incorporates and builds upon LGPL-3.0 licensed code, the entire project is licensed under GPL-3.0-or-later to ensure compatibility and compliance with the original licenses.
+
+Refer to the original licenses within the source files for details on
