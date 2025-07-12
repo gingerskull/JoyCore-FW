@@ -21,7 +21,7 @@
 #include "ConfigAxis.h"
 
 // USB joystick configuration: 32 buttons, no analog axes
-Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
+Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
                    32, 0, true, false, false,
                    false, false, false,
                    false, false);
