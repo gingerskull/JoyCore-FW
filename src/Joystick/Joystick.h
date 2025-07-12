@@ -23,7 +23,7 @@
 
 #include "../DynamicHID/DynamicHID.h"
 #include "AnalogAxis.h"
-#include "DigitalInputs.h"
+#include "../Buttons.h"
 
 #if ARDUINO < 10606
 #error The Joystick library requires Arduino IDE 1.6.6 or greater. Please update your IDE.
