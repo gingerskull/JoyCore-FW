@@ -30,9 +30,10 @@ struct PinMapEntry {
 // 🎮 Logical Input Definitions
 // ===========================
 
-enum LogicalType : uint8_t {
-    LOGICAL_BTN,
-    LOGICAL_MATRIX
+enum InputType : uint8_t {
+    INPUT_PIN,
+    INPUT_MATRIX,
+    INPUT_SHIFTREG
 };
 
 enum ButtonBehavior : uint8_t {
@@ -42,32 +43,18 @@ enum ButtonBehavior : uint8_t {
     ENC_B   // Encoder channel B (counter-clockwise)
 };
 
-enum LogicalSource : uint8_t {
-    SRC_PIN,
-    SRC_MATRIX,
-    SRC_SHIFTREG
-};
-
-struct LogicalShiftReg {
-    uint8_t regIndex;    // 0-based shift register index
-    uint8_t bitIndex;    // 0-7
-    uint8_t joyButtonID;
-    ButtonBehavior behavior;
-};
-
 struct LogicalInput {
-    LogicalType type;
+    InputType type;
     union {
-        struct { uint8_t pin; uint8_t joyButtonID; ButtonBehavior behavior; } btn;
+        struct { uint8_t pin; uint8_t joyButtonID; ButtonBehavior behavior; } pin;
         struct { uint8_t row; uint8_t col; uint8_t joyButtonID; ButtonBehavior behavior; } matrix;
-        LogicalShiftReg shiftreg;
+        struct { uint8_t regIndex; uint8_t bitIndex; uint8_t joyButtonID; ButtonBehavior behavior; } shiftreg;
     } u;
-    LogicalSource source;
 };
 
 // --- USER CONFIGURATION ---
 // User must provide hardwarePinMap, hardwarePinMapCount, logicalInputs, logicalInputCount in UserConfig.h
-#include "UserConfig.h"
+#include "ConfigDigital.h"
 
 constexpr uint8_t hardwarePinMapCount = sizeof(hardwarePinMap) / sizeof(hardwarePinMap[0]);
 constexpr uint8_t logicalInputCount = sizeof(logicalInputs) / sizeof(logicalInputs[0]);
