@@ -29,7 +29,7 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     // Find max row/col and count matrix buttons
     uint8_t maxRow = 0, maxCol = 0, count = 0;
     for (uint8_t i = 0; i < logicalCount; ++i) {
-        if (logicals[i].type == LOGICAL_MATRIX) {
+        if (logicals[i].type == INPUT_MATRIX) {
             if (logicals[i].u.matrix.row > maxRow) maxRow = logicals[i].u.matrix.row;
             if (logicals[i].u.matrix.col > maxCol) maxCol = logicals[i].u.matrix.col;
             count++;
@@ -62,9 +62,9 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
         // Check if this pin is used by an encoder
         bool isEncoderPin = false;
         for (uint8_t j = 0; j < logicalCount; ++j) {
-            if (logicals[j].type == LOGICAL_BTN && 
-                (logicals[j].u.btn.behavior == ENC_A || logicals[j].u.btn.behavior == ENC_B) &&
-                pinEqualsName(logicals[j].u.btn.pin, pinName)) {
+            if (logicals[j].type == INPUT_PIN && 
+                (logicals[j].u.pin.behavior == ENC_A || logicals[j].u.pin.behavior == ENC_B) &&
+                pinEqualsName(logicals[j].u.pin.pin, pinName)) {
                 isEncoderPin = true;
                 break;
             }
@@ -87,7 +87,7 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
         behaviors[i] = NORMAL;
     }
     for (uint8_t i = 0; i < logicalCount; ++i) {
-        if (logicals[i].type == LOGICAL_MATRIX) {
+        if (logicals[i].type == INPUT_MATRIX) {
             uint8_t idx = logicals[i].u.matrix.row * COLS + logicals[i].u.matrix.col;
             joyButtonIDs[idx] = logicals[i].u.matrix.joyButtonID;
             behaviors[idx] = logicals[i].u.matrix.behavior;
