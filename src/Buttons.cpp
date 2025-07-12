@@ -1,4 +1,4 @@
-#include "DigitalInputs.h"
+#include "Buttons.h"
 #include <Arduino.h>
 
 DigitalInputsManager::DigitalInputsManager(uint8_t buttonCount, uint8_t hatSwitchCount) 

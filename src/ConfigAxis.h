@@ -1,7 +1,7 @@
 #ifndef USER_CONFIG_H
 #define USER_CONFIG_H
 
-#include "Joystick/AnalogAxis.h"
+#include "AnalogAxis.h"
 #include "Joystick/Joystick.h" // Add this line to ensure Joystick_ is defined
 
 /*
