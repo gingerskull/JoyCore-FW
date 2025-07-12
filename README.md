@@ -14,16 +14,6 @@ GNGR-ButtonBox is an Arduino-based USB game controller for flight simulator enth
 
 ---
 
-## 🛠️ Libraries
-
-
-- **[Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)**
-- **[Keypad Library](https://playground.arduino.cc/Code/Keypad/)**
-- **[RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)** (customized for shift register support)
-
-
----
-
 ## 🚀 How to Use
 
 ### 1. Hardware Pin Mapping
@@ -111,7 +101,6 @@ To add a rotary encoder on pins 8 and 9, mapped to joystick buttons 10 (CW) and 
 1. **Clone the repo** and open in Arduino IDE.
 2. **Install dependencies**:
    - [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)
-   - [Keypad Library](https://playground.arduino.cc/Code/Keypad/)
    - [RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)
 3. **Edit `UserConfig.h`** to match your hardware.
 4. **Upload** to your Arduino board.
@@ -123,3 +112,14 @@ To add a rotary encoder on pins 8 and 9, mapped to joystick buttons 10 (CW) and 
 - Use unique joystick button IDs for each input.
 - For encoders, always define A and B channels as consecutive entries.
 - You can mix matrix, direct, and shift register inputs freely.
+
+---
+
+## 🛠️ Credit
+
+
+- **[Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)**
+- **[RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)** 
+- **[Keypad Library](https://playground.arduino.cc/Code/Keypad/)** 
+
+Big thanks to the authors of the Arduino Joystick Library, RotaryEncoder Library, and Keypad Library for their incredible work. Many of the features here are based, expanded upon and inspired by their approaches. Their contributions to the community made it possible to create the foundation of this project.
