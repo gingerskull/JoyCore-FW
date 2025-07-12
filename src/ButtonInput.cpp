@@ -72,7 +72,7 @@ void updateShiftRegisterButtons() {
     for (uint8_t i = 0; i < logicalInputCount; ++i) {
         const LogicalInput& input = logicalInputs[i];
         
-        if (input.source != SRC_SHIFTREG) continue;
+        if (input.type != INPUT_SHIFTREG) continue;
         if (input.u.shiftreg.behavior == ENC_A || input.u.shiftreg.behavior == ENC_B) continue;
         
         uint8_t reg = input.u.shiftreg.regIndex;
@@ -104,11 +104,9 @@ void initButtonsFromLogical(const LogicalInput* logicals, uint8_t logicalCount) 
 }
 
 bool isRegularButton(const LogicalInput& input) {
-    return (input.type == LOGICAL_BTN && 
-            input.u.btn.behavior != ENC_A && 
-            input.u.btn.behavior != ENC_B &&
-            !(input.source == SRC_SHIFTREG && 
-              (input.u.shiftreg.behavior == ENC_A || input.u.shiftreg.behavior == ENC_B)));
+    return (input.type == INPUT_PIN && 
+            input.u.pin.behavior != ENC_A && 
+            input.u.pin.behavior != ENC_B);
 }
 
 void initRegularButtons(const LogicalInput* logicals, uint8_t logicalCount, uint8_t count) {
@@ -117,9 +115,9 @@ void initRegularButtons(const LogicalInput* logicals, uint8_t logicalCount, uint
     
     for (uint8_t i = 0; i < logicalCount; ++i) {
         if (isRegularButton(logicals[i])) {
-            configs[idx].pin = logicals[i].u.btn.pin;
-            configs[idx].joyButtonID = logicals[i].u.btn.joyButtonID;
-            configs[idx].behavior = logicals[i].u.btn.behavior;
+            configs[idx].pin = logicals[i].u.pin.pin;
+            configs[idx].joyButtonID = logicals[i].u.pin.joyButtonID;
+            configs[idx].behavior = logicals[i].u.pin.behavior;
             idx++;
         }
     }
@@ -132,7 +130,7 @@ void initShiftRegisterIfNeeded(const LogicalInput* logicals, uint8_t logicalCoun
     // Check if any shift register inputs are present
     bool hasShiftReg = false;
     for (uint8_t i = 0; i < logicalCount; ++i) {
-        if (logicals[i].source == SRC_SHIFTREG) {
+        if (logicals[i].type == INPUT_SHIFTREG) {
             hasShiftReg = true;
             break;
         }
