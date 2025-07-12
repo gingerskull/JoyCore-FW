@@ -13,9 +13,9 @@ static const PinMapEntry hardwarePinMap[] = {
   {"4", BTN_ROW},
   {"5", BTN_ROW},
   {"6", BTN_COL},
-  {"16", SHIFTREG_QH},   // Serial data out pin for 74HC165
-  {"14", SHIFTREG_PL},  // Parallel load pin for 74HC165 
-  {"15", SHIFTREG_CLK}    // Clock pin for 74HC165
+  //{"16", SHIFTREG_QH},   // Serial data out pin for 74HC165
+  //{"14", SHIFTREG_PL},  // Parallel load pin for 74HC165 
+  //{"15", SHIFTREG_CLK}    // Clock pin for 74HC165
   // ...add more as needed...
 };
 
@@ -40,16 +40,16 @@ constexpr LogicalInput logicalInputs[] = {
   //{ INPUT_PIN, { .pin = {5, 21, ENC_B} } },
 
   // Matrix buttons (row, col, joyButtonID, behavior)
-  { INPUT_MATRIX, { .matrix = {0, 0, 24, NORMAL} } },
-  { INPUT_MATRIX, { .matrix = {1, 0, 25, NORMAL} } },
+  { INPUT_MATRIX, { .matrix = {0, 0, 1, NORMAL} } },
+  { INPUT_MATRIX, { .matrix = {1, 0, 2, NORMAL} } },
 
   // Encoders within matrix positions
-  { INPUT_MATRIX, { .matrix = {2, 0, 26, ENC_A} } },
-  { INPUT_MATRIX, { .matrix = {3, 0, 27, ENC_B} } },
+  { INPUT_MATRIX, { .matrix = {2, 0, 3, ENC_A} } },
+  { INPUT_MATRIX, { .matrix = {3, 0, 4, ENC_B} } },
  
   // Shift register inputs
-  { INPUT_SHIFTREG, { .shiftreg = {0, 0, 5, NORMAL} } },
-  { INPUT_SHIFTREG, { .shiftreg = {0, 1, 6, ENC_A} } },
-  { INPUT_SHIFTREG, { .shiftreg = {0, 2, 7, ENC_B} } }
+  //{ INPUT_SHIFTREG, { .shiftreg = {0, 0, 5, NORMAL} } },
+  //{ INPUT_SHIFTREG, { .shiftreg = {0, 1, 6, ENC_A} } },
+  //{ INPUT_SHIFTREG, { .shiftreg = {0, 2, 7, ENC_B} } }
   // ...add more as needed...
 };
