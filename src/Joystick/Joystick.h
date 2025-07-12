@@ -21,7 +21,7 @@
 #ifndef JOYSTICK_h
 #define JOYSTICK_h
 
-#include "DynamicHID/DynamicHID.h"
+#include "../DynamicHID/DynamicHID.h"
 #include "AnalogAxis.h"
 #include "DigitalInputs.h"
 

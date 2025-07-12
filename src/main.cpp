@@ -18,25 +18,31 @@
 #include "EncoderInput.h"
 #include "MatrixInput.h"
 #include "ShiftRegister165.h"
+#include "ConfigAxis.h"
 
 // USB joystick configuration: 32 buttons, no analog axes
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
-                   32, 0, false, false, false,
+                   32, 0, true, false, false,
                    false, false, false,
-                   false, false, false);
+                   false, false);
 
 // External shift register components
 extern ShiftRegister165* shiftReg;
 extern uint8_t* shiftRegBuffer;
 
 void setup() {
-    // Initialize USB joystick interface
-    Joystick.begin();
     
     // Initialize all input subsystems from user configuration
     initButtonsFromLogical(logicalInputs, logicalInputCount);
     initEncodersFromLogical(logicalInputs, logicalInputCount);
     initMatrixFromLogical(logicalInputs, logicalInputCount);
+
+    // Configure all user-defined axes
+    setupUserAxes(Joystick);
+
+    // Initialize USB joystick interface
+    Joystick.begin();
+    delay(1000);
 }
 
 void loop() {
@@ -49,4 +55,5 @@ void loop() {
     updateButtons();   // Direct pin and shift register buttons
     updateMatrix();    // Button matrix and encoder pin states
     updateEncoders();  // All encoder types
+    readUserAxes(Joystick); // Read all configured axes from user.h
 }

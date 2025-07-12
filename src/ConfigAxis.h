@@ -1,8 +1,8 @@
 #ifndef USER_CONFIG_H
 #define USER_CONFIG_H
 
-#include "AnalogAxis.h"
-#include "Joystick.h" // Add this line to ensure Joystick_ is defined
+#include "Joystick/AnalogAxis.h"
+#include "Joystick/Joystick.h" // Add this line to ensure Joystick_ is defined
 
 /*
  * HOTAS User Configuration

@@ -24,3 +24,6 @@ void loop() {
     
  
 }
+
+// This file should be deleted or renamed to test.cpp.bak to prevent compilation conflicts
+// The file contains test code that conflicts with main.cpp symbols
