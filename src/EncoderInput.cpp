@@ -144,13 +144,13 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
     
     // Fix: Count actual encoder pairs, not just ENC_A entries
     for (uint8_t i = 0; i < logicalCount - 1; ++i) {
-        if ((logicals[i].source == SRC_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
-            (logicals[i + 1].source == SRC_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
+        if ((logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
+            (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
             customEncoderCount++;
-        } else if (((logicals[i].type == LOGICAL_BTN && logicals[i].u.btn.behavior == ENC_A) ||
-                    (logicals[i].type == LOGICAL_MATRIX && logicals[i].u.matrix.behavior == ENC_A)) &&
-                   ((logicals[i + 1].type == LOGICAL_BTN && logicals[i + 1].u.btn.behavior == ENC_B) ||
-                    (logicals[i + 1].type == LOGICAL_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B))) {
+        } else if (((logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) ||
+                    (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A)) &&
+                   ((logicals[i + 1].type == INPUT_PIN && logicals[i + 1].u.pin.behavior == ENC_B) ||
+                    (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B))) {
             regularCount++;
         }
     }
@@ -161,8 +161,8 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
         uint8_t idx = 0;
         
         for (uint8_t i = 0; i < logicalCount - 1; ++i) {
-            if ((logicals[i].source == SRC_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
-                (logicals[i + 1].source == SRC_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
+            if ((logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
+                (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
                 
                 uint8_t pinA = 100 + (logicals[i].u.shiftreg.regIndex << 4) + logicals[i].u.shiftreg.bitIndex;
                 uint8_t pinB = 100 + (logicals[i + 1].u.shiftreg.regIndex << 4) + logicals[i + 1].u.shiftreg.bitIndex;
@@ -189,23 +189,23 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
             uint8_t joyA = 0, joyB = 0;
             
             // Skip shift register encoders (handled by custom decoder)
-            if ((logicals[i].source == SRC_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
-                (logicals[i + 1].source == SRC_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
+            if ((logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
+                (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
                 continue;
             }
             
             // Check if we have a valid ENC_A + ENC_B pair for regular encoders
-            if (((logicals[i].type == LOGICAL_BTN && logicals[i].u.btn.behavior == ENC_A) ||
-                 (logicals[i].type == LOGICAL_MATRIX && logicals[i].u.matrix.behavior == ENC_A)) &&
-                ((logicals[i + 1].type == LOGICAL_BTN && logicals[i + 1].u.btn.behavior == ENC_B) ||
-                 (logicals[i + 1].type == LOGICAL_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B))) {
+            if (((logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) ||
+                 (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A)) &&
+                ((logicals[i + 1].type == INPUT_PIN && logicals[i + 1].u.pin.behavior == ENC_B) ||
+                 (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B))) {
                 
                 // Get ENC_A info
-                if (logicals[i].type == LOGICAL_BTN && logicals[i].u.btn.behavior == ENC_A) {
+                if (logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) {
                     isEncA = true;
-                    pinA = logicals[i].u.btn.pin;
-                    joyA = logicals[i].u.btn.joyButtonID;
-                } else if (logicals[i].type == LOGICAL_MATRIX && logicals[i].u.matrix.behavior == ENC_A) {
+                    pinA = logicals[i].u.pin.pin;
+                    joyA = logicals[i].u.pin.joyButtonID;
+                } else if (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A) {
                     isEncA = true;
                     // Find the actual pin for this matrix position
                     uint8_t rowIdx = 0;
@@ -223,11 +223,11 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                 }
                 
                 // Get ENC_B info
-                if (logicals[i + 1].type == LOGICAL_BTN && logicals[i + 1].u.btn.behavior == ENC_B) {
+                if (logicals[i + 1].type == INPUT_PIN && logicals[i + 1].u.pin.behavior == ENC_B) {
                     isEncB = true;
-                    pinB = logicals[i + 1].u.btn.pin;
-                    joyB = logicals[i + 1].u.btn.joyButtonID;
-                } else if (logicals[i + 1].type == LOGICAL_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B) {
+                    pinB = logicals[i + 1].u.pin.pin;
+                    joyB = logicals[i + 1].u.pin.joyButtonID;
+                } else if (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B) {
                     isEncB = true;
                     uint8_t rowIdx = 0;
                     for (uint8_t j = 0; j < hardwarePinMapCount; ++j) {
