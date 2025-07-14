@@ -42,14 +42,14 @@ void updateButtons() {
         
         switch (buttons[i].behavior) {
             case NORMAL:
-                Joystick.setButton(joyIdx, isPressed);
+                MyJoystick.setButton(joyIdx, isPressed);
                 break;
                 
             case MOMENTARY:
                 if (!wasPressed && isPressed) {
-                    Joystick.setButton(joyIdx, true);
+                    MyJoystick.setButton(joyIdx, true);
                     delay(10);
-                    Joystick.setButton(joyIdx, false);
+                    MyJoystick.setButton(joyIdx, false);
                 }
                 break;
                 
@@ -83,7 +83,7 @@ void updateShiftRegisterButtons() {
         bool pressed = (shiftRegBuffer[reg] & (1 << bit)) == 0; // 74HC165: LOW = pressed
         uint8_t joyIdx = (input.u.shiftreg.joyButtonID > 0) ? (input.u.shiftreg.joyButtonID - 1) : 0;
         
-        Joystick.setButton(joyIdx, pressed);
+        MyJoystick.setButton(joyIdx, pressed);
     }
 }
 
