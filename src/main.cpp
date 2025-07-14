@@ -2,13 +2,15 @@
 /*
  * GNGR-ButtonBox: Custom Button Box Controller
  * 
- * A versatile Arduino-based USB game controller supporting:
+ * A versatile Teensy 4.0-based USB game controller supporting:
  * - Matrix button scanning
  * - Rotary encoders (matrix, direct pin, and shift register)
  * - Direct pin buttons
  * - 74HC165 shift register expansion
  * 
  * Appears as a standard 32-button USB gamepad for maximum compatibility.
+ * 
+ * Ported to Teensy 4.0 to take advantage of its superior USB HID support.
  */
 
 #include <Arduino.h>
@@ -20,17 +22,17 @@
 #include "ShiftRegister165.h"
 #include "ConfigAxis.h"
 
-// USB joystick configuration: 32 buttons, no analog axes
-Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
-                   32, 0, true, false, false,
-                   false, false, false,
-                   false, false);
+// USB joystick configuration: 32 buttons, 6 analog axes, 1 hat switch
+// Teensy 4.0 handles USB descriptors automatically
+Joystick_ Joystick(0x03, 0x04, 32, 1, true, true, true, true, true, true, true, true);
 
 // External shift register components
 extern ShiftRegister165* shiftReg;
 extern uint8_t* shiftRegBuffer;
 
 void setup() {
+    // Initialize serial for debugging (optional)
+    Serial.begin(115200);
     
     // Initialize all input subsystems from user configuration
     initButtonsFromLogical(logicalInputs, logicalInputCount);
@@ -41,8 +43,13 @@ void setup() {
     setupUserAxes(Joystick);
 
     // Initialize USB joystick interface
+    // Teensy 4.0 USB setup is much simpler than Arduino Leonardo
     Joystick.begin();
-    delay(1000);
+    
+    // Shorter delay since Teensy's USB is more reliable
+    delay(500);
+    
+    Serial.println("GNGR-ButtonBox Teensy 4.0 initialized");
 }
 
 void loop() {
@@ -56,4 +63,8 @@ void loop() {
     updateMatrix();    // Button matrix and encoder pin states
     updateEncoders();  // All encoder types
     readUserAxes(Joystick); // Read all configured axes from user.h
+    
+    // Small delay to prevent overwhelming the USB bus
+    // Teensy 4.0 can handle higher update rates, but this is conservative
+    delayMicroseconds(100);
 }
