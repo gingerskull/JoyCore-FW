@@ -1,6 +1,30 @@
 # GNGR-ButtonBox
 
-GNGR-ButtonBox is an Arduino-based USB game controller for flight simulator enthusiasts. It supports matrix buttons, rotary encoders, direct pin buttons, and shift register inputs, letting you build a highly customizable button box for your cockpit.
+## Teensy 4.0 Port
+
+**⚠️ This is the Teensy 4.0 port branch - for the original Arduino Pro Micro version, see the `main` branch.**
+
+GNGR-ButtonBox is a **Teensy 4.0-based** USB game controller for flight simulator enthusiasts. This port takes advantage of Teensy 4.0's superior USB HID capabilities for enhanced performance and reliability. It supports matrix buttons, rotary encoders, direct pin buttons, and shift register inputs, letting you build a highly customizable button box for your cockpit.
+
+### Advantages of Teensy 4.0 Port
+
+✅ **Superior USB Performance**: Teensy 4.0's native USB HID implementation is more robust and faster than Arduino Leonardo's PluggableUSB system
+
+✅ **Simplified Architecture**: No need for complex DynamicHID implementation - uses Teensy's built-in joystick library
+
+✅ **Better Reliability**: Teensy's USB stack is more stable and handles reconnections better
+
+✅ **More Processing Power**: 600MHz ARM Cortex-M7 vs 16MHz ATmega32U4
+
+✅ **More Memory**: 1MB Flash + 512KB RAM vs 32KB Flash + 2.5KB RAM
+
+✅ **More I/O Pins**: More pins available for complex button matrices and encoders
+
+### Hardware Requirements
+
+- **Teensy 4.0** (not compatible with Arduino Pro Micro/Leonardo)
+- Compatible with all existing button box hardware designs
+- Same pin mapping concepts apply
 
 ---
 
@@ -9,8 +33,7 @@ GNGR-ButtonBox is an Arduino-based USB game controller for flight simulator enth
 - **Matrix Button Scanning**: Efficient row/column multiplexing for large button arrays.
 - **Rotary Encoders**: Handles both direct/matrix and shift register-based encoders.
 - **Shift Registers**: Expand inputs with [74HC165](https://www.ti.com/lit/ds/symlink/sn74hc165.pdf) chips.
-- **USB HID Game Controller**: Native USB interface via the [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary).
-
+- **USB HID Game Controller**: Native USB interface via Teensy's built-in joystick library.
 
 ---
 
@@ -39,9 +62,17 @@ static const PinMapEntry hardwarePinMap[] = {
 - `SHIFTREG_PL`, `SHIFTREG_CLK`, `SHIFTREG_QH`: For shift register chips
 - `BTN`: For direct-wired buttons
 
+### 2. Teensy 4.0 Pin Considerations
+
+Teensy 4.0 has different pin numbering than Arduino Pro Micro. Key differences:
+- Digital pins: 0-23, plus additional pins 24-33
+- Analog pins: A0-A9 (pins 14-23), A10-A13 (pins 24-27)
+- More interrupt-capable pins available
+- 3.3V logic levels (5V tolerant on most pins)
+
 ---
 
-### 2. Shift Register Configuration
+### 3. Shift Register Configuration
 
 Set the number of chained 74HC165 chips:
 
@@ -51,7 +82,7 @@ Set the number of chained 74HC165 chips:
 
 ---
 
-### 3. Logical Inputs
+### 4. Logical Inputs
 
 Define your logical inputs in the `logicalInputs` array. Each entry describes a button or encoder and how it maps to the joystick.
 
@@ -81,7 +112,7 @@ constexpr LogicalInput logicalInputs[] = {
 
 ---
 
-### 4. Example: Adding a New Encoder
+### 5. Example: Adding a New Encoder
 
 To add a rotary encoder on pins 8 and 9, mapped to joystick buttons 10 (CW) and 11 (CCW):
 
@@ -96,14 +127,45 @@ To add a rotary encoder on pins 8 and 9, mapped to joystick buttons 10 (CW) and 
 
 ---
 
-### 5. Build & Upload
+### 6. Build & Upload (Teensy 4.0)
 
-1. **Clone the repo** and open in Arduino IDE.
-2. **Install dependencies**:
-   - [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)
-   - [RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)
-3. **Edit `UserConfig.h`** to match your hardware.
-4. **Upload** to your Arduino board.
+1. **Install PlatformIO** or use Arduino IDE with Teensyduino
+2. **Hardware setup**: Connect your Teensy 4.0
+3. **Build configuration**: This project uses PlatformIO with Teensy 4.0 target
+4. **Edit `UserConfig.h`** to match your hardware
+5. **Upload** to your Teensy 4.0
+
+#### PlatformIO Commands:
+```bash
+# Build the project
+pio run
+
+# Upload to Teensy 4.0
+pio run --target upload
+
+# Monitor serial output
+pio device monitor
+```
+
+---
+
+## 🔧 Technical Differences from Arduino Version
+
+### USB Implementation
+- **Arduino Leonardo**: Uses custom DynamicHID implementation with PluggableUSB
+- **Teensy 4.0**: Uses native Teensyduino joystick library (much simpler and more reliable)
+
+### Performance
+- **Arduino Leonardo**: 16MHz ATmega32U4, limited memory
+- **Teensy 4.0**: 600MHz ARM Cortex-M7, abundant memory and processing power
+
+### USB Descriptors
+- **Arduino Leonardo**: Custom USB HID descriptors required
+- **Teensy 4.0**: Automatic USB descriptor generation
+
+### Reliability
+- **Arduino Leonardo**: Occasional USB enumeration issues
+- **Teensy 4.0**: Rock-solid USB implementation with better host compatibility
 
 ---
 
@@ -112,14 +174,36 @@ To add a rotary encoder on pins 8 and 9, mapped to joystick buttons 10 (CW) and 
 - Use unique joystick button IDs for each input.
 - For encoders, always define A and B channels as consecutive entries.
 - You can mix matrix, direct, and shift register inputs freely.
+- Teensy 4.0's 3.3V logic is compatible with most 5V devices (check your specific components)
+
+---
+
+## 🛠️ Dependencies
+
+- **PlatformIO**: Development platform
+- **Teensy 4.0**: Target hardware
+- **Teensyduino**: Arduino-compatible framework for Teensy (included with PlatformIO Teensy platform)
 
 ---
 
 ## 🛠️ Credit
 
-
-- **[Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)**
+- **[Teensy](https://www.pjrc.com/)** - Excellent microcontroller with superior USB support
 - **[RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)** 
 - **[Keypad Library](https://playground.arduino.cc/Code/Keypad/)** 
 
-Big thanks to the authors of the Arduino Joystick Library, RotaryEncoder Library, and Keypad Library for their incredible work. Many of the features here are based, expanded upon and inspired by their approaches. Their contributions to the community made it possible to create the foundation of this project.
+Big thanks to PJRC for creating Teensy and its outstanding USB implementation. The original Arduino Leonardo version was based on the Arduino Joystick Library and related components - their work made this project possible.
+
+---
+
+## 📋 Migration from Arduino Leonardo
+
+If you're upgrading from the Arduino Leonardo version:
+
+1. **Hardware**: Replace Arduino Pro Micro/Leonardo with Teensy 4.0
+2. **Pin mapping**: Update pin numbers in `UserConfig.h` for Teensy 4.0 layout
+3. **Voltage levels**: Ensure 3.3V compatibility (most components work fine)
+4. **Upload**: Use Teensy Loader or PlatformIO Teensy platform
+5. **Performance**: Enjoy much better USB stability and performance!
+
+The logical configuration remains the same - only the hardware platform changes.
