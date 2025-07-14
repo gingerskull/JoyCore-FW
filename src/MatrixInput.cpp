@@ -135,13 +135,13 @@ void updateMatrix() {
 
                 switch (behavior) {
                     case NORMAL:
-                        Joystick.setButton(joyIdx, pressed);
+                        MyJoystick.setButton(joyIdx, pressed);
                         break;
                     case MOMENTARY:
                         if (pressed && !lastMomentaryStates[idx]) {
-                            Joystick.setButton(joyIdx, 1);
+                            MyJoystick.setButton(joyIdx, 1);
                             delay(10);
-                            Joystick.setButton(joyIdx, 0);
+                            MyJoystick.setButton(joyIdx, 0);
                         }
                         lastMomentaryStates[idx] = pressed;
                         break;

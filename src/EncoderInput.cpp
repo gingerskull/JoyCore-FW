@@ -79,10 +79,10 @@ void updateCustomEncoders() {
             
             // Release any active button first
             if (customEncoders[i].activeBtn != 255) {
-                Joystick.setButton((customEncoders[i].activeBtn > 0) ? (customEncoders[i].activeBtn - 1) : 0, 0);
+                MyJoystick.setButton((customEncoders[i].activeBtn > 0) ? (customEncoders[i].activeBtn - 1) : 0, 0);
             }
             
-            Joystick.setButton(joyIdx, 1);
+            MyJoystick.setButton(joyIdx, 1);
             customEncoders[i].pressStartTime = millis();
             customEncoders[i].activeBtn = btn;
         }
@@ -90,7 +90,7 @@ void updateCustomEncoders() {
         // Handle button release
         if (customEncoders[i].activeBtn != 255 && millis() - customEncoders[i].pressStartTime > 10) {
             uint8_t joyIdx = (customEncoders[i].activeBtn > 0) ? (customEncoders[i].activeBtn - 1) : 0;
-            Joystick.setButton(joyIdx, 0);
+            MyJoystick.setButton(joyIdx, 0);
             customEncoders[i].activeBtn = 255;
         }
     }
@@ -113,14 +113,14 @@ void updateEncoders() {
           uint8_t joyIdxCCW = (btnCCW > 0) ? (btnCCW - 1) : 0;
 
           // Always release both possible encoder buttons before sending a new press
-          Joystick.setButton(joyIdxCW, 0);
-          Joystick.setButton(joyIdxCCW, 0);
+          MyJoystick.setButton(joyIdxCW, 0);
+          MyJoystick.setButton(joyIdxCCW, 0);
           activeBtns[i] = 255;
 
           uint8_t btn = (diff > 0) ? btnCW : btnCCW;
           uint8_t joyIdx = (btn > 0) ? (btn - 1) : 0;
 
-          Joystick.setButton(joyIdx, 1);
+          MyJoystick.setButton(joyIdx, 1);
           pressStartTimes[i] = millis();
           activeBtns[i] = btn;
           lastPositions[i] = newPos;
@@ -128,7 +128,7 @@ void updateEncoders() {
 
         if (activeBtns[i] != 255 && millis() - pressStartTimes[i] > 10) {
           uint8_t joyIdx = (activeBtns[i] > 0) ? (activeBtns[i] - 1) : 0;
-          Joystick.setButton(joyIdx, 0);
+          MyJoystick.setButton(joyIdx, 0);
           activeBtns[i] = 255;
         }
     }

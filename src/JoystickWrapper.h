@@ -2,31 +2,16 @@
 #pragma once
 
 // Teensy 4.0 uses the built-in joystick support from Teensyduino
-// This is much simpler than the DynamicHID implementation used for Arduino Leonardo
-
-// Include the standard Teensy joystick functionality
-// This is provided automatically with Teensyduino
-extern "C" {
-    // Teensy's native USB joystick functions
-    void usb_joystick_button(uint8_t button, uint8_t val);
-    void usb_joystick_X(uint16_t val);
-    void usb_joystick_Y(uint16_t val);
-    void usb_joystick_Z(uint16_t val);
-    void usb_joystick_Zrotate(uint16_t val);
-    void usb_joystick_sliderLeft(uint16_t val);
-    void usb_joystick_sliderRight(uint16_t val);
-    void usb_joystick_hat(int16_t val);
-    void usb_joystick_send();
-    void usb_joystick_useManualSend(uint8_t manual);
-}
+// This wrapper provides the same interface as the Arduino Leonardo version
+// but uses Teensy's native USB joystick functions
 
 // Wrapper class that provides the same interface as the Arduino Leonardo version
 // but uses Teensy's native USB joystick functions
 class Joystick_ {
 private:
-    bool _autoSendState;
     uint8_t _buttonCount;
     uint8_t _hatSwitchCount;
+    bool _autoSendState;
     
 public:
     // Constructor with compatible signature to the original
@@ -49,7 +34,7 @@ public:
     
     void begin(bool initAutoSendState = true) {
         _autoSendState = initAutoSendState;
-        usb_joystick_useManualSend(!_autoSendState);
+        Joystick.useManualSend(!_autoSendState);
         delay(100); // Give USB time to initialize
     }
     
@@ -60,7 +45,7 @@ public:
     // Button functions
     void setButton(uint8_t button, uint8_t value) {
         if (button >= _buttonCount) return;
-        usb_joystick_button(button + 1, value); // Teensy uses 1-based button numbering
+        Joystick.button(button + 1, value); // Teensy uses 1-based button numbering
     }
     
     void pressButton(uint8_t button) {
@@ -78,22 +63,22 @@ public:
         
         switch(axis) {
             case 0: // X axis
-                usb_joystick_X(teensy_value);
+                Joystick.X(teensy_value);
                 break;
             case 1: // Y axis  
-                usb_joystick_Y(teensy_value);
+                Joystick.Y(teensy_value);
                 break;
             case 2: // Z axis
-                usb_joystick_Z(teensy_value);
+                Joystick.Z(teensy_value);
                 break;
             case 3: // Z rotation
-                usb_joystick_Zrotate(teensy_value);
+                Joystick.Zrotate(teensy_value);
                 break;
             case 4: // Left slider
-                usb_joystick_sliderLeft(teensy_value);
+                Joystick.sliderLeft(teensy_value);
                 break;
             case 5: // Right slider
-                usb_joystick_sliderRight(teensy_value);
+                Joystick.sliderRight(teensy_value);
                 break;
         }
     }
@@ -106,12 +91,12 @@ public:
     // Hat switch function
     void setHatSwitch(int8_t hatSwitchIndex, int16_t value) {
         if (hatSwitchIndex != 0) return; // Teensy supports only 1 hat switch
-        usb_joystick_hat(value);
+        Joystick.hat(value);
     }
     
     void sendState() {
         if (!_autoSendState) {
-            usb_joystick_send();
+            Joystick.send_now();
         }
     }
     
@@ -126,5 +111,4 @@ public:
     void readAllAxes() { /* Not implemented on Teensy */ }
 };
 
-// Declare the global Joystick instance for other files
-extern Joystick_ Joystick;
+extern Joystick_ MyJoystick;
