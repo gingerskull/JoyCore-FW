@@ -25,7 +25,7 @@
 
 // USB joystick configuration: 32 buttons, 6 analog axes, 1 hat switch
 // Teensy 4.0 handles USB descriptors automatically
-Joystick_ MyJoystick(0x03, 0x04, 32, 1, true, true, true, true, true, true, true, true);
+Joystick_ MyJoystick(0x03, 0x04, 32, 0, true, true, true, true, true, true, true, true);
 
 // External shift register components
 extern ShiftRegister165* shiftReg;
@@ -47,6 +47,9 @@ void setup() {
     // Teensy 4.0 USB setup is much simpler than Arduino Leonardo
     MyJoystick.begin();
     
+    // Explicitly set hat switch to neutral position to prevent false readings
+    MyJoystick.setHatSwitch(0, -1); // -1 = neutral position
+    
     // Shorter delay since Teensy's USB is more reliable
     delay(500);
     
@@ -67,5 +70,5 @@ void loop() {
     
     // Small delay to prevent overwhelming the USB bus
     // Teensy 4.0 can handle higher update rates, but this is conservative
-    delayMicroseconds(100);
+    //delayMicroseconds(100);
 }
