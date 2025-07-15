@@ -108,6 +108,18 @@ public:
     void readAllAxes();
     int32_t readAxisRaw(uint8_t axis);
     
+    // Template method to avoid circular dependency
+    template<typename JoystickType>
+    void readAllAxesAndSend(JoystickType& joystick) {
+        for (uint8_t i = 0; i < ANALOG_AXIS_COUNT; i++) {
+            if (isAxisEnabled(i) && _axisPins[i] >= 0) {
+                int32_t rawValue = readAxisRaw(i);
+                int32_t processedValue = processAxisValue(i, rawValue);
+                joystick.setAxis(i, processedValue);
+            }
+        }
+    }
+    
     // Getters for joystick integration
     uint8_t getEnabledAxes() { return _enabledAxes; }
     uint8_t getAxisCount();
@@ -119,6 +131,9 @@ public:
         return (axis < ANALOG_AXIS_COUNT) && (_enabledAxes & (1 << axis)); 
     }
 };
+
+// Function to initialize ADS1115 if needed
+void initializeADS1115IfNeeded();
 
 static constexpr int32_t PRESET_TABLES[3][11] = {
   {0,102,204,306,408,512,614,716,818,920,1023},  // linear

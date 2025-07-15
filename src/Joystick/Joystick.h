@@ -119,9 +119,16 @@ public:
     inline void setAxisPin(uint8_t axis, int8_t pin) {
         _analogAxes.setAxisPin(axis, pin);
     }
+    inline void enableAxis(uint8_t axis, bool enable) {
+        _analogAxes.enableAxis(axis, enable);
+    }
     inline void readAllAxes() {
         _analogAxes.readAllAxes();
     }
+    inline void readAllAxesAndSend() {
+        _analogAxes.readAllAxesAndSend(*this);
+    }
+    inline int32_t readAxisRaw(uint8_t axis) { return _analogAxes.readAxisRaw(axis); }
 };
 
 #endif

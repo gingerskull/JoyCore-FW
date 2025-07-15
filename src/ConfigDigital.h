@@ -8,8 +8,6 @@
 static const PinMapEntry hardwarePinMap[] = {
   // Only specify used pins; unused pins do not need to be listed.
   // Available pin types: PIN_UNUSED, BTN, BTN_ROW, BTN_COL, SHIFTREG_PL, SHIFTREG_CLK, SHIFTREG_QH
-  {"2", BTN_ROW},
-  {"3", BTN_ROW},
   {"4", BTN_ROW},
   {"5", BTN_ROW},
   {"6", BTN_COL},
