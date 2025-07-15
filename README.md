@@ -1,6 +1,22 @@
 # JoyCore
 
-**JoyCore** is an Arduino-based USB game controller firmware for flight simulator and sim racing enthusiasts. It supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and high-resolution analog axes via ADS1115, letting you build a highly customizable button box or control panel.
+**JoyCore** is an Arduino-based USB game controller firmware. It supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and high-resolution analog axes via ADS1115, letting you build a highly customizable button box or control panel.
+
+---
+
+## 🖥️ Supported Boards
+
+JoyCore is designed for any board based on the ATmega32U4 microcontroller, including:
+
+- [SparkFun Pro Micro](https://www.sparkfun.com/products/12640) **(tested)**
+- [Arduino Leonardo](https://store.arduino.cc/products/arduino-leonardo) *(not yet tested)*
+- [Arduino Micro](https://store.arduino.cc/products/arduino-micro) *(not yet tested)*
+- [Adafruit ItsyBitsy 32u4](https://www.adafruit.com/product/3677) *(not yet tested)*
+- [Adafruit Feather 32u4](https://www.adafruit.com/product/2771) *(not yet tested)*
+
+> **Note:** Only the SparkFun Pro Micro has been tested so far. The other boards are supported in theory but have not been tested by the project maintainer yet.
+
+For more information on each board, see their official documentation linked above.
 
 ---
 
