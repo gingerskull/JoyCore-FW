@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 #include <Arduino.h>
+#include <Adafruit_ADS1X15.h>
+
+// ADS1115 channel definitions
+#define ADS1115_CH0 100
+#define ADS1115_CH1 101
+#define ADS1115_CH2 102
+#define ADS1115_CH3 103
 
 enum ResponseCurveType {
     CURVE_LINEAR,
@@ -115,6 +122,9 @@ public:
         return (axis < ANALOG_AXIS_COUNT) && (_enabledAxes & (1 << axis)); 
     }
 };
+
+// Function to initialize ADS1115 if needed
+void initializeADS1115IfNeeded();
 
 static constexpr int32_t PRESET_TABLES[3][11] = {
   {0,102,204,306,408,512,614,716,818,920,1023},  // linear
