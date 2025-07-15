@@ -1,5 +1,9 @@
 #include "AnalogAxis.h"
 
+// ADS1115 instance and initialization flag
+Adafruit_ADS1115 ads;
+bool adsInitialized = false;
+
 // AxisFilter implementation
 void AxisFilter::reset() {
     filteredValue = 0;
@@ -246,7 +250,30 @@ int8_t AnalogAxisManager::getAxisPin(uint8_t axis) {
 
 int32_t AnalogAxisManager::readAxisRaw(uint8_t axis) {
     if (axis < ANALOG_AXIS_COUNT && _axisPins[axis] >= 0) {
-        return analogRead(_axisPins[axis]);
+        int8_t pin = _axisPins[axis];
+        if (pin >= 100 && pin <= 103) { // ADS1115 channels
+            if (adsInitialized) {
+                // Per-axis static variables to avoid conflicts
+                static int32_t lastValues[4] = {0, 0, 0, 0};
+                static unsigned long lastReadTimes[4] = {0, 0, 0, 0};
+                uint8_t channel = pin - 100;
+                unsigned long currentTime = millis();
+                
+                // Rate limit ADS1115 reads to prevent timing issues
+                if (currentTime - lastReadTimes[channel] > 5) { // Max 200 Hz per channel
+                    int16_t val = ads.readADC_SingleEnded(channel);
+                    if (val >= 0) { // Valid reading
+                        lastValues[channel] = val;
+                        lastReadTimes[channel] = currentTime;
+                    }
+                    // If val < 0, use last known good value
+                }
+                return lastValues[channel];
+            }
+            return 0;
+        } else {
+            return analogRead(pin);
+        }
     }
     return 0;
 }
@@ -254,8 +281,15 @@ int32_t AnalogAxisManager::readAxisRaw(uint8_t axis) {
 void AnalogAxisManager::readAllAxes() {
     for (uint8_t i = 0; i < ANALOG_AXIS_COUNT; i++) {
         if (isAxisEnabled(i) && _axisPins[i] >= 0) {
-            int32_t rawValue = analogRead(_axisPins[i]);
+            int32_t rawValue = readAxisRaw(i);  // Use readAxisRaw instead of analogRead
             processAxisValue(i, rawValue);
         }
+    }
+}
+
+void initializeADS1115IfNeeded() {
+    if (!adsInitialized) {
+        ads.begin();
+        adsInitialized = true;
     }
 }
