@@ -1,0 +1,60 @@
+/*
+ * ADS1115 Quick Test - Teensy 4.0
+ * 
+ * Simple test to verify ADS1115 connectivity and basic functionality.
+ * Upload this to test your ADS1115 before using it in the main firmware.
+ * 
+ * Expected behavior:
+ * - Should show values from 0-16383 range (15-bit signed, positive values)
+ * - Values should change when you move your analog input
+ * - Should not crash or hang
+ */
+
+#include <Arduino.h>
+#include <Adafruit_ADS1X15.h>
+
+Adafruit_ADS1115 ads;
+bool adsInitialized = false;
+
+void setup() {
+    Serial.begin(115200);
+    while (!Serial) delay(10); // Wait for serial port to open
+    
+    Serial.println("=== ADS1115 Quick Test - Teensy 4.0 ===");
+    Serial.println("Initializing ADS1115...");
+    
+    if (!ads.begin()) {
+        Serial.println("❌ ERROR: Failed to initialize ADS1115!");
+        Serial.println("Check your wiring:");
+        Serial.println("  SDA -> Pin 18 (Teensy 4.0)");
+        Serial.println("  SCL -> Pin 19 (Teensy 4.0)");
+        Serial.println("  VCC -> 3.3V");
+        Serial.println("  GND -> GND");
+        while (1) delay(1000); // Stop here
+    }
+    
+    // Check what gain setting is being used
+    Serial.println("✅ ADS1115 initialized successfully!");
+    Serial.println("Current gain setting: ±4.096V (default)");
+    Serial.println("With 3.3V supply, max readable voltage is ~3.3V");
+    Serial.println("Expected range: 0-16383 (for 0-3.3V input)");
+    Serial.println();
+    adsInitialized = true;
+}
+
+void loop() {
+    if (!adsInitialized) return;
+    
+    // Read all 4 channels
+    Serial.print("CH0: ");
+    Serial.print(ads.readADC_SingleEnded(0));
+    Serial.print("\tCH1: ");
+    Serial.print(ads.readADC_SingleEnded(1));
+    Serial.print("\tCH2: ");
+    Serial.print(ads.readADC_SingleEnded(2));
+    Serial.print("\tCH3: ");
+    Serial.print(ads.readADC_SingleEnded(3));
+    Serial.println();
+    
+    delay(250); // Update 4 times per second
+} 
