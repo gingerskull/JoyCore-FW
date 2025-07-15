@@ -6,7 +6,7 @@
 
 ## 🖥️ Supported Boards
 
-JoyCore is designed for any board based on the ATmega32U4 microcontroller, including:
+JoyCore is designed for basically any board based on the ATmega32U4 microcontroller, including:
 
 - [SparkFun Pro Micro](https://www.sparkfun.com/products/12640) **(tested)**
 - [Arduino Leonardo](https://store.arduino.cc/products/arduino-leonardo) *(not yet tested)*
@@ -15,8 +15,6 @@ JoyCore is designed for any board based on the ATmega32U4 microcontroller, inclu
 - [Adafruit Feather 32u4](https://www.adafruit.com/product/2771) *(not yet tested)*
 
 > **Note:** Only the SparkFun Pro Micro has been tested so far. The other boards are supported in theory but have not been tested by the project maintainer yet.
-
-For more information on each board, see their official documentation linked above.
 
 ---
 
