@@ -1,6 +1,6 @@
-# GNGR-ButtonBox
+# JoyCore
 
-GNGR-ButtonBox is an Arduino-based USB game controller for flight simulator enthusiasts. It supports matrix buttons, rotary encoders, direct pin buttons, and shift register inputs, letting you build a highly customizable button box for your cockpit.
+**JoyCore** is an Arduino-based USB game controller firmware for flight simulator and sim racing enthusiasts. It supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and high-resolution analog axes via ADS1115, letting you build a highly customizable button box or control panel.
 
 ---
 
@@ -9,16 +9,16 @@ GNGR-ButtonBox is an Arduino-based USB game controller for flight simulator enth
 - **Matrix Button Scanning**: Efficient row/column multiplexing for large button arrays.
 - **Rotary Encoders**: Handles both direct/matrix and shift register-based encoders.
 - **Shift Registers**: Expand inputs with [74HC165](https://www.ti.com/lit/ds/symlink/sn74hc165.pdf) chips.
+- **High-Resolution Analog Axes**: Up to 4 axes via ADS1115 16-bit I2C ADC.
 - **USB HID Game Controller**: Native USB interface via the [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary).
-
 
 ---
 
-## 🚀 How to Use
+## 🛠️ Hardware Setup
 
-### 1. Hardware Pin Mapping
+### 1. Pin Mapping
 
-Edit [`src/UserConfig.h`](src/UserConfig.h) to match your hardware. Each entry in `hardwarePinMap` defines a pin and its function:
+Edit your pin mapping in `src/UserConfig.h` (or `src/ConfigAxis.h` for axes):
 
 ```cpp
 static const PinMapEntry hardwarePinMap[] = {
@@ -33,10 +33,9 @@ static const PinMapEntry hardwarePinMap[] = {
   // Add more as needed...
 };
 ```
-
-**Pin Types:**
-- `BTN_ROW`, `BTN_COL`: For matrix scanning
-- `SHIFTREG_PL`, `SHIFTREG_CLK`, `SHIFTREG_QH`: For shift register chips
+**Pin Types:**  
+- `BTN_ROW`, `BTN_COL`: For matrix scanning  
+- `SHIFTREG_PL`, `SHIFTREG_CLK`, `SHIFTREG_QH`: For shift register chips  
 - `BTN`: For direct-wired buttons
 
 ---
@@ -44,7 +43,6 @@ static const PinMapEntry hardwarePinMap[] = {
 ### 2. Shift Register Configuration
 
 Set the number of chained 74HC165 chips:
-
 ```cpp
 #define SHIFTREG_COUNT    1  // Number of 74HC165 chips
 ```
@@ -59,24 +57,15 @@ Define your logical inputs in the `logicalInputs` array. Each entry describes a 
 constexpr LogicalInput logicalInputs[] = {
   // Matrix buttons: row, col, joystick button ID, behavior
   { LOGICAL_MATRIX,  { .matrix = {0, 0, 24, NORMAL} }, SRC_MATRIX },
-  { LOGICAL_MATRIX,  { .matrix = {1, 0, 25, NORMAL} }, SRC_MATRIX },
-
-  // Matrix encoder: adjacent matrix positions, each with a unique joystick button
-  { LOGICAL_MATRIX,  { .matrix = {2, 0, 26, ENC_A} }, SRC_MATRIX },
-  { LOGICAL_MATRIX,  { .matrix = {3, 0, 27, ENC_B} }, SRC_MATRIX },
-
+  // ...
   // Shift register button: regIndex, bitIndex, joystick button ID, behavior
   { LOGICAL_BTN, { .shiftreg = {0, 0, 5, NORMAL} }, SRC_SHIFTREG },
-
-  // Shift register encoder: two adjacent bits, each mapped to a joystick button
-  { LOGICAL_BTN, { .shiftreg = {0, 1, 6, ENC_A} }, SRC_SHIFTREG },
-  { LOGICAL_BTN, { .shiftreg = {0, 2, 7, ENC_B} }, SRC_SHIFTREG }
+  // ...
 };
 ```
-
-**Behavior options:**
-- `NORMAL`: Standard button (press/release)
-- `MOMENTARY`: Sends a quick pulse on press
+**Behavior options:**  
+- `NORMAL`: Standard button (press/release)  
+- `MOMENTARY`: Sends a quick pulse on press  
 - `ENC_A`, `ENC_B`: Used for rotary encoder channels (must be paired as A/B)
 
 ---
@@ -96,30 +85,62 @@ To add a rotary encoder on pins 8 and 9, mapped to joystick buttons 10 (CW) and 
 
 ---
 
-### 5. Build & Upload
+## 🎚️ High-Resolution Analog Axes with ADS1115
 
-1. **Clone the repo** and open in Arduino IDE.
+JoyCore supports using an ADS1115 16-bit I2C ADC for up to 4 high-resolution analog axes.
+
+### Wiring (Arduino Pro Micro / Leonardo)
+- Connect ADS1115 **SDA** to Arduino **SDA** (Pin 2)
+- Connect ADS1115 **SCL** to Arduino **SCL** (Pin 3)
+- Connect **VCC** and **GND** as usual
+
+### Configuration
+- In `ConfigAxis.h`, set the axis pin to one of the following to use an ADS1115 channel:
+  - `ADS1115_CH0` (channel 0)
+  - `ADS1115_CH1` (channel 1)
+  - `ADS1115_CH2` (channel 2)
+  - `ADS1115_CH3` (channel 3)
+- Example:
+  ```cpp
+  #define AXIS_X_PIN ADS1115_CH0
+  ```
+- All other configuration (filtering, range, etc.) works as before.
+
+### Notes
+- The ADS1115 is automatically initialized on first use.
+- You can mix onboard analog pins and ADS1115 channels for different axes.
+- No code changes are needed for I2C pin selection; the standard Wire library uses the hardware I2C pins by default.
+
+---
+
+## 🚦 Build & Upload
+
+1. **Clone the repo** and open in Arduino IDE or PlatformIO.
 2. **Install dependencies**:
    - [Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)
    - [RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)
-3. **Edit `UserConfig.h`** to match your hardware.
+   - [Adafruit ADS1X15 Library](https://github.com/adafruit/Adafruit_ADS1X15)
+3. **Edit your config files** to match your hardware.
 4. **Upload** to your Arduino board.
 
 ---
 
-## 🧩 Tips
+## 💡 Tips
 
 - Use unique joystick button IDs for each input.
 - For encoders, always define A and B channels as consecutive entries.
 - You can mix matrix, direct, and shift register inputs freely.
+- For axes, you can use both onboard analog pins and ADS1115 channels in any combination.
 
 ---
 
-## 🛠️ Credit
-
+## 🙏 Credits
 
 - **[Arduino Joystick Library](https://github.com/MHeironimus/ArduinoJoystickLibrary)**
-- **[RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)** 
-- **[Keypad Library](https://playground.arduino.cc/Code/Keypad/)** 
+- **[RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)**
+- **[Keypad Library](https://playground.arduino.cc/Code/Keypad/)**
+- **[Adafruit ADS1X15 Library](https://github.com/adafruit/Adafruit_ADS1X15)**
 
-Big thanks to the authors of the Arduino Joystick Library, RotaryEncoder Library, and Keypad Library for their incredible work. Many of the features here are based, expanded upon and inspired by their approaches. Their contributions to the community made it possible to create the foundation of this project.
+Big thanks to the authors of these libraries for their incredible work. Many features here are based on, expanded from, and inspired by their approaches.
+
+---

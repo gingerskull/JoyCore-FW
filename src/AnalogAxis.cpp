@@ -1,4 +1,8 @@
 #include "AnalogAxis.h"
+#include <Adafruit_ADS1X15.h>
+
+Adafruit_ADS1115 ads;
+bool adsInitialized = false;
 
 // AxisFilter implementation
 void AxisFilter::reset() {
@@ -246,7 +250,16 @@ int8_t AnalogAxisManager::getAxisPin(uint8_t axis) {
 
 int32_t AnalogAxisManager::readAxisRaw(uint8_t axis) {
     if (axis < ANALOG_AXIS_COUNT && _axisPins[axis] >= 0) {
-        return analogRead(_axisPins[axis]);
+        int8_t pin = _axisPins[axis];
+        if (pin >= 100 && pin <= 103) { // ADS1115 channels
+            if (!adsInitialized) {
+                ads.begin();
+                adsInitialized = true;
+            }
+            return ads.readADC_SingleEnded(pin - 100); // 0-3
+        } else {
+            return analogRead(pin);
+        }
     }
     return 0;
 }

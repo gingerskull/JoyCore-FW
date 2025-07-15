@@ -11,7 +11,16 @@
  * Add more axes as needed by copying the pattern.
  */
 
-// =============================================================================
+// ============================================================================
+// AXIS PIN CONFIGURATION: ANALOG PINS AND ADS1115 CHANNELS
+//
+// To use a built-in analog pin for an axis, set AXIS_X_PIN, AXIS_Y_PIN, etc. to A0, A1, etc.
+// To use an external ADS1115 ADC channel, set the pin to one of:
+//   ADS1115_CH0, ADS1115_CH1, ADS1115_CH2, ADS1115_CH3
+// Example:
+//   #define AXIS_X_PIN ADS1115_CH0
+// This will read the X axis from ADS1115 channel 0 instead of a built-in analog pin.
+// ============================================================================
 // AXIS CONFIGURATION
 // =============================================================================
 

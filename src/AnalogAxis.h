@@ -19,6 +19,10 @@ enum AxisFilterLevel {
 };
 
 #define ANALOG_AXIS_COUNT 8 // X, Y, Z, Rx, Ry, Rz, S1, S2
+#define ADS1115_CH0 100
+#define ADS1115_CH1 101
+#define ADS1115_CH2 102
+#define ADS1115_CH3 103
 
 struct AxisFilter {
     int32_t filteredValue = 0;
