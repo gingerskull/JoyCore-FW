@@ -55,11 +55,11 @@
 #ifdef USE_AXIS_X
     #define AXIS_X_PIN              ADS1115_CH0
     #define AXIS_X_MIN              0
-    #define AXIS_X_MAX              16383
+    #define AXIS_X_MAX              26500
     #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_OFF
-    #define AXIS_X_NOISE_THRESHOLD  3
+    #define AXIS_X_NOISE_THRESHOLD  10
     #define AXIS_X_SMOOTHING        7
-    #define AXIS_X_VELOCITY         15
+    #define AXIS_X_VELOCITY         0
     #define AXIS_X_CURVE            CURVE_LINEAR
 #endif
 
