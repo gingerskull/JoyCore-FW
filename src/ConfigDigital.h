@@ -48,8 +48,10 @@ constexpr LogicalInput logicalInputs[] = {
   //{ INPUT_MATRIX, { .matrix = {3, 0, 4, NORMAL} } },
  
   // Shift register inputs
-  { INPUT_SHIFTREG, { .shiftreg = {0, 0, 5, NORMAL} } },
-  //{ INPUT_SHIFTREG, { .shiftreg = {0, 1, 6, ENC_A} } },
-  //{ INPUT_SHIFTREG, { .shiftreg = {0, 2, 7, ENC_B} } }
+  { INPUT_SHIFTREG, { .shiftreg = {0, 0, 10, NORMAL} } },
+  { INPUT_SHIFTREG, { .shiftreg = {0, 1, 5, ENC_A} } },
+  { INPUT_SHIFTREG, { .shiftreg = {0, 2, 6, ENC_B} } },
+  { INPUT_SHIFTREG, { .shiftreg = {0, 3, 7, NORMAL} } },
+  { INPUT_SHIFTREG, { .shiftreg = {0, 4, 8, NORMAL} } }
   // ...add more as needed...
 };

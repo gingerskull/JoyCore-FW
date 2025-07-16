@@ -95,6 +95,7 @@ private:
     uint8_t _pinA, _pinB;
     uint8_t _lastStateA, _lastStateB;
     RotaryEncoder::PinReadFn _pinReadFn;
+    uint8_t _lastState;     // Previous quadrature state (simple approach)
 };
 
 #endif
