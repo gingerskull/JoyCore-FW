@@ -128,8 +128,7 @@ void RotaryEncoder::tick(void)
       if (thisState == LATCH3) {
         // The hardware has 4 steps with a latch on the input state 3
         _positionExt = _position >> 2;
-        _positionExtTimePrev = _positionExtTime;
-        _positionExtTime = millis();
+        // Skip expensive millis() calls for faster response - timing not needed for button box
       }
       break;
 
@@ -137,8 +136,7 @@ void RotaryEncoder::tick(void)
       if (thisState == LATCH0) {
         // The hardware has 4 steps with a latch on the input state 0
         _positionExt = _position >> 2;
-        _positionExtTimePrev = _positionExtTime;
-        _positionExtTime = millis();
+        // Skip expensive millis() calls for faster response - timing not needed for button box
       }
       break;
 
@@ -146,8 +144,7 @@ void RotaryEncoder::tick(void)
       if ((thisState == LATCH0) || (thisState == LATCH3)) {
         // The hardware has 2 steps with a latch on the input state 0 and 3
         _positionExt = _position >> 1;
-        _positionExtTimePrev = _positionExtTime;
-        _positionExtTime = millis();
+        // Skip expensive millis() calls for faster response - timing not needed for button box
       }
       break;
     } // switch
@@ -185,14 +182,16 @@ int8_t SimpleQuadratureDecoder::tick() {
     
     int8_t result = 0;
     if (currentState != lastState) {
-        // Look for specific quadrature patterns
-        // CW: 11 -> 01 (trigger on 11 -> 01)
-        // CCW: 11 -> 10 (trigger on 11 -> 10)
-        if (lastState == 3 && currentState == 1) {
-            result = 1; // CW
-        } else if (lastState == 3 && currentState == 2) {
-            result = -1; // CCW
-        }
+        // Optimized quadrature decoding - detects all transitions for better fast rotation
+        // Use the same lookup table as the main encoder for consistency
+        static const int8_t QUADRATURE_TABLE[] = {
+            0, -1, 1, 0,    // 00: 00->00=0, 00->01=-1, 00->10=1,  00->11=0
+            1, 0, 0, -1,    // 01: 01->00=1, 01->01=0,  01->10=0,  01->11=-1
+            -1, 0, 0, 1,    // 10: 10->00=-1,10->01=0,  10->10=0,  10->11=1
+            0, 1, -1, 0     // 11: 11->00=0, 11->01=1,  11->10=-1, 11->11=0
+        };
+        
+        result = QUADRATURE_TABLE[lastState * 4 + currentState];
     }
     
     _lastStateA = stateA;
