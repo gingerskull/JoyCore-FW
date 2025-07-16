@@ -35,6 +35,10 @@
  * AXIS PIN CONFIGURATION: ANALOG PINS AND ADS1115 CHANNELS
  * 
  * To use a built-in analog pin for an axis, set AXIS_X_PIN, AXIS_Y_PIN, etc. to A0, A1, etc.
+ * 
+ * RP2040 Note: Only 3 analog pins available: A0 (GPIO26), A1 (GPIO27), A2 (GPIO28)
+ * For more analog inputs, use an external ADS1115 ADC.
+ * 
  * To use an external ADS1115 ADC channel, set the pin to one of:
  *   ADS1115_CH0, ADS1115_CH1, ADS1115_CH2, ADS1115_CH3
  * 
@@ -161,10 +165,10 @@
 /**
  * @brief Maps axis values dynamically based on pin type and user-defined ranges
  * @param rawValue Raw value from analog pin or ADS1115
- * @param pin Pin identifier (A0-A13 for analog pins, ADS1115_CH0-3 for ADS1115)
+ * @param pin Pin identifier (analog pins vary by board, ADS1115_CH0-3 for ADS1115)
  * @param userMin User-defined minimum value for clipping
  * @param userMax User-defined maximum value for clipping
- * @return Mapped value in 0-1023 range for Teensy joystick
+ * @return Mapped value in 0-1023 range for USB joystick
  */
 inline int32_t mapAxisValue(int32_t rawValue, int8_t pin, int32_t userMin, int32_t userMax) {
     int32_t sourceMin, sourceMax;
@@ -175,9 +179,16 @@ inline int32_t mapAxisValue(int32_t rawValue, int8_t pin, int32_t userMin, int32
         sourceMin = 0;
         sourceMax = 16383;
     } else {
-        // Analog pins: 10-bit range (0-1023)
-        sourceMin = 0;
-        sourceMax = 1023;
+        // Analog pins
+        #ifdef ARDUINO_ARCH_RP2040
+            // RP2040: 12-bit range (0-4095)
+            sourceMin = 0;
+            sourceMax = 4095;
+        #else
+            // Other boards: 10-bit range (0-1023)
+            sourceMin = 0;
+            sourceMax = 1023;
+        #endif
     }
     
     // First, map from source range to user-defined range for clipping
@@ -186,7 +197,7 @@ inline int32_t mapAxisValue(int32_t rawValue, int8_t pin, int32_t userMin, int32
     // Then constrain to user-defined min/max (this allows rotation zone clipping)
     clippedValue = constrain(clippedValue, userMin, userMax);
     
-    // Finally, map to Teensy joystick range (0-1023)
+    // Finally, map to USB joystick range (0-1023)
     return map(clippedValue, userMin, userMax, 0, 1023);
 }
 

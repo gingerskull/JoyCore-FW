@@ -1,32 +1,32 @@
 # JoyCore-FW
 
-## Teensy 4.0 Port
+## RP2040 Port
 
-**⚠️ This is the Teensy 4.0 port branch - for the original Arduino Pro Micro version, see the `main` branch.**
+**⚠️ This is the RP2040 port branch - for the original Arduino Pro Micro version, see the `main` branch. For the Teensy 4.0 version, see the `teensy40` branch.**
 
-**Teensy 4.0-based** USB game controller firmware. This port uses Teensy 4.0's USB HID capabilities and supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and analog axes.
+**RP2040-based** USB game controller firmware. This port uses RP2040's TinyUSB library for USB HID capabilities and supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and analog axes.
 
-### Advantages of Teensy 4.0 Port
+### Advantages of RP2040 Port
 
-✅ **USB Performance**: Native USB HID implementation
+✅ **Dual-Core Processing**: Dual ARM Cortex-M0+ cores at 133MHz
 
-✅ **Simplified Architecture**: No need for complex DynamicHID implementation
+✅ **PIO Support**: Programmable I/O for hardware-accelerated operations
 
-✅ **Processing Power**: 600MHz ARM Cortex-M7 vs 16MHz ATmega32U4
+✅ **Cost-Effective**: More affordable than Teensy 4.0
 
-✅ **Memory**: 1MB Flash + 512KB RAM vs 32KB Flash + 2.5KB RAM
+✅ **Memory**: 264KB SRAM + 2MB Flash (typical)
 
-✅ **I/O Pins**: More pins available for button matrices and encoders
+✅ **Wide Board Support**: Works with Raspberry Pi Pico, Adafruit Feather RP2040, and many others
 
 ### Hardware Requirements
 
-- **Teensy 4.0** (not compatible with Arduino Pro Micro/Leonardo)
+- **RP2040-based board** (Raspberry Pi Pico, Adafruit Feather RP2040, etc.)
 - Compatible with all existing button box hardware designs
 - Same pin mapping concepts apply
 
-#### Teensy 4.0 Pinout Reference
+#### RP2040 (Raspberry Pi Pico) Pinout Reference
 
-![Teensy 4.0 Pinout](images/Teensy4.0pinOut.png)
+![Raspberry Pi Pico Pinout](images/rp2040-pico-pinout.png)
 
 Use this pinout reference when configuring your hardware connections in `src/ConfigDigital.h`.
 
@@ -38,9 +38,9 @@ Use this pinout reference when configuring your hardware connections in `src/Con
 - **Rotary Encoders**: Direct pin, matrix, and shift register-based encoders
 - **Shift Registers**: Expand inputs with [74HC165](https://www.ti.com/lit/ds/symlink/sn74hc165.pdf) chips
 - **Analog Inputs**: Built-in analog pins and ADS1115 16-bit ADC support
-- **USB HID Game Controller**: Native USB interface via Teensy's joystick library
+- **USB HID Game Controller**: Native USB interface via TinyUSB library
 - **Signal Processing**: Configurable noise filtering and response curves for analog axes
-- **Configuration**: Same format as Arduino version
+- **Configuration**: Same format as Arduino/Teensy versions
 
 ---
 

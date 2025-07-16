@@ -25,7 +25,7 @@ void ShiftRegister165::read(uint8_t* buffer) {
         for (uint8_t b = 0; b < 8; ++b) {
             value |= (digitalRead(_qhPin) ? 1 : 0) << b;
             digitalWrite(_clkPin, LOW);
-            // No delay needed - Teensy 4.0 is fast enough
+            // No delay needed - RP2040 is fast enough
             digitalWrite(_clkPin, HIGH);
             // Minimal delay only if needed
             if (b < 7) delayMicroseconds(1);  // Only between bits, not after last bit

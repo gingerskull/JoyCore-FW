@@ -4,6 +4,9 @@
 // ===========================
 // USER EDITABLE PIN MAPPING
 // ===========================
+// For RP2040: Use GPIO pin numbers (0-28)
+// Example: "7" refers to GPIO7, "15" refers to GPIO15
+// Analog-capable pins are GPIO26 (A0), GPIO27 (A1), GPIO28 (A2)
 
 static const PinMapEntry hardwarePinMap[] = {
   // Only specify used pins; unused pins do not need to be listed.

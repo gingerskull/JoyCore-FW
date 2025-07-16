@@ -2,7 +2,7 @@
 /*
  * GNGR-ButtonBox: Custom Button Box Controller
  * 
- * A versatile Teensy 4.0-based USB game controller supporting:
+ * A versatile RP2040-based USB game controller supporting:
  * - Matrix button scanning
  * - Rotary encoders (matrix, direct pin, and shift register)
  * - Direct pin buttons
@@ -10,7 +10,7 @@
  * 
  * Appears as a standard 32-button USB gamepad for maximum compatibility.
  * 
- * Ported to Teensy 4.0 to take advantage of its superior USB HID support.
+ * Ported to RP2040 to take advantage of its dual-core architecture and PIO capabilities.
  */
 
 #include <Arduino.h>
@@ -25,7 +25,7 @@
 
 
 // USB joystick configuration: 32 buttons, 6 analog axes, 1 hat switch
-// Teensy 4.0 handles USB descriptors automatically
+// RP2040 uses TinyUSB library for HID support
 Joystick_ MyJoystick(0x03, 0x04, 32, 0, true, true, true, true, true, true, true, true);
 
 // External shift register components
@@ -45,16 +45,16 @@ void setup() {
     setupUserAxes(MyJoystick);
 
     // Initialize USB joystick interface
-    // Teensy 4.0 USB setup is much simpler than Arduino Leonardo
+    // RP2040 USB setup via TinyUSB
     MyJoystick.begin();
     
     // Explicitly set hat switch to neutral position to prevent false readings
     MyJoystick.setHatSwitch(0, -1); // -1 = neutral position
     
-    // Shorter delay since Teensy's USB is more reliable
+    // Allow USB enumeration to complete
     delay(500);
     
-    Serial.println("GNGR-ButtonBox Teensy 4.0 initialized");
+    Serial.println("GNGR-ButtonBox RP2040 initialized");
 }
 
 void loop() {
@@ -70,6 +70,6 @@ void loop() {
     readUserAxes(MyJoystick); // Read all configured axes from user.h
     
     // Small delay to prevent overwhelming the USB bus
-    // Teensy 4.0 can handle higher update rates, optimized for fast encoders with queue system
+    // RP2040 can handle high update rates with its dual-core architecture
     delayMicroseconds(10);  // Ultra-fast polling with queue buffering
 }
