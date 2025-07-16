@@ -58,7 +58,7 @@ void setup() {
 }
 
 void loop() {
-    // Read shift register data once per loop for consistency
+    // Read shift register data for button updates
     if (shiftReg && shiftRegBuffer) {
         shiftReg->read(shiftRegBuffer);
     }
@@ -66,7 +66,7 @@ void loop() {
     // Update all input types in proper sequence
     updateButtons();   // Direct pin and shift register buttons
     updateMatrix();    // Button matrix and encoder pin states
-    updateEncoders();  // All encoder types
+    updateEncoders();  // All encoder types (now handles shift register reads internally for better timing)
     readUserAxes(MyJoystick); // Read all configured axes from user.h
     
     // Small delay to prevent overwhelming the USB bus

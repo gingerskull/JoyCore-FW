@@ -171,6 +171,7 @@ SimpleQuadratureDecoder::SimpleQuadratureDecoder(uint8_t pinA, uint8_t pinB, Rot
     : _pinA(pinA), _pinB(pinB), _pinReadFn(pinRead) {
     _lastStateA = _pinReadFn ? _pinReadFn(_pinA) : digitalRead(_pinA);
     _lastStateB = _pinReadFn ? _pinReadFn(_pinB) : digitalRead(_pinB);
+    _lastState = (_lastStateA << 1) | _lastStateB;
 }
 
 int8_t SimpleQuadratureDecoder::tick() {
@@ -178,24 +179,24 @@ int8_t SimpleQuadratureDecoder::tick() {
     uint8_t stateB = _pinReadFn ? _pinReadFn(_pinB) : digitalRead(_pinB);
     
     uint8_t currentState = (stateA << 1) | stateB;
-    uint8_t lastState = (_lastStateA << 1) | _lastStateB;
     
     int8_t result = 0;
-    if (currentState != lastState) {
-        // Optimized quadrature decoding - detects all transitions for better fast rotation
-        // Use the same lookup table as the main encoder for consistency
-        static const int8_t QUADRATURE_TABLE[] = {
-            0, -1, 1, 0,    // 00: 00->00=0, 00->01=-1, 00->10=1,  00->11=0
-            1, 0, 0, -1,    // 01: 01->00=1, 01->01=0,  01->10=0,  01->11=-1
-            -1, 0, 0, 1,    // 10: 10->00=-1,10->01=0,  10->10=0,  10->11=1
-            0, 1, -1, 0     // 11: 11->00=0, 11->01=1,  11->10=-1, 11->11=0
-        };
-        
-        result = QUADRATURE_TABLE[lastState * 4 + currentState];
+    
+    // Only trigger on transitions TO state 3 (both pins HIGH) - like FOUR3 latch mode
+    if (_lastState != currentState && currentState == 3) {
+        // Determine direction based on previous state
+        // State transitions to 3: 1→3 (CW) or 2→3 (CCW)
+        if (_lastState == 1) {          // 01 → 11 = clockwise
+            result = 1;
+        } else if (_lastState == 2) {   // 10 → 11 = counter-clockwise  
+            result = -1;
+        }
+        // Ignore other transitions to state 3 (like 0→3) as they're invalid
     }
     
     _lastStateA = stateA;
     _lastStateB = stateB;
+    _lastState = currentState;
     return result;
 }
 

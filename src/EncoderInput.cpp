@@ -47,7 +47,7 @@ static int encoderReadPin(uint8_t pin) {
 }
 
 // Timing buffer system for consistent press intervals
-#define MAX_ENCODERS 8
+#define MAX_ENCODERS 16  // Increased to handle both direct and shift register encoders
 struct EncoderBuffer {
     uint8_t buttonId;
     uint8_t pendingSteps;
@@ -57,24 +57,14 @@ struct EncoderBuffer {
 
 static EncoderBuffer encoderBuffers[MAX_ENCODERS];
 static uint8_t bufferCount = 0;
-static const uint32_t PRESS_INTERVAL_US = 8000;  // 8ms interval between presses (125 Hz)
-static const uint32_t PRESS_DURATION_US = 2000;  // 2ms press duration
+static const uint32_t PRESS_INTERVAL_US = 30000;  // 30ms interval between presses
+static const uint32_t PRESS_DURATION_US = 20000;  // 20ms press duration
 
-// Internal encoder state
+// Unified encoder state - ALL encoders use the same RotaryEncoder class
 static RotaryEncoder** encoders = nullptr;
 static EncoderButtons* encoderBtnMap = nullptr;
 static int* lastPositions = nullptr;
 static uint8_t encoderTotal = 0;
-
-// Custom encoder state for shift register encoders using library decoder
-struct CustomEncoderState {
-    SimpleQuadratureDecoder* decoder;
-    uint8_t joyButtonCW, joyButtonCCW;
-    uint8_t bufferIndexCW, bufferIndexCCW;  // Track which buffer entries to use
-};
-
-static CustomEncoderState* customEncoders = nullptr;
-static uint8_t customEncoderCount = 0;
 
 void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_t count) {
   encoderTotal = count;
@@ -84,16 +74,21 @@ void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_
   lastPositions = new int[count];
 
   for (uint8_t i = 0; i < count; i++) {
-    // Use FOUR3 mode for single click per detent
+    // Use FOUR3 mode for single click per detent - SAME for all encoder types
     encoders[i] = new RotaryEncoder(
       pins[i].pinA, pins[i].pinB, RotaryEncoder::LatchMode::FOUR3, encoderReadPin
     );
-    pinMode(pins[i].pinA, INPUT_PULLUP);
-    pinMode(pins[i].pinB, INPUT_PULLUP);
+    
+    // Only set pinMode for direct pins, not shift register pins
+    if (pins[i].pinA < 100 && pins[i].pinB < 100) {
+        pinMode(pins[i].pinA, INPUT_PULLUP);
+        pinMode(pins[i].pinB, INPUT_PULLUP);
+    }
+    
     encoderBtnMap[i] = buttons[i];
     lastPositions[i] = encoders[i]->getPosition();
     
-    // Set up buffer entries for this encoder
+    // Set up buffer entries for this encoder - SAME timing system for all
     if (bufferCount < MAX_ENCODERS - 1) {
         encoderBuffers[bufferCount].buttonId = buttons[i].cw;
         encoderBuffers[bufferCount].pendingSteps = 0;
@@ -146,35 +141,25 @@ void processEncoderBuffers() {
     }
 }
 
-// Simple quadrature decoder using library
-void updateCustomEncoders() {
-    for (uint8_t i = 0; i < customEncoderCount; ++i) {
-        // Check multiple times for fast rotation
-        int8_t totalDirection = 0;
-        for (uint8_t t = 0; t < 8; ++t) {
-            int8_t direction = customEncoders[i].decoder->tick();
-            if (direction != 0) {
-                totalDirection += direction;
-            }
+void updateEncoders() {
+    // For better shift register encoder timing, read the shift register multiple times
+    // during the encoder update cycle, giving fresh data similar to direct pin encoders
+    const uint8_t TICK_CYCLES = 8;
+    
+    for (uint8_t t = 0; t < TICK_CYCLES; ++t) {
+        // Read shift register at the start of each tick cycle for fresh data
+        if (shiftReg && shiftRegBuffer) {
+            shiftReg->read(shiftRegBuffer);
         }
         
-        if (totalDirection != 0) {
-            uint8_t btn = (totalDirection > 0) ? customEncoders[i].joyButtonCW : customEncoders[i].joyButtonCCW;
-            uint8_t steps = abs(totalDirection);
-            
-            // Add to timing buffer instead of immediate processing
-            addEncoderSteps(btn, steps);
-        }
-    }
-}
-
-void updateEncoders() {
-    // Handle regular encoders (matrix/direct pin)
-    for (uint8_t i = 0; i < encoderTotal; i++) {
-        // Call tick() multiple times to catch up on missed transitions - increased for fast rotation
-        for (uint8_t t = 0; t < 8; ++t) {
+        // Tick all encoders with this fresh data
+        for (uint8_t i = 0; i < encoderTotal; i++) {
             encoders[i]->tick();
         }
+    }
+    
+    // Check for position changes after all ticking is complete
+    for (uint8_t i = 0; i < encoderTotal; i++) {
         int newPos = encoders[i]->getPosition();
         int diff = newPos - lastPositions[i];
 
@@ -182,85 +167,55 @@ void updateEncoders() {
           uint8_t btnCW = encoderBtnMap[i].cw;
           uint8_t btnCCW = encoderBtnMap[i].ccw;
 
-          // Handle multiple steps for fast rotation - add to timing buffer
+          // Handle multiple steps for fast rotation - same timing buffer for all
           uint8_t steps = abs(diff);
           uint8_t btn = (diff > 0) ? btnCW : btnCCW;
           
-          // Add to timing buffer instead of immediate processing
+          // Add to timing buffer - same system for all encoder types
           addEncoderSteps(btn, steps);
           
           lastPositions[i] = newPos;
         }
     }
     
-    // Handle custom shift register encoders
-    updateCustomEncoders();
-    
-    // Process timing buffers for consistent intervals
+    // Process timing buffers for consistent intervals - unified system
     processEncoderBuffers();
 }
 
 void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
-    // Count shift register encoders separately
-    uint8_t regularCount = 0;
-    customEncoderCount = 0;
+    // Count ALL encoder pairs - no separation between direct pin and shift register
+    uint8_t totalEncoderCount = 0;
     
-    // Fix: Count actual encoder pairs, not just ENC_A entries
     for (uint8_t i = 0; i < logicalCount - 1; ++i) {
-        if ((logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
-            (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
-            customEncoderCount++;
-        } else if (((logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) ||
-                    (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A)) &&
-                   ((logicals[i + 1].type == INPUT_PIN && logicals[i + 1].u.pin.behavior == ENC_B) ||
-                    (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B))) {
-            regularCount++;
+        if (((logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) ||
+             (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A) ||
+             (logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A)) &&
+            ((logicals[i + 1].type == INPUT_PIN && logicals[i + 1].u.pin.behavior == ENC_B) ||
+             (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B) ||
+             (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B))) {
+            totalEncoderCount++;
         }
     }
     
-    // Initialize custom encoders
-    if (customEncoderCount > 0) {
-        customEncoders = new CustomEncoderState[customEncoderCount];
+    // Initialize ALL encoders with the same system
+    if (totalEncoderCount > 0) {
+        EncoderPins* pins = new EncoderPins[totalEncoderCount];
+        EncoderButtons* buttons = new EncoderButtons[totalEncoderCount];
         uint8_t idx = 0;
         
-        for (uint8_t i = 0; i < logicalCount - 1; ++i) {
-            if ((logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
-                (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
-                
-                uint8_t pinA = 100 + (logicals[i].u.shiftreg.regIndex << 4) + logicals[i].u.shiftreg.bitIndex;
-                uint8_t pinB = 100 + (logicals[i + 1].u.shiftreg.regIndex << 4) + logicals[i + 1].u.shiftreg.bitIndex;
-                
-                customEncoders[idx].decoder = new SimpleQuadratureDecoder(pinA, pinB, encoderReadPin);
-                customEncoders[idx].joyButtonCW = logicals[i].u.shiftreg.joyButtonID;
-                customEncoders[idx].joyButtonCCW = logicals[i + 1].u.shiftreg.joyButtonID;
-                idx++;
-            }
-        }
-    }
-    
-    // Initialize regular encoders (matrix/direct pin)
-    if (regularCount > 0) {
-        EncoderPins* pins = new EncoderPins[regularCount];
-        EncoderButtons* buttons = new EncoderButtons[regularCount];
-        uint8_t idx = 0;
-        
-        // Process all non-shift-register encoder pairs
+        // Process all encoder pairs - direct pin, matrix, AND shift register
         for (uint8_t i = 0; i < logicalCount - 1; ++i) {
             bool isEncA = false, isEncB = false;
             uint8_t pinA = 0, pinB = 0;
             uint8_t joyA = 0, joyB = 0;
             
-            // Skip shift register encoders (handled by custom decoder)
-            if ((logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
-                (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
-                continue;
-            }
-            
-            // Check if we have a valid ENC_A + ENC_B pair for regular encoders
+            // Check if we have a valid ENC_A + ENC_B pair (any type)
             if (((logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) ||
-                 (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A)) &&
+                 (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A) ||
+                 (logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A)) &&
                 ((logicals[i + 1].type == INPUT_PIN && logicals[i + 1].u.pin.behavior == ENC_B) ||
-                 (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B))) {
+                 (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B) ||
+                 (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B))) {
                 
                 // Get ENC_A info
                 if (logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) {
@@ -282,6 +237,11 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                         }
                     }
                     joyA = logicals[i].u.matrix.joyButtonID;
+                } else if (logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) {
+                    isEncA = true;
+                    // Encode shift register position as pin number >= 100
+                    pinA = 100 + (logicals[i].u.shiftreg.regIndex << 4) + logicals[i].u.shiftreg.bitIndex;
+                    joyA = logicals[i].u.shiftreg.joyButtonID;
                 }
                 
                 // Get ENC_B info
@@ -303,6 +263,11 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                         }
                     }
                     joyB = logicals[i + 1].u.matrix.joyButtonID;
+                } else if (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B) {
+                    isEncB = true;
+                    // Encode shift register position as pin number >= 100
+                    pinB = 100 + (logicals[i + 1].u.shiftreg.regIndex << 4) + logicals[i + 1].u.shiftreg.bitIndex;
+                    joyB = logicals[i + 1].u.shiftreg.joyButtonID;
                 }
                 
                 if (isEncA && isEncB) {
@@ -315,7 +280,8 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
             }
         }
         
-        initEncoders(pins, buttons, regularCount);
+        // Initialize ALL encoders with the same system
+        initEncoders(pins, buttons, totalEncoderCount);
         delete[] pins;
         delete[] buttons;
     }
