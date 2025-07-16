@@ -64,9 +64,9 @@
 #endif
 
 // Y-Axis (Main stick roll) - uncomment to enable
-// #define USE_AXIS_Y
+ #define USE_AXIS_Y
 #ifdef USE_AXIS_Y
-    #define AXIS_Y_PIN              A1
+    #define AXIS_Y_PIN              ADS1115_CH1
     #define AXIS_Y_MIN              0
     #define AXIS_Y_MAX              1023
     #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_MEDIUM
@@ -153,6 +153,42 @@
     #define AXIS_S2_VELOCITY        10
     #define AXIS_S2_CURVE           CURVE_LINEAR
 #endif
+
+// =============================================================================
+// DYNAMIC AXIS MAPPING FUNCTION
+// =============================================================================
+
+/**
+ * @brief Maps axis values dynamically based on pin type and user-defined ranges
+ * @param rawValue Raw value from analog pin or ADS1115
+ * @param pin Pin identifier (A0-A13 for analog pins, ADS1115_CH0-3 for ADS1115)
+ * @param userMin User-defined minimum value for clipping
+ * @param userMax User-defined maximum value for clipping
+ * @return Mapped value in 0-1023 range for Teensy joystick
+ */
+inline int32_t mapAxisValue(int32_t rawValue, int8_t pin, int32_t userMin, int32_t userMax) {
+    int32_t sourceMin, sourceMax;
+    
+    // Determine source range based on pin type
+    if (pin >= 100 && pin <= 103) {
+        // ADS1115 channels: 16-bit range (0-16383)
+        sourceMin = 0;
+        sourceMax = 16383;
+    } else {
+        // Analog pins: 10-bit range (0-1023)
+        sourceMin = 0;
+        sourceMax = 1023;
+    }
+    
+    // First, map from source range to user-defined range for clipping
+    int32_t clippedValue = map(rawValue, sourceMin, sourceMax, userMin, userMax);
+    
+    // Then constrain to user-defined min/max (this allows rotation zone clipping)
+    clippedValue = constrain(clippedValue, userMin, userMax);
+    
+    // Finally, map to Teensy joystick range (0-1023)
+    return map(clippedValue, userMin, userMax, 0, 1023);
+}
 
 // =============================================================================
 // SETUP FUNCTION - DO NOT MODIFY
@@ -279,49 +315,59 @@ inline void readUserAxes(Joystick_& joystick) {
     #ifdef USE_AXIS_X
         axisManager.setAxisPin(AnalogAxisManager::AXIS_X, AXIS_X_PIN);
         int32_t xVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_X);
-        joystick.setAxis(AnalogAxisManager::AXIS_X, xVal);
+        // Dynamic mapping based on pin type and user-defined min/max
+        int32_t mappedXVal = mapAxisValue(xVal, AXIS_X_PIN, AXIS_X_MIN, AXIS_X_MAX);
+        joystick.setAxis(AnalogAxisManager::AXIS_X, mappedXVal);
     #endif
     
     #ifdef USE_AXIS_Y
         axisManager.setAxisPin(AnalogAxisManager::AXIS_Y, AXIS_Y_PIN);
         int32_t yVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_Y);
-        joystick.setAxis(AnalogAxisManager::AXIS_Y, yVal);
+        // Dynamic mapping based on pin type and user-defined min/max
+        int32_t mappedYVal = mapAxisValue(yVal, AXIS_Y_PIN, AXIS_Y_MIN, AXIS_Y_MAX);
+        joystick.setAxis(AnalogAxisManager::AXIS_Y, mappedYVal);
     #endif
     
     #ifdef USE_AXIS_Z
         axisManager.setAxisPin(AnalogAxisManager::AXIS_Z, AXIS_Z_PIN);
         int32_t zVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_Z);
-        joystick.setAxis(AnalogAxisManager::AXIS_Z, zVal);
+        int32_t mappedZVal = mapAxisValue(zVal, AXIS_Z_PIN, AXIS_Z_MIN, AXIS_Z_MAX);
+        joystick.setAxis(AnalogAxisManager::AXIS_Z, mappedZVal);
     #endif
     
     #ifdef USE_AXIS_RX
         axisManager.setAxisPin(AnalogAxisManager::AXIS_RX, AXIS_RX_PIN);
         int32_t rxVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_RX);
-        joystick.setAxis(AnalogAxisManager::AXIS_RX, rxVal);
+        int32_t mappedRxVal = mapAxisValue(rxVal, AXIS_RX_PIN, AXIS_RX_MIN, AXIS_RX_MAX);
+        joystick.setAxis(AnalogAxisManager::AXIS_RX, mappedRxVal);
     #endif
     
     #ifdef USE_AXIS_RY
         axisManager.setAxisPin(AnalogAxisManager::AXIS_RY, AXIS_RY_PIN);
         int32_t ryVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_RY);
-        joystick.setAxis(AnalogAxisManager::AXIS_RY, ryVal);
+        int32_t mappedRyVal = mapAxisValue(ryVal, AXIS_RY_PIN, AXIS_RY_MIN, AXIS_RY_MAX);
+        joystick.setAxis(AnalogAxisManager::AXIS_RY, mappedRyVal);
     #endif
     
     #ifdef USE_AXIS_RZ
         axisManager.setAxisPin(AnalogAxisManager::AXIS_RZ, AXIS_RZ_PIN);
         int32_t rzVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_RZ);
-        joystick.setAxis(AnalogAxisManager::AXIS_RZ, rzVal);
+        int32_t mappedRzVal = mapAxisValue(rzVal, AXIS_RZ_PIN, AXIS_RZ_MIN, AXIS_RZ_MAX);
+        joystick.setAxis(AnalogAxisManager::AXIS_RZ, mappedRzVal);
     #endif
     
     #ifdef USE_AXIS_S1
         axisManager.setAxisPin(AnalogAxisManager::AXIS_S1, AXIS_S1_PIN);
         int32_t s1Val = axisManager.readAxisRaw(AnalogAxisManager::AXIS_S1);
-        joystick.setAxis(AnalogAxisManager::AXIS_S1, s1Val);
+        int32_t mappedS1Val = mapAxisValue(s1Val, AXIS_S1_PIN, AXIS_S1_MIN, AXIS_S1_MAX);
+        joystick.setAxis(AnalogAxisManager::AXIS_S1, mappedS1Val);
     #endif
     
     #ifdef USE_AXIS_S2
         axisManager.setAxisPin(AnalogAxisManager::AXIS_S2, AXIS_S2_PIN);
         int32_t s2Val = axisManager.readAxisRaw(AnalogAxisManager::AXIS_S2);
-        joystick.setAxis(AnalogAxisManager::AXIS_S2, s2Val);
+        int32_t mappedS2Val = mapAxisValue(s2Val, AXIS_S2_PIN, AXIS_S2_MIN, AXIS_S2_MAX);
+        joystick.setAxis(AnalogAxisManager::AXIS_S2, mappedS2Val);
     #endif
 }
 
