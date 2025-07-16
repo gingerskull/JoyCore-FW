@@ -4,21 +4,19 @@
 
 **⚠️ This is the Teensy 4.0 port branch - for the original Arduino Pro Micro version, see the `main` branch.**
 
-**Teensy 4.0-based** USB game controller firmware. This port takes advantage of Teensy 4.0's USB HID capabilities for enhanced performance and reliability. It supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and high-resolution analog axes.
+**Teensy 4.0-based** USB game controller firmware. This port uses Teensy 4.0's USB HID capabilities and supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and analog axes.
 
 ### Advantages of Teensy 4.0 Port
 
-✅ **USB Performance**: Teensy 4.0's native USB HID implementation is more robust and faster
+✅ **USB Performance**: Native USB HID implementation
 
-✅ **Simplified Architecture**: No need for complex DynamicHID implementation - uses Teensy's built-in joystick library
+✅ **Simplified Architecture**: No need for complex DynamicHID implementation
 
-✅ **Better Reliability**: Teensy's USB stack is more stable and handles reconnections better
+✅ **Processing Power**: 600MHz ARM Cortex-M7 vs 16MHz ATmega32U4
 
-✅ **More Processing Power**: 600MHz ARM Cortex-M7 vs 16MHz ATmega32U4
+✅ **Memory**: 1MB Flash + 512KB RAM vs 32KB Flash + 2.5KB RAM
 
-✅ **More Memory**: 1MB Flash + 512KB RAM vs 32KB Flash + 2.5KB RAM
-
-✅ **More I/O Pins**: More pins available for complex button matrices and encoders
+✅ **I/O Pins**: More pins available for button matrices and encoders
 
 ### Hardware Requirements
 
@@ -26,21 +24,27 @@
 - Compatible with all existing button box hardware designs
 - Same pin mapping concepts apply
 
+#### Teensy 4.0 Pinout Reference
+
+![Teensy 4.0 Pinout](images/Teensy4.0pinOut.png)
+
+Use this pinout reference when configuring your hardware connections in `src/ConfigDigital.h`.
+
 ---
 
-## ✨ Features
+## Features
 
-- **Matrix Button Scanning**: Efficient row/column multiplexing for large button arrays
-- **Rotary Encoders**: Handles both direct/matrix and shift register-based encoders
+- **Matrix Button Scanning**: Row/column multiplexing for button arrays
+- **Rotary Encoders**: Direct pin, matrix, and shift register-based encoders
 - **Shift Registers**: Expand inputs with [74HC165](https://www.ti.com/lit/ds/symlink/sn74hc165.pdf) chips
-- **High-Resolution Analog**: Support for ADS1115 16-bit ADC for analog inputs
-- **USB HID Game Controller**: Native USB interface via Teensy's built-in joystick library
-- **Advanced Filtering**: Configurable noise filtering and response curves for analog axes
-- **Cross-Platform Compatibility**: Same configuration format as Arduino version
+- **Analog Inputs**: Built-in analog pins and ADS1115 16-bit ADC support
+- **USB HID Game Controller**: Native USB interface via Teensy's joystick library
+- **Signal Processing**: Configurable noise filtering and response curves for analog axes
+- **Configuration**: Same format as Arduino version
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Hardware Setup
 
@@ -86,7 +90,7 @@ Set up analog axes in `src/ConfigAxis.h`:
 // Built-in analog pin
 #define AXIS_X_PIN A0
 
-// ADS1115 high-resolution channel
+// ADS1115 channel
 #define AXIS_X_PIN ADS1115_CH0  // 16-bit resolution
 ```
 
@@ -111,13 +115,9 @@ Teensy 4.0 has different pin numbering than Arduino Pro Micro:
 |---------|------------------|------------|-------|
 | Digital I/O | 0-21 | 0-23, 24-33 | More pins available |
 | Analog Input | A0-A3, A6-A10 | A0-A13 | More analog inputs |
-| PWM | Limited | Many pins | Better PWM support |
-| Interrupts | 2, 3, 7 | Most pins | More interrupt options |
+| PWM | Limited | Many pins | PWM support |
+| Interrupts | 2, 3, 7 | Most pins | Interrupt options |
 | I2C | 2, 3 | 18, 19 | For ADS1115 ADC |
-
-**Voltage Levels:**
-- **Arduino Pro Micro**: 5V logic
-- **Teensy 4.0**: 3.3V logic (5V tolerant on most pins)
 
 ### Shift Register Configuration
 
@@ -182,7 +182,7 @@ pio run --target upload
 
 ### USB Implementation
 - **Arduino Leonardo (main branch)**: Uses custom DynamicHID implementation with PluggableUSB
-- **Teensy 4.0 (this branch)**: Uses native Teensyduino joystick library (much simpler and more reliable)
+- **Teensy 4.0 (this branch)**: Uses native Teensyduino joystick library
 
 ### Performance Comparison
 
@@ -192,7 +192,7 @@ pio run --target upload
 | Memory | 32KB Flash + 2.5KB RAM | 1MB Flash + 512KB RAM | 32x more |
 | Loop Speed | ~1kHz typical | >10kHz possible | 10x+ faster |
 | Button Response | <10ms | <1ms | 10x+ faster |
-| USB Latency | Variable | Consistent | More reliable |
+| USB Latency | Variable | Consistent | More consistent |
 
 ### USB Descriptors
 - **Arduino Leonardo**: Custom USB HID descriptors required
@@ -200,7 +200,7 @@ pio run --target upload
 
 ### Reliability
 - **Arduino Leonardo**: Occasional USB enumeration issues
-- **Teensy 4.0**: Rock-solid USB implementation with better host compatibility
+- **Teensy 4.0**: Stable USB implementation with better host compatibility
 
 ---
 
@@ -212,7 +212,7 @@ pio run --target upload
 2. **Pin mapping**: Update pin numbers in `ConfigDigital.h` for Teensy 4.0 layout
 3. **Voltage levels**: Ensure 3.3V compatibility (most components work fine)
 4. **Upload**: Use Teensy Loader or PlatformIO Teensy platform
-5. **Performance**: Enjoy much better USB stability and performance!
+5. **Performance**: Better USB stability and performance
 
 ### Configuration Compatibility
 
@@ -221,11 +221,11 @@ pio run --target upload
 ✅ **Same axis processing**: Identical filtering and curve algorithms  
 ✅ **Same logical input structure**: Matrix, direct pin, and shift register configurations  
 
-The logical configuration remains the same - only the hardware platform changes.
+The configuration format remains the same - only the hardware platform changes.
 
-### Future Configuration Utility
+### Configuration Utility Compatibility (**FUTURE**)
 
-When building a configuration utility, it will work seamlessly with both branches because:
+A configuration utility would work with both branches because:
 - Same configuration format and structure
 - Same ADS1115 channel definitions (`ADS1115_CH0-3`)
 - Same axis processing logic and filter options
@@ -233,26 +233,26 @@ When building a configuration utility, it will work seamlessly with both branche
 
 ---
 
-## 🛠️ Dependencies
+## Dependencies
 
 - **PlatformIO**: Development platform
 - **Teensy 4.0**: Target hardware
 - **Teensyduino**: Arduino-compatible framework for Teensy (included with PlatformIO Teensy platform)
-- **Adafruit ADS1X15**: For high-resolution analog input support
+- **Adafruit ADS1X15**: For analog input support
 
 ---
 
-## 🛠️ Credit
+## Credit
 
-- **[Teensy](https://www.pjrc.com/)** - Excellent microcontroller with superior USB support
+- **[Teensy](https://www.pjrc.com/)** - Microcontroller with USB support
 - **[RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)** - Modified and integrated
 - **[Keypad Library](https://playground.arduino.cc/Code/Keypad/)** - Replaced with built-in implementation
 
-Big thanks to PJRC for creating Teensy and its outstanding USB implementation. The original Arduino Leonardo version was based on the Arduino Joystick Library and related components - their work made this project possible.
+Thanks to PJRC for creating Teensy and its USB implementation. The original Arduino Leonardo version was based on the Arduino Joystick Library and related components.
 
 ---
 
-## 📋 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 1. **Pin numbering**: Teensy 4.0 uses different pin numbers than Arduino Pro Micro
@@ -266,7 +266,7 @@ Big thanks to PJRC for creating Teensy and its outstanding USB implementation. T
 
 ---
 
-## 🧩 Tips
+## Tips
 
 - Use unique joystick button IDs for each input
 - For encoders, always define A and B channels as consecutive entries
