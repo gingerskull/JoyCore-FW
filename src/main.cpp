@@ -23,6 +23,7 @@
 #include "ShiftRegister165.h"
 #include "ConfigAxis.h"
 
+
 // USB joystick configuration: 32 buttons, 6 analog axes, 1 hat switch
 // Teensy 4.0 handles USB descriptors automatically
 Joystick_ MyJoystick(0x03, 0x04, 32, 0, true, true, true, true, true, true, true, true);
