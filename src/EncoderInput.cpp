@@ -23,23 +23,54 @@ static int encoderReadPin(uint8_t pin) {
         }
         return 1;  // Default HIGH
     }
-    return g_encoderMatrixPinStates[pin];
+    
+    // Check if this pin is configured as a matrix pin or direct pin
+    bool isMatrixPin = false;
+    for (uint8_t i = 0; i < hardwarePinMapCount; ++i) {
+        PinName pinName = hardwarePinMap[i].name;
+        if (atoi(pinName) == pin) {
+            PinType type = hardwarePinMap[i].type;
+            if (type == BTN_ROW || type == BTN_COL) {
+                isMatrixPin = true;
+            }
+            break;
+        }
+    }
+    
+    if (isMatrixPin) {
+        // Use matrix state for matrix pins
+        return g_encoderMatrixPinStates[pin];
+    } else {
+        // Use direct read for direct pins
+        return digitalRead(pin);
+    }
 }
+
+// Timing buffer system for consistent press intervals
+#define MAX_ENCODERS 8
+struct EncoderBuffer {
+    uint8_t buttonId;
+    uint8_t pendingSteps;
+    uint32_t lastPressTime;
+    bool buttonPressed;
+};
+
+static EncoderBuffer encoderBuffers[MAX_ENCODERS];
+static uint8_t bufferCount = 0;
+static const uint32_t PRESS_INTERVAL_US = 8000;  // 8ms interval between presses (125 Hz)
+static const uint32_t PRESS_DURATION_US = 2000;  // 2ms press duration
 
 // Internal encoder state
 static RotaryEncoder** encoders = nullptr;
 static EncoderButtons* encoderBtnMap = nullptr;
 static int* lastPositions = nullptr;
-static unsigned long* pressStartTimes = nullptr;
-static uint8_t* activeBtns = nullptr;
 static uint8_t encoderTotal = 0;
 
 // Custom encoder state for shift register encoders using library decoder
 struct CustomEncoderState {
     SimpleQuadratureDecoder* decoder;
     uint8_t joyButtonCW, joyButtonCCW;
-    unsigned long pressStartTime;
-    uint8_t activeBtn;
+    uint8_t bufferIndexCW, bufferIndexCCW;  // Track which buffer entries to use
 };
 
 static CustomEncoderState* customEncoders = nullptr;
@@ -51,8 +82,6 @@ void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_
   encoders = new RotaryEncoder*[count];
   encoderBtnMap = new EncoderButtons[count];
   lastPositions = new int[count];
-  pressStartTimes = new unsigned long[count];
-  activeBtns = new uint8_t[count];
 
   for (uint8_t i = 0; i < count; i++) {
     // Use FOUR3 mode for single click per detent
@@ -63,35 +92,78 @@ void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_
     pinMode(pins[i].pinB, INPUT_PULLUP);
     encoderBtnMap[i] = buttons[i];
     lastPositions[i] = encoders[i]->getPosition();
-    pressStartTimes[i] = 0;
-    activeBtns[i] = 255;  // 255 = no active press
+    
+    // Set up buffer entries for this encoder
+    if (bufferCount < MAX_ENCODERS - 1) {
+        encoderBuffers[bufferCount].buttonId = buttons[i].cw;
+        encoderBuffers[bufferCount].pendingSteps = 0;
+        encoderBuffers[bufferCount].lastPressTime = 0;
+        encoderBuffers[bufferCount].buttonPressed = false;
+        bufferCount++;
+        
+        encoderBuffers[bufferCount].buttonId = buttons[i].ccw;
+        encoderBuffers[bufferCount].pendingSteps = 0;
+        encoderBuffers[bufferCount].lastPressTime = 0;
+        encoderBuffers[bufferCount].buttonPressed = false;
+        bufferCount++;
+    }
   }
+}
+
+// Add steps to buffer for consistent timing
+void addEncoderSteps(uint8_t buttonId, uint8_t steps) {
+    for (uint8_t i = 0; i < bufferCount; i++) {
+        if (encoderBuffers[i].buttonId == buttonId) {
+            encoderBuffers[i].pendingSteps += steps;
+            break;
+        }
+    }
+}
+
+// Process timing buffers for consistent intervals
+void processEncoderBuffers() {
+    uint32_t currentTime = micros();
+    
+    for (uint8_t i = 0; i < bufferCount; i++) {
+        EncoderBuffer& buffer = encoderBuffers[i];
+        uint8_t joyIdx = (buffer.buttonId > 0) ? (buffer.buttonId - 1) : 0;
+        
+        // Handle button release timing
+        if (buffer.buttonPressed && (currentTime - buffer.lastPressTime >= PRESS_DURATION_US)) {
+            MyJoystick.setButton(joyIdx, 0);  // Release
+            buffer.buttonPressed = false;
+        }
+        
+        // Handle new press timing
+        if (buffer.pendingSteps > 0 && !buffer.buttonPressed && 
+            (currentTime - buffer.lastPressTime >= PRESS_INTERVAL_US)) {
+            
+            MyJoystick.setButton(joyIdx, 1);  // Press
+            buffer.buttonPressed = true;
+            buffer.lastPressTime = currentTime;
+            buffer.pendingSteps--;
+        }
+    }
 }
 
 // Simple quadrature decoder using library
 void updateCustomEncoders() {
     for (uint8_t i = 0; i < customEncoderCount; ++i) {
-        int8_t direction = customEncoders[i].decoder->tick();
-        
-        if (direction != 0) {
-            uint8_t btn = (direction > 0) ? customEncoders[i].joyButtonCW : customEncoders[i].joyButtonCCW;
-            uint8_t joyIdx = btn - 1;
-            
-            // Release any active button first
-            if (customEncoders[i].activeBtn != 255) {
-                MyJoystick.setButton((customEncoders[i].activeBtn > 0) ? (customEncoders[i].activeBtn - 1) : 0, 0);
+        // Check multiple times for fast rotation
+        int8_t totalDirection = 0;
+        for (uint8_t t = 0; t < 8; ++t) {
+            int8_t direction = customEncoders[i].decoder->tick();
+            if (direction != 0) {
+                totalDirection += direction;
             }
-            
-            MyJoystick.setButton(joyIdx, 1);
-            customEncoders[i].pressStartTime = millis();
-            customEncoders[i].activeBtn = btn;
         }
         
-        // Handle button release
-        if (customEncoders[i].activeBtn != 255 && millis() - customEncoders[i].pressStartTime > 10) {
-            uint8_t joyIdx = (customEncoders[i].activeBtn > 0) ? (customEncoders[i].activeBtn - 1) : 0;
-            MyJoystick.setButton(joyIdx, 0);
-            customEncoders[i].activeBtn = 255;
+        if (totalDirection != 0) {
+            uint8_t btn = (totalDirection > 0) ? customEncoders[i].joyButtonCW : customEncoders[i].joyButtonCCW;
+            uint8_t steps = abs(totalDirection);
+            
+            // Add to timing buffer instead of immediate processing
+            addEncoderSteps(btn, steps);
         }
     }
 }
@@ -99,8 +171,8 @@ void updateCustomEncoders() {
 void updateEncoders() {
     // Handle regular encoders (matrix/direct pin)
     for (uint8_t i = 0; i < encoderTotal; i++) {
-        // Call tick() multiple times to catch up on missed transitions
-        for (uint8_t t = 0; t < 3; ++t) {
+        // Call tick() multiple times to catch up on missed transitions - increased for fast rotation
+        for (uint8_t t = 0; t < 8; ++t) {
             encoders[i]->tick();
         }
         int newPos = encoders[i]->getPosition();
@@ -109,32 +181,23 @@ void updateEncoders() {
         if (diff != 0) {
           uint8_t btnCW = encoderBtnMap[i].cw;
           uint8_t btnCCW = encoderBtnMap[i].ccw;
-          uint8_t joyIdxCW = (btnCW > 0) ? (btnCW - 1) : 0;
-          uint8_t joyIdxCCW = (btnCCW > 0) ? (btnCCW - 1) : 0;
 
-          // Always release both possible encoder buttons before sending a new press
-          MyJoystick.setButton(joyIdxCW, 0);
-          MyJoystick.setButton(joyIdxCCW, 0);
-          activeBtns[i] = 255;
-
+          // Handle multiple steps for fast rotation - add to timing buffer
+          uint8_t steps = abs(diff);
           uint8_t btn = (diff > 0) ? btnCW : btnCCW;
-          uint8_t joyIdx = (btn > 0) ? (btn - 1) : 0;
-
-          MyJoystick.setButton(joyIdx, 1);
-          pressStartTimes[i] = millis();
-          activeBtns[i] = btn;
+          
+          // Add to timing buffer instead of immediate processing
+          addEncoderSteps(btn, steps);
+          
           lastPositions[i] = newPos;
-        }
-
-        if (activeBtns[i] != 255 && millis() - pressStartTimes[i] > 10) {
-          uint8_t joyIdx = (activeBtns[i] > 0) ? (activeBtns[i] - 1) : 0;
-          MyJoystick.setButton(joyIdx, 0);
-          activeBtns[i] = 255;
         }
     }
     
     // Handle custom shift register encoders
     updateCustomEncoders();
+    
+    // Process timing buffers for consistent intervals
+    processEncoderBuffers();
 }
 
 void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
@@ -170,7 +233,6 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                 customEncoders[idx].decoder = new SimpleQuadratureDecoder(pinA, pinB, encoderReadPin);
                 customEncoders[idx].joyButtonCW = logicals[i].u.shiftreg.joyButtonID;
                 customEncoders[idx].joyButtonCCW = logicals[i + 1].u.shiftreg.joyButtonID;
-                customEncoders[idx].activeBtn = 255;
                 idx++;
             }
         }

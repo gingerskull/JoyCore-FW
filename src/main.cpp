@@ -70,6 +70,6 @@ void loop() {
     readUserAxes(MyJoystick); // Read all configured axes from user.h
     
     // Small delay to prevent overwhelming the USB bus
-    // Teensy 4.0 can handle higher update rates, but this is conservative
-    //delayMicroseconds(100);
+    // Teensy 4.0 can handle higher update rates, optimized for fast encoders with queue system
+    delayMicroseconds(10);  // Ultra-fast polling with queue buffering
 }
