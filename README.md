@@ -19,6 +19,12 @@ JoyCore is designed for basically any board based on the ATmega32U4 microcontrol
 
 > **Note:** Only the SparkFun Pro Micro has been tested so far. The other boards are supported in theory but I have not tested them yet.
 
+#### SparkFun Pro Micro Pinout Reference
+
+![SparkFun Pro Micro Pinout](images/pro-micro-pinout.png)
+
+Use this pinout reference when configuring your hardware connections in the config files.
+
 ---
 
 ## ✨ Features
