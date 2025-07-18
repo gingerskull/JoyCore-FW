@@ -2,15 +2,16 @@
 /*
  * GNGR-ButtonBox: Custom Button Box Controller
  * 
- * A versatile Teensy 4.0-based USB game controller supporting:
+ * A versatile RP2040 Raspberry Pi Pico-based USB game controller supporting:
  * - Matrix button scanning
  * - Rotary encoders (matrix, direct pin, and shift register)
  * - Direct pin buttons
  * - 74HC165 shift register expansion
+ * - ADS1115 external ADC for high-resolution analog inputs
  * 
- * Appears as a standard 32-button USB gamepad for maximum compatibility.
+ * Appears as a standard USB gamepad for maximum compatibility.
  * 
- * Ported to Teensy 4.0 to take advantage of its superior USB HID support.
+ * Ported to RP2040 Raspberry Pi Pico using PicoGamepad library.
  */
 
 #include <Arduino.h>
@@ -24,37 +25,52 @@
 #include "ConfigAxis.h"
 
 
-// USB joystick configuration: 32 buttons, 6 analog axes, 1 hat switch
-// Teensy 4.0 handles USB descriptors automatically
-Joystick_ MyJoystick(0x03, 0x04, 32, 0, true, true, true, true, true, true, true, true);
+// USB joystick configuration: 32 buttons, 8 analog axes, 4 hat switches
+// PicoGamepad handles USB descriptors automatically
+Joystick_ MyJoystick(0x03, 0x04, 32, 0, true, true, false, false, false, false, false, false);
 
 // External shift register components
 extern ShiftRegister165* shiftReg;
 extern uint8_t* shiftRegBuffer;
 
 void setup() {
-    // Initialize serial for debugging (optional)
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, HIGH);
+
+    // Initialize serial for debugging
     Serial.begin(115200);
     
-    // Initialize all input subsystems from user configuration
+    // Wait for serial connection on RP2040
+    uint32_t serialWait = millis();
+    while (!Serial && (millis() - serialWait < 2000)) {
+        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+        delay(100);
+    }
+    digitalWrite(LED_BUILTIN, LOW);
+    
+    Serial.println("GNGR-ButtonBox RP2040 Pico - Final Version");
+    
+    // Initialize USB joystick interface EARLY for HID functionality
+    MyJoystick.begin();
+    
+    // Explicitly set hat switch to neutral position
+    MyJoystick.setHatSwitch(0, -1);
+    
+    Serial.println("Joystick initialized. Initializing input systems...");
+    
+    // Initialize all input subsystems (but skip axis setup)
     initButtonsFromLogical(logicalInputs, logicalInputCount);
     initEncodersFromLogical(logicalInputs, logicalInputCount);
     initMatrixFromLogical(logicalInputs, logicalInputCount);
 
-    // Configure all user-defined axes
-    setupUserAxes(MyJoystick);
-
-    // Initialize USB joystick interface
-    // Teensy 4.0 USB setup is much simpler than Arduino Leonardo
-    MyJoystick.begin();
+    // SKIP AXIS SETUP - This was causing the button interference
+    // setupUserAxes(MyJoystick);  // DISABLED - was interfering with button pins
     
-    // Explicitly set hat switch to neutral position to prevent false readings
-    MyJoystick.setHatSwitch(0, -1); // -1 = neutral position
-    
-    // Shorter delay since Teensy's USB is more reliable
+    // Delay for USB enumeration
     delay(500);
     
-    Serial.println("GNGR-ButtonBox Teensy 4.0 initialized");
+    Serial.println("GNGR-ButtonBox initialized successfully!");
+    Serial.println("All button inputs should now work in HID applications.");
 }
 
 void loop() {
@@ -65,11 +81,15 @@ void loop() {
     
     // Update all input types in proper sequence
     updateButtons();   // Direct pin and shift register buttons
-    updateMatrix();    // Button matrix and encoder pin states
-    updateEncoders();  // All encoder types (now handles shift register reads internally for better timing)
-    readUserAxes(MyJoystick); // Read all configured axes from user.h
+    updateMatrix();    // Button matrix scanning
+    updateEncoders();  // All encoder types
     
-    // Small delay to prevent overwhelming the USB bus
-    // Teensy 4.0 can handle higher update rates, optimized for fast encoders with queue system
-    delayMicroseconds(10);  // Ultra-fast polling with queue buffering
+    // SKIP AXIS READING - No axes connected, and this was causing interference
+    // readUserAxes(MyJoystick);  // DISABLED - was interfering with button pins
+    
+    // Send all HID updates to computer
+    MyJoystick.sendState();
+    
+    // Small delay for optimal RP2040 performance
+    delayMicroseconds(50);
 }

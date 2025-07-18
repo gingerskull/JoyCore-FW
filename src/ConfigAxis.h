@@ -55,7 +55,7 @@
 #ifdef USE_AXIS_X
     #define AXIS_X_PIN              A0
     #define AXIS_X_MIN              0
-    #define AXIS_X_MAX              1023
+    #define AXIS_X_MAX              32767
     #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_MEDIUM
     #define AXIS_X_NOISE_THRESHOLD  3
     #define AXIS_X_SMOOTHING        2
@@ -68,7 +68,7 @@
 #ifdef USE_AXIS_Y
     #define AXIS_Y_PIN              ADS1115_CH1
     #define AXIS_Y_MIN              0
-    #define AXIS_Y_MAX              1023
+    #define AXIS_Y_MAX              32767
     #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_MEDIUM
     #define AXIS_Y_NOISE_THRESHOLD  3
     #define AXIS_Y_SMOOTHING        2
@@ -81,7 +81,7 @@
 #ifdef USE_AXIS_Z
     #define AXIS_Z_PIN              A4
     #define AXIS_Z_MIN              0
-    #define AXIS_Z_MAX              1023
+    #define AXIS_Z_MAX              32767
     #define AXIS_Z_FILTER_LEVEL     AXIS_FILTER_MEDIUM
     #define AXIS_Z_NOISE_THRESHOLD  3
     #define AXIS_Z_SMOOTHING        2
@@ -94,7 +94,7 @@
 #ifdef USE_AXIS_RX
     #define AXIS_RX_PIN             A5
     #define AXIS_RX_MIN             0
-    #define AXIS_RX_MAX             1023
+    #define AXIS_RX_MAX             32767
     #define AXIS_RX_FILTER_LEVEL    AXIS_FILTER_MEDIUM
     #define AXIS_RX_NOISE_THRESHOLD 3
     #define AXIS_RX_SMOOTHING       2
@@ -107,9 +107,9 @@
 #ifdef USE_AXIS_RY
     #define AXIS_RY_PIN             A6
     #define AXIS_RY_MIN             0
-    #define AXIS_RY_MAX             1023
-    #define AXIS_RY_FILTER_LEVEL    AXIS_FILTER_MEDIUM
-    #define AXIS_RY_NOISE_THRESHOLD 3
+    #define AXIS_RY_MAX             32767
+#define AXIS_RY_FILTER_LEVEL    AXIS_FILTER_MEDIUM
+#define AXIS_RY_NOISE_THRESHOLD 3
     #define AXIS_RY_SMOOTHING       2
     #define AXIS_RY_VELOCITY        15
     #define AXIS_RY_CURVE           CURVE_LINEAR
@@ -120,7 +120,7 @@
 #ifdef USE_AXIS_RZ
     #define AXIS_RZ_PIN             A2
     #define AXIS_RZ_MIN             0
-    #define AXIS_RZ_MAX             1023
+    #define AXIS_RZ_MAX             32767
     #define AXIS_RZ_FILTER_LEVEL    AXIS_FILTER_HIGH
     #define AXIS_RZ_NOISE_THRESHOLD 4
     #define AXIS_RZ_SMOOTHING       3
@@ -133,7 +133,7 @@
 #ifdef USE_AXIS_S1
     #define AXIS_S1_PIN             A3
     #define AXIS_S1_MIN             0
-    #define AXIS_S1_MAX             1023
+    #define AXIS_S1_MAX             32767
     #define AXIS_S1_FILTER_LEVEL    AXIS_FILTER_LOW
     #define AXIS_S1_NOISE_THRESHOLD 2
     #define AXIS_S1_SMOOTHING       1
@@ -164,7 +164,7 @@
  * @param pin Pin identifier (A0-A13 for analog pins, ADS1115_CH0-3 for ADS1115)
  * @param userMin User-defined minimum value for clipping
  * @param userMax User-defined maximum value for clipping
- * @return Mapped value in 0-1023 range for Teensy joystick
+ * @return Mapped value in -32767 to 32767 range for PicoGamepad joystick
  */
 inline int32_t mapAxisValue(int32_t rawValue, int8_t pin, int32_t userMin, int32_t userMax) {
     int32_t sourceMin, sourceMax;
@@ -186,8 +186,8 @@ inline int32_t mapAxisValue(int32_t rawValue, int8_t pin, int32_t userMin, int32
     // Then constrain to user-defined min/max (this allows rotation zone clipping)
     clippedValue = constrain(clippedValue, userMin, userMax);
     
-    // Finally, map to Teensy joystick range (0-1023)
-    return map(clippedValue, userMin, userMax, 0, 1023);
+    // Finally, map to PicoGamepad joystick range (-32767 to 32767)
+    return map(clippedValue, userMin, userMax, -32767, 32767);
 }
 
 // =============================================================================
