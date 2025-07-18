@@ -71,10 +71,33 @@ void AnalogAxisManager::setAxisCustomCurve(uint8_t axis, const int32_t* table, u
 int32_t AnalogAxisManager::processAxisValue(uint8_t axis, int32_t rawValue) {
     if (axis >= ANALOG_AXIS_COUNT) return rawValue;
     
-    int32_t filtered = _filters[axis].filter(rawValue);
+    // First map raw hardware value to user-defined range
+    int32_t sourceMin, sourceMax;
+    int8_t pin = _axisPins[axis];
+    
+    if (pin >= 100 && pin <= 103) {
+        // ADS1115 channels: 16-bit range (0-16383)
+        sourceMin = 0;
+        sourceMax = 16383;
+    } else {
+        // Analog pins: 12-bit range (0-4095) on RP2040
+        sourceMin = 0;
+        sourceMax = 4095;
+    }
+    
+    // Map from hardware range to user-defined range
+    int32_t mappedValue = map(rawValue, sourceMin, sourceMax, _axisMinimum[axis], _axisMaximum[axis]);
+    mappedValue = constrain(mappedValue, _axisMinimum[axis], _axisMaximum[axis]);
+    
+    // Apply filtering and curves
+    int32_t filtered = _filters[axis].filter(mappedValue);
     int32_t curved = _curves[axis].apply(filtered);
-    _axisValues[axis] = curved;
-    return curved;
+    
+    // Map to joystick range (-32767 to 32767)
+    int32_t finalValue = map(curved, _axisMinimum[axis], _axisMaximum[axis], -32767, 32767);
+    
+    _axisValues[axis] = finalValue;
+    return finalValue;
 }
 
 int32_t AnalogAxisManager::getAxisValue(uint8_t axis) {

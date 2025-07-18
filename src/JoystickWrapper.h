@@ -124,15 +124,7 @@ public:
         _gamepad.send_update();
     }
     
-    // Additional compatibility functions for axis configuration
-    void setAxisFilterLevel(uint8_t axis, int level) { /* Not implemented on rp2040-HID */ }
-    void setAxisNoiseThreshold(uint8_t axis, int32_t threshold) { /* Not implemented on rp2040-HID */ }
-    void setAxisResponseCurve(uint8_t axis, int type) { /* Not implemented on rp2040-HID */ }
-    void setAxisCustomCurve(uint8_t axis, const int32_t* table, uint8_t points) { /* Not implemented on rp2040-HID */ }
-    void setAxisSmoothingFactor(uint8_t axis, uint8_t factor) { /* Not implemented on rp2040-HID */ }
-    void setAxisVelocityThreshold(uint8_t axis, int32_t threshold) { /* Not implemented on rp2040-HID */ }
-    void setAxisPin(uint8_t axis, int8_t pin) { /* Not implemented on rp2040-HID */ }
-    void readAllAxes() { /* Not implemented on rp2040-HID */ }
+
 };
 
 extern Joystick_ MyJoystick;
