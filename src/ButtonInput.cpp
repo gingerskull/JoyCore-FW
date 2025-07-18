@@ -48,21 +48,19 @@ void updateButtons() {
             case MOMENTARY:
                 if (!wasPressed && isPressed) {
                     MyJoystick.setButton(joyIdx, true);
-                    delay(10);
+                    delay(50);
                     MyJoystick.setButton(joyIdx, false);
                 }
                 break;
                 
-            case ENC_A:
-            case ENC_B:
-                // Encoder behaviors are handled by EncoderInput
+            default:
                 break;
         }
         
         lastStates[i] = currentState;
     }
     
-    // Update shift register buttons
+    // Update shift register buttons if present
     updateShiftRegisterButtons();
 }
 

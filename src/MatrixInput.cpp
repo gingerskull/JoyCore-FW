@@ -58,7 +58,7 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     // Fill row/col pins from hardwarePinMap, but exclude encoder pins
     uint8_t rowIdx = 0, colIdx = 0;
     for (uint8_t i = 0; i < hardwarePinMapCount; ++i) {
-        PinName pinName = hardwarePinMap[i].name;
+        HardwarePinName pinName = hardwarePinMap[i].name;
         // Check if this pin is used by an encoder
         bool isEncoderPin = false;
         for (uint8_t j = 0; j < logicalCount; ++j) {
