@@ -91,4 +91,8 @@ public:
 // Function to initialize ADS1115 if needed
 void initializeADS1115IfNeeded();
 
+// Functions for round-robin ADS1115 reading to prevent encoder lag
+void registerADS1115Channel(uint8_t channel);
+void performRoundRobinADS1115Read();
+
 #endif // ANALOGAXIS_h

@@ -8,6 +8,12 @@ bool adsInitialized = false;
 static int32_t adsLastValues[4] = {0, 0, 0, 0};
 static unsigned long adsLastReadTimes[4] = {0, 0, 0, 0};
 
+// Round-robin ADS1115 reading to prevent encoder lag
+static uint8_t adsRoundRobinIndex = 0;
+static uint8_t adsChannelsInUse[4] = {255, 255, 255, 255}; // 255 = not in use
+static uint8_t adsChannelCount = 0;
+static unsigned long adsRoundRobinInterval = 20; // Read one channel every 20ms
+
 // Note: AxisFilter and AxisCurve implementations have been moved to AxisProcessing.cpp
 // This file now focuses on AnalogAxisManager and hardware interface
 
@@ -143,6 +149,11 @@ int32_t AnalogAxisManager::getAxisMaximum(uint8_t axis) {
 void AnalogAxisManager::setAxisPin(uint8_t axis, int8_t pin) {
     if (axis < ANALOG_AXIS_COUNT) {
         _axisPins[axis] = pin;
+        
+        // Auto-register ADS1115 channels for round-robin reading
+        if (pin >= 100 && pin <= 103) {
+            registerADS1115Channel(pin - 100);
+        }
     }
 }
 
@@ -159,17 +170,8 @@ int32_t AnalogAxisManager::readAxisRaw(uint8_t axis) {
         if (pin >= 100 && pin <= 103) { // ADS1115 channels
             if (adsInitialized) {
                 uint8_t channel = pin - 100;
-                unsigned long currentTime = millis();
-                
-                // Rate limit ADS1115 reads to prevent timing issues
-                if (currentTime - adsLastReadTimes[channel] > 5) { // Max 200 Hz per channel
-                    int16_t val = ads.readADC_SingleEnded(channel);
-                    if (val >= 0) { // Valid reading
-                        adsLastValues[channel] = val;
-                        adsLastReadTimes[channel] = currentTime;
-                    }
-                    // If val < 0, use last known good value
-                }
+                // Return last known value for ADS1115 channels
+                // Round-robin reading is handled separately
                 return adsLastValues[channel];
             }
             return 0;
@@ -191,9 +193,13 @@ void AnalogAxisManager::readAllAxes() {
     }
     lastReadTime = currentTime;
     
+    // Perform round-robin ADS1115 reading to prevent encoder lag
+    performRoundRobinADS1115Read();
+    
+    // Read all axes (ADS1115 channels return cached values, analog pins read directly)
     for (uint8_t i = 0; i < ANALOG_AXIS_COUNT; i++) {
         if (isAxisEnabled(i) && _axisPins[i] >= 0) {
-            int32_t rawValue = readAxisRaw(i);  // Use readAxisRaw instead of analogRead
+            int32_t rawValue = readAxisRaw(i);
             processAxisValue(i, rawValue);
         }
     }
@@ -203,5 +209,45 @@ void initializeADS1115IfNeeded() {
     if (!adsInitialized) {
         ads.begin();
         adsInitialized = true;
+    }
+}
+
+void registerADS1115Channel(uint8_t channel) {
+    if (channel > 3) return;
+    
+    // Check if channel is already registered
+    for (uint8_t i = 0; i < adsChannelCount; i++) {
+        if (adsChannelsInUse[i] == channel) return;
+    }
+    
+    // Add channel to the list if there's space
+    if (adsChannelCount < 4) {
+        adsChannelsInUse[adsChannelCount] = channel;
+        adsChannelCount++;
+        // Initialize with a reasonable center value
+        adsLastValues[channel] = 8192; // Mid-range for 16-bit ADC
+    }
+}
+
+void performRoundRobinADS1115Read() {
+    if (!adsInitialized || adsChannelCount == 0) return;
+    
+    static unsigned long lastRoundRobinTime = 0;
+    unsigned long currentTime = millis();
+    
+    // Only read one channel per interval to prevent blocking
+    if (currentTime - lastRoundRobinTime >= adsRoundRobinInterval) {
+        uint8_t channel = adsChannelsInUse[adsRoundRobinIndex];
+        
+        // Read the current channel
+        int16_t val = ads.readADC_SingleEnded(channel);
+        if (val >= 0) { // Valid reading
+            adsLastValues[channel] = val;
+            adsLastReadTimes[channel] = currentTime;
+        }
+        
+        // Move to next channel for next iteration
+        adsRoundRobinIndex = (adsRoundRobinIndex + 1) % adsChannelCount;
+        lastRoundRobinTime = currentTime;
     }
 }
