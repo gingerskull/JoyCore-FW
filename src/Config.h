@@ -17,12 +17,12 @@ enum PinType : uint8_t {
     SHIFTREG_QH    // Serial data out
 };
 
-// Helper: Pin name type (string)
-using PinName = const char*;
+// Helper: Pin name type (string) - renamed to avoid conflict with RP2040 framework PinName
+using HardwarePinName = const char*;
 
 // Pin mapping entry
 struct PinMapEntry {
-    PinName name;
+    HardwarePinName name;
     PinType type;
 };
 
@@ -60,7 +60,7 @@ constexpr uint8_t hardwarePinMapCount = sizeof(hardwarePinMap) / sizeof(hardware
 constexpr uint8_t logicalInputCount = sizeof(logicalInputs) / sizeof(logicalInputs[0]);
 
 // Lookup function: get PinType for a pin name (returns PIN_UNUSED if not found)
-inline PinType getPinType(PinName pin) {
+inline PinType getPinType(HardwarePinName pin) {
     for (uint8_t i = 0; i < hardwarePinMapCount; ++i) {
         if (strcmp(hardwarePinMap[i].name, pin) == 0) {
             return hardwarePinMap[i].type;

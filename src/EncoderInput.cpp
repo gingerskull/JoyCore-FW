@@ -27,7 +27,7 @@ static int encoderReadPin(uint8_t pin) {
     // Check if this pin is configured as a matrix pin or direct pin
     bool isMatrixPin = false;
     for (uint8_t i = 0; i < hardwarePinMapCount; ++i) {
-        PinName pinName = hardwarePinMap[i].name;
+        HardwarePinName pinName = hardwarePinMap[i].name;
         if (atoi(pinName) == pin) {
             PinType type = hardwarePinMap[i].type;
             if (type == BTN_ROW || type == BTN_COL) {
@@ -227,7 +227,7 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                     // Find the actual pin for this matrix position
                     uint8_t rowIdx = 0;
                     for (uint8_t j = 0; j < hardwarePinMapCount; ++j) {
-                        PinName pinName = hardwarePinMap[j].name;
+                        HardwarePinName pinName = hardwarePinMap[j].name;
                         if (getPinType(pinName) == BTN_ROW) {
                             if (rowIdx == logicals[i].u.matrix.row) {
                                 pinA = atoi(pinName); // use Arduino pin number
@@ -253,7 +253,7 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                     isEncB = true;
                     uint8_t rowIdx = 0;
                     for (uint8_t j = 0; j < hardwarePinMapCount; ++j) {
-                        PinName pinName = hardwarePinMap[j].name;
+                        HardwarePinName pinName = hardwarePinMap[j].name;
                         if (getPinType(pinName) == BTN_ROW) {
                             if (rowIdx == logicals[i + 1].u.matrix.row) {
                                 pinB = atoi(pinName); // use Arduino pin number
