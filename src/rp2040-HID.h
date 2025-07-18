@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef PicoGamepad_H
-#define PicoGamepad_H
+#ifndef RP2040_HID_H
+#define RP2040_HID_H
 
 #include "PluggableUSBHID.h"
 #include "platform/Stream.h"
@@ -101,7 +101,7 @@
 namespace arduino
 {
 
-    class PicoGamepad : public USBHID
+    class RP2040_HID : public USBHID
     {
     public:
         // Array of 8 bit values which holds all inputs to be passed via HID
@@ -118,7 +118,7 @@ namespace arduino
     * @param product_id Your product_id
     * @param product_release Your product_release
     */
-        PicoGamepad(bool connect_blocking = true, uint16_t vendor_id = 0x1235, uint16_t product_id = 0x0050, uint16_t product_release = 0x0001);
+        RP2040_HID(bool connect_blocking = true, uint16_t vendor_id = 0x1235, uint16_t product_id = 0x0050, uint16_t product_release = 0x0001);
 
         /**
     * Fully featured constructor
@@ -136,7 +136,7 @@ namespace arduino
     * @param product_id Your product_id
     * @param product_release Your product_release
     */
-        PicoGamepad(USBPhy *phy, uint16_t vendor_id = 0x1235, uint16_t product_id = 0x0050, uint16_t product_release = 0x0001);
+        RP2040_HID(USBPhy *phy, uint16_t vendor_id = 0x1235, uint16_t product_id = 0x0050, uint16_t product_release = 0x0001);
 
         /**
      * Destroy this object
@@ -144,7 +144,7 @@ namespace arduino
      * Any classes which inherit from this class must call deinit
      * before this destructor runs.
      */
-        virtual ~PicoGamepad();
+        virtual ~RP2040_HID();
 
         /**
     * To send a character defined by a modifier(CTRL, SHIFT, ALT) and the key
