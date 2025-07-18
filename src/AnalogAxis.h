@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <Arduino.h>
 #include <Adafruit_ADS1X15.h>
+#include "AxisProcessing.h"
 
 // ADS1115 channel definitions
 #define ADS1115_CH0 100
@@ -11,51 +12,10 @@
 #define ADS1115_CH2 102
 #define ADS1115_CH3 103
 
-enum ResponseCurveType {
-    CURVE_LINEAR,
-    CURVE_S_CURVE,
-    CURVE_EXPONENTIAL,
-    CURVE_CUSTOM
-};
-
-enum AxisFilterLevel {
-    AXIS_FILTER_OFF,
-    AXIS_FILTER_LOW,
-    AXIS_FILTER_MEDIUM,
-    AXIS_FILTER_HIGH
-};
-
 #define ANALOG_AXIS_COUNT 8 // X, Y, Z, Rx, Ry, Rz, S1, S2
 
-struct AxisFilter {
-    int32_t filteredValue = 0;
-    int32_t lastRawValue = 0;
-    int32_t noiseThreshold = 2;
-    uint8_t smoothingFactor = 3;
-    bool initialized = false;
-    AxisFilterLevel filterLevel = AXIS_FILTER_MEDIUM;
-    
-    int32_t velocityThreshold = 20;
-    int32_t lastProcessedValue = 0;
-    uint32_t lastUpdateTime = 0;
-
-    void reset();
-    int32_t filter(int32_t rawValue);
-    void setLevel(AxisFilterLevel level);
-    void setNoiseThreshold(int32_t threshold);
-    void setSmoothingFactor(uint8_t factor);
-    void setVelocityThreshold(int32_t threshold);
-};
-
-struct AxisCurve {
-    ResponseCurveType type = CURVE_LINEAR;
-    int32_t customTable[11] = {0, 102, 204, 306, 408, 512, 614, 716, 818, 920, 1023};
-    uint8_t points = 11;
-
-    int32_t apply(int32_t input);
-    void setType(ResponseCurveType newType);
-    void setCustomCurve(const int32_t* newTable, uint8_t newPoints);
-};
+// Forward declarations - actual implementations are in AxisProcessing.h
+// This keeps the interface clean while the processing logic is modularized
 
 class AnalogAxisManager {
 private:
@@ -125,11 +85,5 @@ public:
 
 // Function to initialize ADS1115 if needed
 void initializeADS1115IfNeeded();
-
-static constexpr int32_t PRESET_TABLES[3][11] = {
-  {0,102,204,306,408,512,614,716,818,920,1023},  // linear
-  {0,10,40,120,260,512,764,904,984,1013,1023},  // s-curve
-  {0,5,20,45,80,125,180,245,320,405,1023}       // expo
-};
 
 #endif // ANALOGAXIS_h

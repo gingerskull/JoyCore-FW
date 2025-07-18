@@ -2,6 +2,7 @@
 #define USER_CONFIG_H
 
 #include "AnalogAxis.h"
+#include "AxisProcessing.h"
 #include "JoystickWrapper.h"
 
 /*
@@ -51,15 +52,15 @@
 // =============================================================================
 
 // X-Axis (Main stick pitch)
-// #define USE_AXIS_X  // DISABLED - No axes connected, was interfering with button pins
+#define USE_AXIS_X  // DISABLED - No axes connected, was interfering with button pins
 #ifdef USE_AXIS_X
-    #define AXIS_X_PIN              26
+    #define AXIS_X_PIN              ADS1115_CH1
     #define AXIS_X_MIN              0
     #define AXIS_X_MAX              32767
-    #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_MEDIUM
-    #define AXIS_X_NOISE_THRESHOLD  3
-    #define AXIS_X_SMOOTHING        2
-    #define AXIS_X_VELOCITY         15
+    #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_OFF
+    #define AXIS_X_NOISE_THRESHOLD  0
+    #define AXIS_X_SMOOTHING        0
+    #define AXIS_X_VELOCITY         0
     #define AXIS_X_CURVE            CURVE_LINEAR
 #endif
 
