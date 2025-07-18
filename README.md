@@ -1,34 +1,34 @@
 # JoyCore-FW
 
-## Teensy 4.0 Port
+## RP2040 Native Implementation
 
-**⚠️ This is the Teensy 4.0 port branch - for the original Arduino Pro Micro version, see the `main` branch.**
+**⚠️ This is the RP2040 native implementation branch - for the original Arduino Pro Micro version, see the `main` branch. For the Teensy 4.0 version, see the `teensy40` branch.**
 
-**Teensy 4.0-based** USB game controller firmware. This port uses Teensy 4.0's USB HID capabilities and supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and analog axes.
+**RP2040-based** USB game controller firmware. This port supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and analog axes.
 
-### Advantages of Teensy 4.0 Port
+![RP2040 Pico Pinout](images/rp2040-pico-pinout.png)
 
-✅ **USB Performance**: Native USB HID implementation
+### Advantages of RP2040 Port
 
-✅ **Simplified Architecture**: No need for complex DynamicHID implementation
+✅ **Dual-Core Processing**: Dual ARM Cortex-M0+ cores at 133MHz
 
-✅ **Processing Power**: 600MHz ARM Cortex-M7 vs 16MHz ATmega32U4
+✅ **PIO Support**: Programmable I/O for hardware-accelerated operations
 
-✅ **Memory**: 1MB Flash + 512KB RAM vs 32KB Flash + 2.5KB RAM
+✅ **Cost-Effective**: More affordable than Teensy 4.0 (~$4-8 vs ~$20-25)
 
-✅ **I/O Pins**: More pins available for button matrices and encoders
+✅ **Memory**: 264KB SRAM + 2MB Flash (typical)
+
+✅ **Wide Board Support**: Works with Raspberry Pi Pico, Adafruit Feather RP2040, and many others
+
+✅ **Native USB**: Uses rp2040-HID library for optimal performance
 
 ### Hardware Requirements
 
-- **Teensy 4.0** (not compatible with Arduino Pro Micro/Leonardo)
+- **RP2040-based board** (Raspberry Pi Pico, Adafruit Feather RP2040, etc.)
 - Compatible with all existing button box hardware designs
 - Same pin mapping concepts apply
 
-#### Teensy 4.0 Pinout Reference
-
-![Teensy 4.0 Pinout](images/Teensy4.0pinOut.png)
-
-Use this pinout reference when configuring your hardware connections in `src/ConfigDigital.h`.
+⚠️ **Important**: RP2040 pins are NOT 5V tolerant. Use level shifters if interfacing with 5V devices.
 
 ---
 
@@ -38,9 +38,9 @@ Use this pinout reference when configuring your hardware connections in `src/Con
 - **Rotary Encoders**: Direct pin, matrix, and shift register-based encoders
 - **Shift Registers**: Expand inputs with [74HC165](https://www.ti.com/lit/ds/symlink/sn74hc165.pdf) chips
 - **Analog Inputs**: Built-in analog pins and ADS1115 16-bit ADC support
-- **USB HID Game Controller**: Native USB interface via Teensy's joystick library
+- **USB HID Game Controller**: Native USB interface via rp2040-HID library
 - **Signal Processing**: Configurable noise filtering and response curves for analog axes
-- **Configuration**: Same format as Arduino version
+- **Configuration**: Same format as Arduino/Teensy versions
 
 ---
 
@@ -48,7 +48,7 @@ Use this pinout reference when configuring your hardware connections in `src/Con
 
 ### 1. Hardware Setup
 
-Connect your Teensy 4.0 and configure the pin mapping in `src/ConfigDigital.h`:
+Connect your RP2040 board and configure the pin mapping in `src/ConfigDigital.h`:
 
 ```cpp
 static const PinMapEntry hardwarePinMap[] = {
@@ -87,8 +87,8 @@ constexpr LogicalInput logicalInputs[] = {
 Set up analog axes in `src/ConfigAxis.h`:
 
 ```cpp
-// Built-in analog pin
-#define AXIS_X_PIN A0
+// Built-in analog pin (RP2040: GPIO26-GPIO28)
+#define AXIS_X_PIN 26
 
 // ADS1115 channel
 #define AXIS_X_PIN ADS1115_CH0  // 16-bit resolution
@@ -107,17 +107,22 @@ Edit `src/ConfigDigital.h` to match your hardware. Each entry defines a pin and 
 - `SHIFTREG_PL`, `SHIFTREG_CLK`, `SHIFTREG_QH`: For shift register chips
 - `BTN`: For direct-wired buttons
 
-### Teensy 4.0 Pin Considerations
+### RP2040 Pin Considerations
 
-Teensy 4.0 has different pin numbering than Arduino Pro Micro:
+RP2040 has different pin numbering and capabilities than other boards:
 
-| Feature | Arduino Pro Micro | Teensy 4.0 | Notes |
-|---------|------------------|------------|-------|
-| Digital I/O | 0-21 | 0-23, 24-33 | More pins available |
-| Analog Input | A0-A3, A6-A10 | A0-A13 | More analog inputs |
-| PWM | Limited | Many pins | PWM support |
-| Interrupts | 2, 3, 7 | Most pins | Interrupt options |
-| I2C | 2, 3 | 18, 19 | For ADS1115 ADC |
+| Feature | Arduino Pro Micro | Teensy 4.0 | RP2040 | Notes |
+|---------|------------------|------------|--------|-------|
+| Digital I/O | 0-21 | 0-23, 24-33 | GPIO0-GPIO28 | GPIO numbering |
+| Analog Input | A0-A3, A6-A10 | A0-A13 | GPIO26-GPIO28 | Limited analog pins |
+| PWM | Limited | Many pins | Most pins | PWM support |
+| Interrupts | 2, 3, 7 | Most pins | All pins | Interrupt options |
+| I2C | 2, 3 | 18, 19 | GPIO4/5 (default) | For ADS1115 |
+
+**RP2040 Analog Pin Limitations:**
+- Only 3 built-in analog pins: GPIO26, GPIO27, GPIO28
+- For more analog inputs, use external ADS1115 ADC
+- 12-bit resolution (0-4095) vs 10-bit on other boards
 
 ### Shift Register Configuration
 
@@ -131,15 +136,20 @@ Set the number of chained 74HC165 chips:
 
 Configure analog axes in `src/ConfigAxis.h`. You can use built-in analog pins or ADS1115 channels:
 
+**Built-in Analog Pins (RP2040):**
+- `GPIO26` - Built-in ADC (12-bit resolution)
+- `GPIO27` - Built-in ADC (12-bit resolution) 
+- `GPIO28` - Built-in ADC (12-bit resolution)
+
 **ADS1115 Channels:**
 - `ADS1115_CH0` - Channel 0 (pins 0-1)
 - `ADS1115_CH1` - Channel 1 (pins 2-3) 
 - `ADS1115_CH2` - Channel 2 (pins 4-5)
 - `ADS1115_CH3` - Channel 3 (pins 6-7)
 
-**ADS1115 Wiring:**
-- SDA → Pin 18 (Teensy 4.0)
-- SCL → Pin 19 (Teensy 4.0)
+**ADS1115 Wiring (RP2040):**
+- SDA → GPIO 4 (Pin 6 on Pico)
+- SCL → GPIO 5 (Pin 7 on Pico)
 - VCC → 3.3V
 - GND → GND
 
@@ -172,7 +182,7 @@ Define your logical inputs in the `logicalInputs` array:
 # Build the project
 pio run
 
-# Upload to Teensy 4.0
+# Upload to RP2040
 pio run --target upload
 ```
 
@@ -182,50 +192,80 @@ pio run --target upload
 
 ### USB Implementation
 - **Arduino Leonardo (main branch)**: Uses custom DynamicHID implementation with PluggableUSB
-- **Teensy 4.0 (this branch)**: Uses native Teensyduino joystick library
+- **Teensy 4.0 (teensy40 branch)**: Uses native Teensyduino joystick library
+- **RP2040 (this branch)**: Uses rp2040-HID library with native TinyUSB stack
 
 ### Performance Comparison
 
-| Metric | Arduino Pro Micro | Teensy 4.0 | Improvement |
-|--------|------------------|------------|-------------|
-| CPU Speed | 16MHz ATmega32U4 | 600MHz ARM Cortex-M7 | 37x faster |
-| Memory | 32KB Flash + 2.5KB RAM | 1MB Flash + 512KB RAM | 32x more |
-| Loop Speed | ~1kHz typical | >10kHz possible | 10x+ faster |
-| Button Response | <10ms | <1ms | 10x+ faster |
-| USB Latency | Variable | Consistent | More consistent |
+| Metric | Arduino Pro Micro | Teensy 4.0 | RP2040 | Notes |
+|--------|------------------|------------|--------|-------|
+| CPU Speed | 16MHz ATmega32U4 | 600MHz ARM Cortex-M7 | 133MHz ARM Cortex-M0+ | Dual-core on RP2040 |
+| Memory | 32KB Flash + 2.5KB RAM | 1MB Flash + 512KB RAM | 2MB Flash + 264KB RAM | Generous memory on all |
+| Loop Speed | ~1kHz typical | >10kHz possible | >5kHz typical | Fast enough for all use cases |
+| Button Response | <10ms | <1ms | <2ms | All platforms responsive |
+| USB Latency | Variable | Consistent | Very consistent | rp2040-HID is excellent |
+| Cost | ~$8-12 | ~$20-25 | ~$4-8 | RP2040 is most cost-effective |
 
 ### USB Descriptors
 - **Arduino Leonardo**: Custom USB HID descriptors required
 - **Teensy 4.0**: Automatic USB descriptor generation
+- **RP2040**: Standard HID gamepad with rp2040-HID
 
 ### Reliability
 - **Arduino Leonardo**: Occasional USB enumeration issues
 - **Teensy 4.0**: Stable USB implementation with better host compatibility
+- **RP2040**: Excellent USB reliability with rp2040-HID library
 
 ---
 
 ## 🔄 Migration Between Branches
 
-### From Arduino Pro Micro to Teensy 4.0
+### Platform Selection Guide
 
-1. **Hardware**: Replace Arduino Pro Micro/Leonardo with Teensy 4.0
-2. **Pin mapping**: Update pin numbers in `ConfigDigital.h` for Teensy 4.0 layout
-3. **Voltage levels**: Ensure 3.3V compatibility (most components work fine)
-4. **Upload**: Use Teensy Loader or PlatformIO Teensy platform
-5. **Performance**: Better USB stability and performance
+**Choose RP2040 if:**
+- Cost is a primary concern
+- You need excellent USB reliability
+- You want to leverage PIO for advanced features
+- You're building multiple units
+
+**Choose Teensy 4.0 if:**
+- You need maximum processing power
+- You have complex analog processing requirements
+- You need the most I/O pins
+- Performance is critical
+
+**Choose Arduino Pro Micro if:**
+- You have existing hardware designed for it
+- You need 5V logic compatibility
+- You're on a very tight budget with existing parts
 
 ### Configuration Compatibility
 
-✅ **Same configuration format**: `ConfigAxis.h` and `ConfigDigital.h` work identically  
+✅ **Same configuration format**: `ConfigAxis.h` and `ConfigDigital.h` work identically across platforms  
 ✅ **Same ADS1115 support**: Same channel definitions and automatic initialization  
 ✅ **Same axis processing**: Identical filtering and curve algorithms  
 ✅ **Same logical input structure**: Matrix, direct pin, and shift register configurations  
 
-The configuration format remains the same - only the hardware platform changes.
+The configuration format remains the same - only the hardware platform and pin numbers change.
+
+### Pin Migration
+
+When migrating between platforms, update pin numbers in `ConfigDigital.h`:
+
+```cpp
+// Arduino Pro Micro
+{"2", BTN_ROW},    // Pin 2
+
+// Teensy 4.0  
+{"2", BTN_ROW},    // Pin 2 (same number)
+
+// RP2040
+{"2", BTN_ROW},    // GPIO 2 (same number, different naming)
+```
 
 ### Configuration Utility Compatibility (**FUTURE**)
 
-A configuration utility would work with both branches because:
+A configuration utility would work with all platforms because:
 - Same configuration format and structure
 - Same ADS1115 channel definitions (`ADS1115_CH0-3`)
 - Same axis processing logic and filter options
@@ -236,32 +276,33 @@ A configuration utility would work with both branches because:
 ## Dependencies
 
 - **PlatformIO**: Development platform
-- **Teensy 4.0**: Target hardware
-- **Teensyduino**: Arduino-compatible framework for Teensy (included with PlatformIO Teensy platform)
+- **RP2040**: Target hardware (Raspberry Pi Pico, Adafruit Feather RP2040, etc.)
+- **Arduino-Pico**: Arduino-compatible framework for RP2040
+- **rp2040-HID**: Native HID implementation for RP2040
 - **Adafruit ADS1X15**: For analog input support
 
 ---
 
 ## Credit
 
-- **[Teensy](https://www.pjrc.com/)** - Microcontroller with USB support
+- **[Raspberry Pi Foundation](https://www.raspberrypi.org/)** - RP2040 microcontroller
+- **[rp2040-HID](https://github.com/earlephilhower/arduino-pico)** - Native HID implementation
 - **[RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)** - Modified and integrated
 - **[Keypad Library](https://playground.arduino.cc/Code/Keypad/)** - Replaced with built-in implementation
-
-Thanks to PJRC for creating Teensy and its USB implementation. The original Arduino Leonardo version was based on the Arduino Joystick Library and related components.
 
 ---
 
 ## Troubleshooting
 
 ### Common Issues
-1. **Pin numbering**: Teensy 4.0 uses different pin numbers than Arduino Pro Micro
-2. **Voltage levels**: Ensure 3.3V compatibility of your components
-3. **USB type**: Use `USB_SERIAL_HID` build flag for development
+1. **Pin numbering**: RP2040 uses GPIO numbering (0-28) instead of Arduino pin numbers
+2. **Analog pins**: Only 3 built-in analog pins available (GPIO26-28)
+3. **Voltage levels**: Ensure 3.3V compatibility of your components
+4. **USB type**: Uses rp2040-HID with automatic HID descriptor generation
 
 ### Debug Options
 - **Serial Monitor**: Available for debugging
-- **USB Descriptor**: Automatically handled by Teensy
+- **USB Descriptor**: Automatically handled by rp2040-HID
 - **LED Indicator**: Use built-in LED for status indication
 
 ---
@@ -271,6 +312,7 @@ Thanks to PJRC for creating Teensy and its USB implementation. The original Ardu
 - Use unique joystick button IDs for each input
 - For encoders, always define A and B channels as consecutive entries
 - You can mix matrix, direct, and shift register inputs freely
-- Teensy 4.0's 3.3V logic is compatible with most 5V devices (check your specific components)
-- The ADS1115 provides 16-bit resolution vs 10-bit for built-in analog pins
+- RP2040's 3.3V logic is compatible with most 5V devices (check your specific components)
+- The ADS1115 provides 16-bit resolution vs 12-bit for built-in analog pins
 - Configuration is identical between branches - only hardware platform differs
+- RP2040's limited analog pins make ADS1115 more valuable for complex setups
