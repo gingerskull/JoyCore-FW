@@ -39,7 +39,7 @@
 - **Shift Registers**: Expand inputs with [74HC165](https://www.ti.com/lit/ds/symlink/sn74hc165.pdf) chips
 - **Analog Inputs**: Built-in analog pins and ADS1115 16-bit ADC support
 - **USB HID Game Controller**: Native USB interface via rp2040-HID library
-- **Signal Processing**: Configurable noise filtering and response curves for analog axes
+- **Advanced Signal Processing**: Multi-stage filtering with noise reduction, velocity-adaptive smoothing or EWMA filtering, and intelligent deadband
 - **Configuration**: Same format as Arduino/Teensy versions
 
 ---
@@ -87,11 +87,29 @@ constexpr LogicalInput logicalInputs[] = {
 Set up analog axes in `src/ConfigAxis.h`:
 
 ```cpp
-// Built-in analog pin (RP2040: GPIO26-GPIO28)
-#define AXIS_X_PIN 26
+// X-Axis with advanced processing
+#define USE_AXIS_X
+#ifdef USE_AXIS_X
+    #define AXIS_X_PIN              26              // Built-in analog pin
+    #define AXIS_X_MIN              0               // Input range minimum
+    #define AXIS_X_MAX              32767           // Input range maximum
+    #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_EWMA // Filter type
+    #define AXIS_X_EWMA_ALPHA       50              // EWMA alpha (0-1000)
+    #define AXIS_X_DEADBAND         250             // Deadband size
+    #define AXIS_X_CURVE            CURVE_LINEAR    // Response curve
+#endif
 
-// ADS1115 channel
-#define AXIS_X_PIN ADS1115_CH0  // 16-bit resolution
+// Y-Axis with ADS1115 high-resolution input
+#define USE_AXIS_Y
+#ifdef USE_AXIS_Y
+    #define AXIS_Y_PIN              ADS1115_CH0     // 16-bit ADC channel
+    #define AXIS_Y_MIN              0
+    #define AXIS_Y_MAX              32767
+    #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_MEDIUM
+    #define AXIS_Y_EWMA_ALPHA       30
+    #define AXIS_Y_DEADBAND         500
+    #define AXIS_Y_CURVE            CURVE_S_CURVE
+#endif
 ```
 
 ---
@@ -155,17 +173,32 @@ Configure analog axes in `src/ConfigAxis.h`. You can use built-in analog pins or
 
 The ADS1115 is automatically initialized when any axis uses ADS1115 channels.
 
-**Filter Options:**
-- `AXIS_FILTER_OFF` - No filtering (raw values)
-- `AXIS_FILTER_LOW` - Light filtering
-- `AXIS_FILTER_MEDIUM` - Moderate filtering (default)
-- `AXIS_FILTER_HIGH` - Heavy filtering
+**Advanced Filter Options:**
+- `AXIS_FILTER_OFF` - No filtering (raw values pass through)
+- `AXIS_FILTER_LOW` - Light filtering for high-precision controls
+- `AXIS_FILTER_MEDIUM` - Moderate filtering for general use (default)
+- `AXIS_FILTER_HIGH` - Heavy filtering for noisy or low-quality sensors
+- `AXIS_FILTER_EWMA` - EWMA (Exponentially Weighted Moving Average) filtering
+
+**EWMA Filtering:**
+- Memory-efficient smoothing algorithm
+- Configurable alpha parameter (0-1000, scaled by 1000)
+- Higher alpha = less smoothing, more responsive
+- Lower alpha = more smoothing, less responsive
+- Common values: 30 (0.03), 100 (0.1), 200 (0.2), 500 (0.5)
+
+**Intelligent Deadband:**
+- Prevents jitter when control is at rest
+- Works around current axis position, not fixed center
+- Uses statistical analysis to avoid interfering with slow movements
+- Configurable settle duration (default: 150ms)
+- Typical values: 0 (off), 500-1000 (light), 1000-2000 (medium), 2000-5000 (heavy)
 
 **Response Curves:**
 - `CURVE_LINEAR` - Linear response (1:1 mapping)
 - `CURVE_S_CURVE` - S-curve (gentle at center, steeper at edges)
 - `CURVE_EXPONENTIAL` - Exponential (gentle at start, steep at end)
-- `CURVE_CUSTOM` - Custom curve (define your own)
+- `CURVE_CUSTOM` - Custom curve (define your own lookup table)
 
 ### Logical Inputs
 
@@ -243,7 +276,7 @@ pio run --target upload
 
 ✅ **Same configuration format**: `ConfigAxis.h` and `ConfigDigital.h` work identically across platforms  
 ✅ **Same ADS1115 support**: Same channel definitions and automatic initialization  
-✅ **Same axis processing**: Identical filtering and curve algorithms  
+✅ **Enhanced axis processing**: Advanced multi-stage filtering with EWMA, intelligent deadband, and velocity-adaptive smoothing  
 ✅ **Same logical input structure**: Matrix, direct pin, and shift register configurations  
 
 The configuration format remains the same - only the hardware platform and pin numbers change.
@@ -273,6 +306,72 @@ A configuration utility would work with all platforms because:
 
 ---
 
+## 🔧 Advanced Axis Processing
+
+The RP2040 implementation includes sophisticated signal processing capabilities designed for professional-grade control systems:
+
+### Multi-Stage Processing Chain
+
+```
+Raw Input → Deadband → Noise Filter → Velocity-Adaptive Smoothing → Response Curve → Output
+```
+
+**1. Intelligent Deadband**
+- Prevents jitter when control is at rest
+- Uses rolling average analysis to detect settled state
+- Works around current position, not fixed center point
+- Configurable settle duration (default: 150ms)
+
+**2. Noise Filtering**
+- Configurable noise threshold (0-10 typical)
+- Ignores small changes below threshold
+- Maintains responsiveness during active control
+
+**3. Velocity-Adaptive Smoothing**
+- Calculates movement velocity in real-time
+- Reduces smoothing during fast movements for responsiveness
+- Increases smoothing during slow movements for stability
+- Emergency pass-through for very fast movements
+
+**4. EWMA Filtering**
+- Memory-efficient Exponentially Weighted Moving Average
+- Integer-only arithmetic (no floating point)
+- Configurable alpha parameter for fine-tuning
+- Ideal for consistent timing applications
+
+**5. Response Curves**
+- Linear, S-curve, exponential, and custom curves
+- Lookup table interpolation for smooth transitions
+- Custom curves support up to 11 control points
+
+### Configuration Examples
+
+**High-Precision Control (Flight Stick):**
+```cpp
+#define AXIS_X_FILTER_LEVEL     AXIS_FILTER_EWMA
+#define AXIS_X_EWMA_ALPHA       25              // Heavy smoothing
+#define AXIS_X_DEADBAND         500             // Light deadband
+#define AXIS_X_CURVE            CURVE_S_CURVE   // Gentle center
+```
+
+**Responsive Control (Racing Wheel):**
+```cpp
+#define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_LOW
+#define AXIS_Y_EWMA_ALPHA       200             // Light smoothing
+#define AXIS_Y_DEADBAND         0               // No deadband
+#define AXIS_Y_CURVE            CURVE_LINEAR    // Direct response
+```
+
+**Noisy Sensor (Potentiometer):**
+```cpp
+#define AXIS_Z_FILTER_LEVEL     AXIS_FILTER_HIGH
+#define AXIS_Z_EWMA_ALPHA       30              // Heavy smoothing
+#define AXIS_Z_DEADBAND         1000            // Medium deadband
+#define AXIS_Z_CURVE            CURVE_LINEAR    // Simple curve
+```
+
+---
+
 ## Dependencies
 
 - **PlatformIO**: Development platform
@@ -289,6 +388,8 @@ A configuration utility would work with all platforms because:
 - **[rp2040-HID](https://github.com/earlephilhower/arduino-pico)** - Native HID implementation
 - **[RotaryEncoder Library](https://github.com/mathertel/RotaryEncoder)** - Modified and integrated
 - **[Keypad Library](https://playground.arduino.cc/Code/Keypad/)** - Replaced with built-in implementation
+- **[EWMA Filter](https://github.com/jonnieZG/EWMA)** - Exponentially Weighted Moving Average algorithm
+- **[Adafruit ADS1X15](https://github.com/adafruit/Adafruit_ADS1X15)** - High-resolution ADC support
 
 ---
 
@@ -314,5 +415,7 @@ A configuration utility would work with all platforms because:
 - You can mix matrix, direct, and shift register inputs freely
 - RP2040's 3.3V logic is compatible with most 5V devices (check your specific components)
 - The ADS1115 provides 16-bit resolution vs 12-bit for built-in analog pins
-- Configuration is identical between branches - only hardware platform differs
+- Advanced signal processing includes EWMA filtering, intelligent deadband, and velocity-adaptive smoothing
+- Configuration format is identical between branches - only hardware platform differs
 - RP2040's limited analog pins make ADS1115 more valuable for complex setups
+- New processing chain: Raw Input → Deadband → Noise Filter → Velocity-Adaptive Smoothing → Response Curve → Output
