@@ -111,13 +111,13 @@ Edit `src/ConfigDigital.h` to match your hardware. Each entry defines a pin and 
 
 RP2040 has different pin numbering and capabilities than other boards:
 
-| Feature | Arduino Pro Micro | Teensy 4.0 | RP2040 | Notes |
-|---------|------------------|------------|--------|-------|
-| Digital I/O | 0-21 | 0-23, 24-33 | GPIO0-GPIO28 | GPIO numbering |
-| Analog Input | A0-A3, A6-A10 | A0-A13 | GPIO26-GPIO28 | Limited analog pins |
-| PWM | Limited | Many pins | Most pins | PWM support |
-| Interrupts | 2, 3, 7 | Most pins | All pins | Interrupt options |
-| I2C | 2, 3 | 18, 19 | GPIO4/5 (default) | For ADS1115 |
+| Feature | Arduino Pro Micro | Teensy 4.0 | RP2040 |
+|---------|------------------|------------|--------|
+| Digital I/O | 0-21 | 0-23, 24-33 | GPIO0-GPIO28 |
+| Analog Input | A0-A3, A6-A10 | A0-A13 | GPIO26-GPIO28 |
+| PWM | Limited | Many pins | Most pins |
+| Interrupts | 2, 3, 7 | Most pins | All pins |
+| I2C | 2, 3 | 18, 19 | GPIO4/5 (default) |
 
 **RP2040 Analog Pin Limitations:**
 - Only 3 built-in analog pins: GPIO26, GPIO27, GPIO28
@@ -197,14 +197,14 @@ pio run --target upload
 
 ### Performance Comparison
 
-| Metric | Arduino Pro Micro | Teensy 4.0 | RP2040 | Notes |
-|--------|------------------|------------|--------|-------|
-| CPU Speed | 16MHz ATmega32U4 | 600MHz ARM Cortex-M7 | 133MHz ARM Cortex-M0+ | Dual-core on RP2040 |
-| Memory | 32KB Flash + 2.5KB RAM | 1MB Flash + 512KB RAM | 2MB Flash + 264KB RAM | Generous memory on all |
-| Loop Speed | ~1kHz typical | >10kHz possible | >5kHz typical | Fast enough for all use cases |
-| Button Response | <10ms | <1ms | <2ms | All platforms responsive |
-| USB Latency | Variable | Consistent | Very consistent | rp2040-HID is excellent |
-| Cost | ~$8-12 | ~$20-25 | ~$4-8 | RP2040 is most cost-effective |
+| Metric | Arduino Pro Micro | Teensy 4.0 | RP2040 |
+|--------|------------------|------------|--------|
+| CPU Speed | 16MHz ATmega32U4 | 600MHz ARM Cortex-M7 | 133MHz ARM Cortex-M0+ |
+| Memory | 32KB Flash + 2.5KB RAM | 1MB Flash + 512KB RAM | 2MB Flash + 264KB RAM |
+| Loop Speed | ~1kHz typical | >10kHz possible | >5kHz typical |
+| Button Response | <10ms | <1ms | <2ms |
+| USB Latency | Variable | Consistent | Very consistent |
+| Cost | ~$8-12 | ~$20-25 | ~$4-8 |
 
 ### USB Descriptors
 - **Arduino Leonardo**: Custom USB HID descriptors required
