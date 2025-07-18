@@ -52,7 +52,7 @@
 // =============================================================================
 
 // X-Axis (Main stick pitch)
-#define USE_AXIS_X  // DISABLED - No axes connected, was interfering with button pins
+#define USE_AXIS_X
 #ifdef USE_AXIS_X
     #define AXIS_X_PIN              ADS1115_CH1
     #define AXIS_X_MIN              0
@@ -65,7 +65,7 @@
 #endif
 
 //Y-Axis (Main stick yaw)
-#define USE_AXIS_Y  // DISABLED - No axes connected, was interfering with button pins
+#define USE_AXIS_Y
 #ifdef USE_AXIS_Y
     #define AXIS_Y_PIN              ADS1115_CH0
     #define AXIS_Y_MIN              0
@@ -159,37 +159,7 @@
 // DYNAMIC AXIS MAPPING FUNCTION
 // =============================================================================
 
-/**
- * @brief Maps axis values dynamically based on pin type and user-defined ranges
- * @param rawValue Raw value from analog pin or ADS1115
- * @param pin Pin identifier (A0-A13 for analog pins, ADS1115_CH0-3 for ADS1115)
- * @param userMin User-defined minimum value for clipping
- * @param userMax User-defined maximum value for clipping
- * @return Mapped value in -32767 to 32767 range for rp2040-HID joystick
- */
-inline int32_t mapAxisValue(int32_t rawValue, int8_t pin, int32_t userMin, int32_t userMax) {
-    int32_t sourceMin, sourceMax;
-    
-    // Determine source range based on pin type
-    if (pin >= 100 && pin <= 103) {
-        // ADS1115 channels: 16-bit range (0-16383)
-        sourceMin = 0;
-        sourceMax = 16383;
-    } else {
-        // Analog pins: 10-bit range (0-1023)
-        sourceMin = 0;
-        sourceMax = 1023;
-    }
-    
-    // First, map from source range to user-defined range for clipping
-    int32_t clippedValue = map(rawValue, sourceMin, sourceMax, userMin, userMax);
-    
-    // Then constrain to user-defined min/max (this allows rotation zone clipping)
-    clippedValue = constrain(clippedValue, userMin, userMax);
-    
-    // Finally, map to rp2040-HID joystick range (-32767 to 32767)
-    return map(clippedValue, userMin, userMax, -32767, 32767);
-}
+
 
 // =============================================================================
 // SETUP FUNCTION - DO NOT MODIFY
@@ -227,148 +197,151 @@ inline void setupUserAxes(Joystick_& joystick) {
     if (needsADS1115) {
         initializeADS1115IfNeeded();
     }
-
-    #ifdef USE_AXIS_X
-        joystick.setAxisPin(AnalogAxisManager::AXIS_X, AXIS_X_PIN);
-        joystick.setAxisRange(AnalogAxisManager::AXIS_X, AXIS_X_MIN, AXIS_X_MAX);
-        joystick.setAxisFilterLevel(AnalogAxisManager::AXIS_X, AXIS_X_FILTER_LEVEL);
-        joystick.setAxisNoiseThreshold(AnalogAxisManager::AXIS_X, AXIS_X_NOISE_THRESHOLD);
-        joystick.setAxisSmoothingFactor(AnalogAxisManager::AXIS_X, AXIS_X_SMOOTHING);
-        joystick.setAxisVelocityThreshold(AnalogAxisManager::AXIS_X, AXIS_X_VELOCITY);
-        joystick.setAxisResponseCurve(AnalogAxisManager::AXIS_X, AXIS_X_CURVE);
-    #endif
     
-    #ifdef USE_AXIS_Y
-        joystick.setAxisPin(AnalogAxisManager::AXIS_Y, AXIS_Y_PIN);
-        joystick.setAxisRange(AnalogAxisManager::AXIS_Y, AXIS_Y_MIN, AXIS_Y_MAX);
-        joystick.setAxisFilterLevel(AnalogAxisManager::AXIS_Y, AXIS_Y_FILTER_LEVEL);
-        joystick.setAxisNoiseThreshold(AnalogAxisManager::AXIS_Y, AXIS_Y_NOISE_THRESHOLD);
-        joystick.setAxisSmoothingFactor(AnalogAxisManager::AXIS_Y, AXIS_Y_SMOOTHING);
-        joystick.setAxisVelocityThreshold(AnalogAxisManager::AXIS_Y, AXIS_Y_VELOCITY);
-        joystick.setAxisResponseCurve(AnalogAxisManager::AXIS_Y, AXIS_Y_CURVE);
-    #endif
-    
-    #ifdef USE_AXIS_Z
-        joystick.setAxisPin(AnalogAxisManager::AXIS_Z, AXIS_Z_PIN);
-        joystick.setAxisRange(AnalogAxisManager::AXIS_Z, AXIS_Z_MIN, AXIS_Z_MAX);
-        joystick.setAxisFilterLevel(AnalogAxisManager::AXIS_Z, AXIS_Z_FILTER_LEVEL);
-        joystick.setAxisNoiseThreshold(AnalogAxisManager::AXIS_Z, AXIS_Z_NOISE_THRESHOLD);
-        joystick.setAxisSmoothingFactor(AnalogAxisManager::AXIS_Z, AXIS_Z_SMOOTHING);
-        joystick.setAxisVelocityThreshold(AnalogAxisManager::AXIS_Z, AXIS_Z_VELOCITY);
-        joystick.setAxisResponseCurve(AnalogAxisManager::AXIS_Z, AXIS_Z_CURVE);
-    #endif
-    
-    #ifdef USE_AXIS_RX
-        joystick.setAxisPin(AnalogAxisManager::AXIS_RX, AXIS_RX_PIN);
-        joystick.setAxisRange(AnalogAxisManager::AXIS_RX, AXIS_RX_MIN, AXIS_RX_MAX);
-        joystick.setAxisFilterLevel(AnalogAxisManager::AXIS_RX, AXIS_RX_FILTER_LEVEL);
-        joystick.setAxisNoiseThreshold(AnalogAxisManager::AXIS_RX, AXIS_RX_NOISE_THRESHOLD);
-        joystick.setAxisSmoothingFactor(AnalogAxisManager::AXIS_RX, AXIS_RX_SMOOTHING);
-        joystick.setAxisVelocityThreshold(AnalogAxisManager::AXIS_RX, AXIS_RX_VELOCITY);
-        joystick.setAxisResponseCurve(AnalogAxisManager::AXIS_RX, AXIS_RX_CURVE);
-    #endif
-    
-    #ifdef USE_AXIS_RY
-        joystick.setAxisPin(AnalogAxisManager::AXIS_RY, AXIS_RY_PIN);
-        joystick.setAxisRange(AnalogAxisManager::AXIS_RY, AXIS_RY_MIN, AXIS_RY_MAX);
-        joystick.setAxisFilterLevel(AnalogAxisManager::AXIS_RY, AXIS_RY_FILTER_LEVEL);
-        joystick.setAxisNoiseThreshold(AnalogAxisManager::AXIS_RY, AXIS_RY_NOISE_THRESHOLD);
-        joystick.setAxisSmoothingFactor(AnalogAxisManager::AXIS_RY, AXIS_RY_SMOOTHING);
-        joystick.setAxisVelocityThreshold(AnalogAxisManager::AXIS_RY, AXIS_RY_VELOCITY);
-        joystick.setAxisResponseCurve(AnalogAxisManager::AXIS_RY, AXIS_RY_CURVE);
-    #endif
-    
-    #ifdef USE_AXIS_RZ
-        joystick.setAxisPin(AnalogAxisManager::AXIS_RZ, AXIS_RZ_PIN);
-        joystick.setAxisRange(AnalogAxisManager::AXIS_RZ, AXIS_RZ_MIN, AXIS_RZ_MAX);
-        joystick.setAxisFilterLevel(AnalogAxisManager::AXIS_RZ, AXIS_RZ_FILTER_LEVEL);
-        joystick.setAxisNoiseThreshold(AnalogAxisManager::AXIS_RZ, AXIS_RZ_NOISE_THRESHOLD);
-        joystick.setAxisSmoothingFactor(AnalogAxisManager::AXIS_RZ, AXIS_RZ_SMOOTHING);
-        joystick.setAxisVelocityThreshold(AnalogAxisManager::AXIS_RZ, AXIS_RZ_VELOCITY);
-        joystick.setAxisResponseCurve(AnalogAxisManager::AXIS_RZ, AXIS_RZ_CURVE);
-    #endif
-    
-    #ifdef USE_AXIS_S1
-        joystick.setAxisPin(AnalogAxisManager::AXIS_S1, AXIS_S1_PIN);
-        joystick.setAxisRange(AnalogAxisManager::AXIS_S1, AXIS_S1_MIN, AXIS_S1_MAX);
-        joystick.setAxisFilterLevel(AnalogAxisManager::AXIS_S1, AXIS_S1_FILTER_LEVEL);
-        joystick.setAxisNoiseThreshold(AnalogAxisManager::AXIS_S1, AXIS_S1_NOISE_THRESHOLD);
-        joystick.setAxisSmoothingFactor(AnalogAxisManager::AXIS_S1, AXIS_S1_SMOOTHING);
-        joystick.setAxisVelocityThreshold(AnalogAxisManager::AXIS_S1, AXIS_S1_VELOCITY);
-        joystick.setAxisResponseCurve(AnalogAxisManager::AXIS_S1, AXIS_S1_CURVE);
-    #endif
-    
-    #ifdef USE_AXIS_S2
-        joystick.setAxisPin(AnalogAxisManager::AXIS_S2, AXIS_S2_PIN);
-        joystick.setAxisRange(AnalogAxisManager::AXIS_S2, AXIS_S2_MIN, AXIS_S2_MAX);
-        joystick.setAxisFilterLevel(AnalogAxisManager::AXIS_S2, AXIS_S2_FILTER_LEVEL);
-        joystick.setAxisNoiseThreshold(AnalogAxisManager::AXIS_S2, AXIS_S2_NOISE_THRESHOLD);
-        joystick.setAxisSmoothingFactor(AnalogAxisManager::AXIS_S2, AXIS_S2_SMOOTHING);
-        joystick.setAxisVelocityThreshold(AnalogAxisManager::AXIS_S2, AXIS_S2_VELOCITY);
-        joystick.setAxisResponseCurve(AnalogAxisManager::AXIS_S2, AXIS_S2_CURVE);
-    #endif
+    // Note: Axis configuration is now handled directly in readUserAxes()
+    // using AnalogAxisManager instead of going through joystick wrapper
 }
 
 inline void readUserAxes(Joystick_& joystick) {
     // Use the AnalogAxisManager to read all axes (handles both analog pins and ADS1115)
     static AnalogAxisManager axisManager;
+    static bool configured = false;
     
+    // Configure axis manager on first run
+    if (!configured) {
+        #ifdef USE_AXIS_X
+            axisManager.setAxisPin(AnalogAxisManager::AXIS_X, AXIS_X_PIN);
+            axisManager.setAxisRange(AnalogAxisManager::AXIS_X, AXIS_X_MIN, AXIS_X_MAX);
+            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_X, AXIS_X_FILTER_LEVEL);
+            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_X, AXIS_X_NOISE_THRESHOLD);
+            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_X, AXIS_X_SMOOTHING);
+            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_X, AXIS_X_VELOCITY);
+            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_X, AXIS_X_CURVE);
+            axisManager.enableAxis(AnalogAxisManager::AXIS_X, true);
+        #endif
+        
+        #ifdef USE_AXIS_Y
+            axisManager.setAxisPin(AnalogAxisManager::AXIS_Y, AXIS_Y_PIN);
+            axisManager.setAxisRange(AnalogAxisManager::AXIS_Y, AXIS_Y_MIN, AXIS_Y_MAX);
+            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_Y, AXIS_Y_FILTER_LEVEL);
+            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_Y, AXIS_Y_NOISE_THRESHOLD);
+            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_Y, AXIS_Y_SMOOTHING);
+            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_Y, AXIS_Y_VELOCITY);
+            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_Y, AXIS_Y_CURVE);
+            axisManager.enableAxis(AnalogAxisManager::AXIS_Y, true);
+        #endif
+        
+        #ifdef USE_AXIS_Z
+            axisManager.setAxisPin(AnalogAxisManager::AXIS_Z, AXIS_Z_PIN);
+            axisManager.setAxisRange(AnalogAxisManager::AXIS_Z, AXIS_Z_MIN, AXIS_Z_MAX);
+            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_Z, AXIS_Z_FILTER_LEVEL);
+            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_Z, AXIS_Z_NOISE_THRESHOLD);
+            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_Z, AXIS_Z_SMOOTHING);
+            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_Z, AXIS_Z_VELOCITY);
+            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_Z, AXIS_Z_CURVE);
+            axisManager.enableAxis(AnalogAxisManager::AXIS_Z, true);
+        #endif
+        
+        #ifdef USE_AXIS_RX
+            axisManager.setAxisPin(AnalogAxisManager::AXIS_RX, AXIS_RX_PIN);
+            axisManager.setAxisRange(AnalogAxisManager::AXIS_RX, AXIS_RX_MIN, AXIS_RX_MAX);
+            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_RX, AXIS_RX_FILTER_LEVEL);
+            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_RX, AXIS_RX_NOISE_THRESHOLD);
+            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_RX, AXIS_RX_SMOOTHING);
+            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_RX, AXIS_RX_VELOCITY);
+            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_RX, AXIS_RX_CURVE);
+            axisManager.enableAxis(AnalogAxisManager::AXIS_RX, true);
+        #endif
+        
+        #ifdef USE_AXIS_RY
+            axisManager.setAxisPin(AnalogAxisManager::AXIS_RY, AXIS_RY_PIN);
+            axisManager.setAxisRange(AnalogAxisManager::AXIS_RY, AXIS_RY_MIN, AXIS_RY_MAX);
+            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_RY, AXIS_RY_FILTER_LEVEL);
+            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_RY, AXIS_RY_NOISE_THRESHOLD);
+            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_RY, AXIS_RY_SMOOTHING);
+            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_RY, AXIS_RY_VELOCITY);
+            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_RY, AXIS_RY_CURVE);
+            axisManager.enableAxis(AnalogAxisManager::AXIS_RY, true);
+        #endif
+        
+        #ifdef USE_AXIS_RZ
+            axisManager.setAxisPin(AnalogAxisManager::AXIS_RZ, AXIS_RZ_PIN);
+            axisManager.setAxisRange(AnalogAxisManager::AXIS_RZ, AXIS_RZ_MIN, AXIS_RZ_MAX);
+            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_RZ, AXIS_RZ_FILTER_LEVEL);
+            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_RZ, AXIS_RZ_NOISE_THRESHOLD);
+            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_RZ, AXIS_RZ_SMOOTHING);
+            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_RZ, AXIS_RZ_VELOCITY);
+            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_RZ, AXIS_RZ_CURVE);
+            axisManager.enableAxis(AnalogAxisManager::AXIS_RZ, true);
+        #endif
+        
+        #ifdef USE_AXIS_S1
+            axisManager.setAxisPin(AnalogAxisManager::AXIS_S1, AXIS_S1_PIN);
+            axisManager.setAxisRange(AnalogAxisManager::AXIS_S1, AXIS_S1_MIN, AXIS_S1_MAX);
+            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_S1, AXIS_S1_FILTER_LEVEL);
+            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_S1, AXIS_S1_NOISE_THRESHOLD);
+            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_S1, AXIS_S1_SMOOTHING);
+            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_S1, AXIS_S1_VELOCITY);
+            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_S1, AXIS_S1_CURVE);
+            axisManager.enableAxis(AnalogAxisManager::AXIS_S1, true);
+        #endif
+        
+        #ifdef USE_AXIS_S2
+            axisManager.setAxisPin(AnalogAxisManager::AXIS_S2, AXIS_S2_PIN);
+            axisManager.setAxisRange(AnalogAxisManager::AXIS_S2, AXIS_S2_MIN, AXIS_S2_MAX);
+            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_S2, AXIS_S2_FILTER_LEVEL);
+            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_S2, AXIS_S2_NOISE_THRESHOLD);
+            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_S2, AXIS_S2_SMOOTHING);
+            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_S2, AXIS_S2_VELOCITY);
+            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_S2, AXIS_S2_CURVE);
+            axisManager.enableAxis(AnalogAxisManager::AXIS_S2, true);
+        #endif
+        
+        configured = true;
+    }
+    
+    // Read and process all enabled axes using the AnalogAxisManager
+    axisManager.readAllAxes();
+    
+    // Set joystick values for all enabled axes
     #ifdef USE_AXIS_X
-        axisManager.setAxisPin(AnalogAxisManager::AXIS_X, AXIS_X_PIN);
-        int32_t xVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_X);
-        // Dynamic mapping based on pin type and user-defined min/max
-        int32_t mappedXVal = mapAxisValue(xVal, AXIS_X_PIN, AXIS_X_MIN, AXIS_X_MAX);
-        joystick.setAxis(AnalogAxisManager::AXIS_X, mappedXVal);
+        int32_t processedXVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_X);
+        joystick.setAxis(AnalogAxisManager::AXIS_X, processedXVal);
     #endif
     
     #ifdef USE_AXIS_Y
-        axisManager.setAxisPin(AnalogAxisManager::AXIS_Y, AXIS_Y_PIN);
-        int32_t yVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_Y);
-        // Dynamic mapping based on pin type and user-defined min/max
-        int32_t mappedYVal = mapAxisValue(yVal, AXIS_Y_PIN, AXIS_Y_MIN, AXIS_Y_MAX);
-        joystick.setAxis(AnalogAxisManager::AXIS_Y, mappedYVal);
+        int32_t processedYVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_Y);
+        joystick.setAxis(AnalogAxisManager::AXIS_Y, processedYVal);
     #endif
     
     #ifdef USE_AXIS_Z
-        axisManager.setAxisPin(AnalogAxisManager::AXIS_Z, AXIS_Z_PIN);
-        int32_t zVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_Z);
-        int32_t mappedZVal = mapAxisValue(zVal, AXIS_Z_PIN, AXIS_Z_MIN, AXIS_Z_MAX);
-        joystick.setAxis(AnalogAxisManager::AXIS_Z, mappedZVal);
+        int32_t processedZVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_Z);
+        joystick.setAxis(AnalogAxisManager::AXIS_Z, processedZVal);
     #endif
     
     #ifdef USE_AXIS_RX
-        axisManager.setAxisPin(AnalogAxisManager::AXIS_RX, AXIS_RX_PIN);
-        int32_t rxVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_RX);
-        int32_t mappedRxVal = mapAxisValue(rxVal, AXIS_RX_PIN, AXIS_RX_MIN, AXIS_RX_MAX);
-        joystick.setAxis(AnalogAxisManager::AXIS_RX, mappedRxVal);
+        int32_t processedRxVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_RX);
+        joystick.setAxis(AnalogAxisManager::AXIS_RX, processedRxVal);
     #endif
     
     #ifdef USE_AXIS_RY
-        axisManager.setAxisPin(AnalogAxisManager::AXIS_RY, AXIS_RY_PIN);
-        int32_t ryVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_RY);
-        int32_t mappedRyVal = mapAxisValue(ryVal, AXIS_RY_PIN, AXIS_RY_MIN, AXIS_RY_MAX);
-        joystick.setAxis(AnalogAxisManager::AXIS_RY, mappedRyVal);
+        int32_t processedRyVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_RY);
+        joystick.setAxis(AnalogAxisManager::AXIS_RY, processedRyVal);
     #endif
     
     #ifdef USE_AXIS_RZ
-        axisManager.setAxisPin(AnalogAxisManager::AXIS_RZ, AXIS_RZ_PIN);
-        int32_t rzVal = axisManager.readAxisRaw(AnalogAxisManager::AXIS_RZ);
-        int32_t mappedRzVal = mapAxisValue(rzVal, AXIS_RZ_PIN, AXIS_RZ_MIN, AXIS_RZ_MAX);
-        joystick.setAxis(AnalogAxisManager::AXIS_RZ, mappedRzVal);
+        int32_t processedRzVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_RZ);
+        joystick.setAxis(AnalogAxisManager::AXIS_RZ, processedRzVal);
     #endif
     
     #ifdef USE_AXIS_S1
-        axisManager.setAxisPin(AnalogAxisManager::AXIS_S1, AXIS_S1_PIN);
-        int32_t s1Val = axisManager.readAxisRaw(AnalogAxisManager::AXIS_S1);
-        int32_t mappedS1Val = mapAxisValue(s1Val, AXIS_S1_PIN, AXIS_S1_MIN, AXIS_S1_MAX);
-        joystick.setAxis(AnalogAxisManager::AXIS_S1, mappedS1Val);
+        int32_t processedS1Val = axisManager.getAxisValue(AnalogAxisManager::AXIS_S1);
+        joystick.setAxis(AnalogAxisManager::AXIS_S1, processedS1Val);
     #endif
     
     #ifdef USE_AXIS_S2
-        axisManager.setAxisPin(AnalogAxisManager::AXIS_S2, AXIS_S2_PIN);
-        int32_t s2Val = axisManager.readAxisRaw(AnalogAxisManager::AXIS_S2);
-        int32_t mappedS2Val = mapAxisValue(s2Val, AXIS_S2_PIN, AXIS_S2_MIN, AXIS_S2_MAX);
-        joystick.setAxis(AnalogAxisManager::AXIS_S2, mappedS2Val);
+        int32_t processedS2Val = axisManager.getAxisValue(AnalogAxisManager::AXIS_S2);
+        joystick.setAxis(AnalogAxisManager::AXIS_S2, processedS2Val);
     #endif
 }
 

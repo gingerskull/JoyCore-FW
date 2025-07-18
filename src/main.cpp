@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GNGR-ButtonBox: Custom Button Box Controller
+ * JoyCore-FW: RP2040 USB Game Controller
  * 
- * A versatile RP2040 Raspberry Pi Pico-based USB game controller supporting:
+ * A versatile RP2040-based USB game controller supporting:
  * - Matrix button scanning
  * - Rotary encoders (matrix, direct pin, and shift register)
  * - Direct pin buttons
  * - 74HC165 shift register expansion
  * - ADS1115 external ADC for high-resolution analog inputs
+ * - Advanced axis signal processing and filtering
  * 
- * Appears as a standard USB gamepad for maximum compatibility.
- * 
- * Ported to RP2040 Raspberry Pi Pico using rp2040-HID library.
+ * Uses rp2040-HID library for native USB HID gamepad functionality.
  */
 
 #include <Arduino.h>
@@ -25,7 +24,7 @@
 #include "ConfigAxis.h"
 
 
-// USB joystick configuration: 32 buttons, 1 hat switch, NO AXES  
+// USB joystick configuration: 32 buttons, 1 hat switch, 8 analog axes
 // rp2040-HID handles USB descriptors automatically
 Joystick_ MyJoystick(0x03, 0x04, 32, 0, true, true, false, false, false, false, false, false);
 
@@ -48,7 +47,7 @@ void setup() {
     }
     digitalWrite(LED_BUILTIN, LOW);
     
-    Serial.println("GNGR-ButtonBox RP2040 Pico - Final Version");
+    Serial.println("JoyCore-FW RP2040 - Initializing...");
     
     // Initialize USB joystick interface EARLY for HID functionality
     MyJoystick.begin();
@@ -58,18 +57,18 @@ void setup() {
     
     Serial.println("Joystick initialized. Initializing input systems...");
     
-    // Initialize all input subsystems (now safe with axes disabled in ConfigAxis.h)
+    // Initialize all input subsystems
     initButtonsFromLogical(logicalInputs, logicalInputCount);
     initEncodersFromLogical(logicalInputs, logicalInputCount);
     initMatrixFromLogical(logicalInputs, logicalInputCount);
 
-    // Initialize axis system (safe now - no axes defined in ConfigAxis.h)
+    // Initialize axis system
     setupUserAxes(MyJoystick);
     
     // Delay for USB enumeration
     delay(500);
     
-    Serial.println("GNGR-ButtonBox initialized successfully!");
+    Serial.println("JoyCore-FW initialized successfully!");
     Serial.println("All button inputs should now work in HID applications.");
 }
 
@@ -84,7 +83,7 @@ void loop() {
     updateMatrix();    // Button matrix scanning
     updateEncoders();  // All encoder types
     
-    // Read axis values (safe now - no axes defined in ConfigAxis.h)
+    // Read axis values
     readUserAxes(MyJoystick);
     
     // Send all HID updates to computer
