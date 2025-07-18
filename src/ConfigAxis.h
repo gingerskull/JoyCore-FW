@@ -13,19 +13,21 @@
  * 
  * FILTER_LEVEL options:
  *   AXIS_FILTER_OFF    - No filtering (raw values)
- *   AXIS_FILTER_LOW    - Light filtering (smoothing=1, noise=1, velocity=15)
- *   AXIS_FILTER_MEDIUM - Moderate filtering (smoothing=3, noise=2, velocity=20) 
- *   AXIS_FILTER_HIGH   - Heavy filtering (smoothing=4, noise=3, velocity=25)
+ *   AXIS_FILTER_LOW    - Light filtering
+ *   AXIS_FILTER_MEDIUM - Moderate filtering
+ *   AXIS_FILTER_HIGH   - Heavy filtering
+ *   AXIS_FILTER_EWMA   - EWMA filtering (configurable alpha parameter)
  * 
- * NOISE_THRESHOLD: Minimum change required to update value (0-10 recommended)
- *   Lower values = more sensitive, higher values = more stable
+ * EWMA_ALPHA: Alpha parameter for EWMA filtering (0-1000, scaled by 1000)
+ *   Higher values = less smoothing (more responsive)
+ *   Lower values = more smoothing (less responsive)
+ *   Common values: 30 (0.03), 100 (0.1), 200 (0.2), 500 (0.5)
+ *   Only used when FILTER_LEVEL is set to AXIS_FILTER_EWMA
  * 
- * SMOOTHING: Exponential smoothing factor (0-7)
- *   0 = no smoothing, 7 = maximum smoothing
- *   Higher values = smoother but less responsive
- * 
- * VELOCITY: Speed threshold for adaptive smoothing (0-50)
- *   Higher values = less smoothing during fast movements
+ * DEADBAND: Dead zone around current axis position (0 = disabled)
+ *   Prevents small fluctuations when user stops moving the control
+ *   Typical values: 0 (off), 500-1000 (light), 1000-2000 (medium), 2000-5000 (heavy)
+ *   Works around the CURRENT axis value, not a fixed center point
  * 
  * CURVE options:
  *   CURVE_LINEAR      - Linear response (1:1 mapping)
@@ -54,26 +56,24 @@
 // X-Axis (Main stick pitch)
 #define USE_AXIS_X
 #ifdef USE_AXIS_X
-    #define AXIS_X_PIN              ADS1115_CH1
+    #define AXIS_X_PIN              26
     #define AXIS_X_MIN              0
     #define AXIS_X_MAX              32767
-    #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_OFF
-    #define AXIS_X_NOISE_THRESHOLD  0
-    #define AXIS_X_SMOOTHING        0
-    #define AXIS_X_VELOCITY         0
+    #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_HIGH
+    #define AXIS_X_EWMA_ALPHA       50
+    #define AXIS_X_DEADBAND         250
     #define AXIS_X_CURVE            CURVE_LINEAR
 #endif
 
 //Y-Axis (Main stick yaw)
 #define USE_AXIS_Y
 #ifdef USE_AXIS_Y
-    #define AXIS_Y_PIN              ADS1115_CH0
+    #define AXIS_Y_PIN              27
     #define AXIS_Y_MIN              0
     #define AXIS_Y_MAX              32767
-    #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_MEDIUM
-    #define AXIS_Y_NOISE_THRESHOLD  3
-    #define AXIS_Y_SMOOTHING        2
-    #define AXIS_Y_VELOCITY         15
+    #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_EWMA
+    #define AXIS_Y_EWMA_ALPHA       25
+    #define AXIS_Y_DEADBAND         250
     #define AXIS_Y_CURVE            CURVE_LINEAR
 #endif
 
@@ -84,9 +84,8 @@
     #define AXIS_Z_MIN              0
     #define AXIS_Z_MAX              32767
     #define AXIS_Z_FILTER_LEVEL     AXIS_FILTER_MEDIUM
-    #define AXIS_Z_NOISE_THRESHOLD  3
-    #define AXIS_Z_SMOOTHING        2
-    #define AXIS_Z_VELOCITY         15
+    #define AXIS_Z_EWMA_ALPHA       30
+    #define AXIS_Z_DEADBAND         0
     #define AXIS_Z_CURVE            CURVE_LINEAR
 #endif
 
@@ -97,9 +96,8 @@
     #define AXIS_RX_MIN             0
     #define AXIS_RX_MAX             32767
     #define AXIS_RX_FILTER_LEVEL    AXIS_FILTER_MEDIUM
-    #define AXIS_RX_NOISE_THRESHOLD 3
-    #define AXIS_RX_SMOOTHING       2
-    #define AXIS_RX_VELOCITY        15
+    #define AXIS_RX_EWMA_ALPHA      30
+    #define AXIS_RX_DEADBAND        0
     #define AXIS_RX_CURVE           CURVE_LINEAR
 #endif
 
@@ -109,10 +107,9 @@
     #define AXIS_RY_PIN             A6
     #define AXIS_RY_MIN             0
     #define AXIS_RY_MAX             32767
-#define AXIS_RY_FILTER_LEVEL    AXIS_FILTER_MEDIUM
-#define AXIS_RY_NOISE_THRESHOLD 3
-    #define AXIS_RY_SMOOTHING       2
-    #define AXIS_RY_VELOCITY        15
+    #define AXIS_RY_FILTER_LEVEL    AXIS_FILTER_MEDIUM
+    #define AXIS_RY_EWMA_ALPHA      30
+    #define AXIS_RY_DEADBAND        0
     #define AXIS_RY_CURVE           CURVE_LINEAR
 #endif
 
@@ -123,9 +120,8 @@
     #define AXIS_RZ_MIN             0
     #define AXIS_RZ_MAX             32767
     #define AXIS_RZ_FILTER_LEVEL    AXIS_FILTER_HIGH
-    #define AXIS_RZ_NOISE_THRESHOLD 4
-    #define AXIS_RZ_SMOOTHING       3
-    #define AXIS_RZ_VELOCITY        25
+    #define AXIS_RZ_EWMA_ALPHA      30
+    #define AXIS_RZ_DEADBAND        0
     #define AXIS_RZ_CURVE           CURVE_LINEAR
 #endif
 
@@ -136,9 +132,8 @@
     #define AXIS_S1_MIN             0
     #define AXIS_S1_MAX             32767
     #define AXIS_S1_FILTER_LEVEL    AXIS_FILTER_LOW
-    #define AXIS_S1_NOISE_THRESHOLD 2
-    #define AXIS_S1_SMOOTHING       1
-    #define AXIS_S1_VELOCITY        10
+    #define AXIS_S1_EWMA_ALPHA      30
+    #define AXIS_S1_DEADBAND        0
     #define AXIS_S1_CURVE           CURVE_LINEAR
 #endif
 
@@ -149,9 +144,8 @@
     #define AXIS_S2_MIN             0
     #define AXIS_S2_MAX             1023
     #define AXIS_S2_FILTER_LEVEL    AXIS_FILTER_LOW
-    #define AXIS_S2_NOISE_THRESHOLD 2
-    #define AXIS_S2_SMOOTHING       1
-    #define AXIS_S2_VELOCITY        10
+    #define AXIS_S2_EWMA_ALPHA      30
+    #define AXIS_S2_DEADBAND        0
     #define AXIS_S2_CURVE           CURVE_LINEAR
 #endif
 
@@ -213,9 +207,8 @@ inline void readUserAxes(Joystick_& joystick) {
             axisManager.setAxisPin(AnalogAxisManager::AXIS_X, AXIS_X_PIN);
             axisManager.setAxisRange(AnalogAxisManager::AXIS_X, AXIS_X_MIN, AXIS_X_MAX);
             axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_X, AXIS_X_FILTER_LEVEL);
-            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_X, AXIS_X_NOISE_THRESHOLD);
-            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_X, AXIS_X_SMOOTHING);
-            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_X, AXIS_X_VELOCITY);
+            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_X, AXIS_X_EWMA_ALPHA);
+            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_X, AXIS_X_DEADBAND);
             axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_X, AXIS_X_CURVE);
             axisManager.enableAxis(AnalogAxisManager::AXIS_X, true);
         #endif
@@ -224,9 +217,8 @@ inline void readUserAxes(Joystick_& joystick) {
             axisManager.setAxisPin(AnalogAxisManager::AXIS_Y, AXIS_Y_PIN);
             axisManager.setAxisRange(AnalogAxisManager::AXIS_Y, AXIS_Y_MIN, AXIS_Y_MAX);
             axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_Y, AXIS_Y_FILTER_LEVEL);
-            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_Y, AXIS_Y_NOISE_THRESHOLD);
-            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_Y, AXIS_Y_SMOOTHING);
-            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_Y, AXIS_Y_VELOCITY);
+            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_Y, AXIS_Y_EWMA_ALPHA);
+            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_Y, AXIS_Y_DEADBAND);
             axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_Y, AXIS_Y_CURVE);
             axisManager.enableAxis(AnalogAxisManager::AXIS_Y, true);
         #endif
@@ -235,9 +227,8 @@ inline void readUserAxes(Joystick_& joystick) {
             axisManager.setAxisPin(AnalogAxisManager::AXIS_Z, AXIS_Z_PIN);
             axisManager.setAxisRange(AnalogAxisManager::AXIS_Z, AXIS_Z_MIN, AXIS_Z_MAX);
             axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_Z, AXIS_Z_FILTER_LEVEL);
-            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_Z, AXIS_Z_NOISE_THRESHOLD);
-            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_Z, AXIS_Z_SMOOTHING);
-            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_Z, AXIS_Z_VELOCITY);
+            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_Z, AXIS_Z_EWMA_ALPHA);
+            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_Z, AXIS_Z_DEADBAND);
             axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_Z, AXIS_Z_CURVE);
             axisManager.enableAxis(AnalogAxisManager::AXIS_Z, true);
         #endif
@@ -246,9 +237,8 @@ inline void readUserAxes(Joystick_& joystick) {
             axisManager.setAxisPin(AnalogAxisManager::AXIS_RX, AXIS_RX_PIN);
             axisManager.setAxisRange(AnalogAxisManager::AXIS_RX, AXIS_RX_MIN, AXIS_RX_MAX);
             axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_RX, AXIS_RX_FILTER_LEVEL);
-            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_RX, AXIS_RX_NOISE_THRESHOLD);
-            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_RX, AXIS_RX_SMOOTHING);
-            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_RX, AXIS_RX_VELOCITY);
+            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_RX, AXIS_RX_EWMA_ALPHA);
+            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_RX, AXIS_RX_DEADBAND);
             axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_RX, AXIS_RX_CURVE);
             axisManager.enableAxis(AnalogAxisManager::AXIS_RX, true);
         #endif
@@ -257,9 +247,8 @@ inline void readUserAxes(Joystick_& joystick) {
             axisManager.setAxisPin(AnalogAxisManager::AXIS_RY, AXIS_RY_PIN);
             axisManager.setAxisRange(AnalogAxisManager::AXIS_RY, AXIS_RY_MIN, AXIS_RY_MAX);
             axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_RY, AXIS_RY_FILTER_LEVEL);
-            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_RY, AXIS_RY_NOISE_THRESHOLD);
-            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_RY, AXIS_RY_SMOOTHING);
-            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_RY, AXIS_RY_VELOCITY);
+            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_RY, AXIS_RY_EWMA_ALPHA);
+            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_RY, AXIS_RY_DEADBAND);
             axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_RY, AXIS_RY_CURVE);
             axisManager.enableAxis(AnalogAxisManager::AXIS_RY, true);
         #endif
@@ -268,9 +257,8 @@ inline void readUserAxes(Joystick_& joystick) {
             axisManager.setAxisPin(AnalogAxisManager::AXIS_RZ, AXIS_RZ_PIN);
             axisManager.setAxisRange(AnalogAxisManager::AXIS_RZ, AXIS_RZ_MIN, AXIS_RZ_MAX);
             axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_RZ, AXIS_RZ_FILTER_LEVEL);
-            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_RZ, AXIS_RZ_NOISE_THRESHOLD);
-            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_RZ, AXIS_RZ_SMOOTHING);
-            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_RZ, AXIS_RZ_VELOCITY);
+            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_RZ, AXIS_RZ_EWMA_ALPHA);
+            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_RZ, AXIS_RZ_DEADBAND);
             axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_RZ, AXIS_RZ_CURVE);
             axisManager.enableAxis(AnalogAxisManager::AXIS_RZ, true);
         #endif
@@ -279,9 +267,8 @@ inline void readUserAxes(Joystick_& joystick) {
             axisManager.setAxisPin(AnalogAxisManager::AXIS_S1, AXIS_S1_PIN);
             axisManager.setAxisRange(AnalogAxisManager::AXIS_S1, AXIS_S1_MIN, AXIS_S1_MAX);
             axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_S1, AXIS_S1_FILTER_LEVEL);
-            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_S1, AXIS_S1_NOISE_THRESHOLD);
-            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_S1, AXIS_S1_SMOOTHING);
-            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_S1, AXIS_S1_VELOCITY);
+            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_S1, AXIS_S1_EWMA_ALPHA);
+            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_S1, AXIS_S1_DEADBAND);
             axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_S1, AXIS_S1_CURVE);
             axisManager.enableAxis(AnalogAxisManager::AXIS_S1, true);
         #endif
@@ -290,9 +277,8 @@ inline void readUserAxes(Joystick_& joystick) {
             axisManager.setAxisPin(AnalogAxisManager::AXIS_S2, AXIS_S2_PIN);
             axisManager.setAxisRange(AnalogAxisManager::AXIS_S2, AXIS_S2_MIN, AXIS_S2_MAX);
             axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_S2, AXIS_S2_FILTER_LEVEL);
-            axisManager.setAxisNoiseThreshold(AnalogAxisManager::AXIS_S2, AXIS_S2_NOISE_THRESHOLD);
-            axisManager.setAxisSmoothingFactor(AnalogAxisManager::AXIS_S2, AXIS_S2_SMOOTHING);
-            axisManager.setAxisVelocityThreshold(AnalogAxisManager::AXIS_S2, AXIS_S2_VELOCITY);
+            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_S2, AXIS_S2_EWMA_ALPHA);
+            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_S2, AXIS_S2_DEADBAND);
             axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_S2, AXIS_S2_CURVE);
             axisManager.enableAxis(AnalogAxisManager::AXIS_S2, true);
         #endif
