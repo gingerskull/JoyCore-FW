@@ -11,7 +11,7 @@
  * 
  * Appears as a standard USB gamepad for maximum compatibility.
  * 
- * Ported to RP2040 Raspberry Pi Pico using PicoGamepad library.
+ * Ported to RP2040 Raspberry Pi Pico using rp2040-HID library.
  */
 
 #include <Arduino.h>
@@ -25,8 +25,8 @@
 #include "ConfigAxis.h"
 
 
-// USB joystick configuration: 32 buttons, 8 analog axes, 4 hat switches
-// PicoGamepad handles USB descriptors automatically
+// USB joystick configuration: 32 buttons, 1 hat switch, NO AXES  
+// rp2040-HID handles USB descriptors automatically
 Joystick_ MyJoystick(0x03, 0x04, 32, 0, true, true, false, false, false, false, false, false);
 
 // External shift register components
@@ -58,13 +58,13 @@ void setup() {
     
     Serial.println("Joystick initialized. Initializing input systems...");
     
-    // Initialize all input subsystems (but skip axis setup)
+    // Initialize all input subsystems (now safe with axes disabled in ConfigAxis.h)
     initButtonsFromLogical(logicalInputs, logicalInputCount);
     initEncodersFromLogical(logicalInputs, logicalInputCount);
     initMatrixFromLogical(logicalInputs, logicalInputCount);
 
-    // SKIP AXIS SETUP - This was causing the button interference
-    // setupUserAxes(MyJoystick);  // DISABLED - was interfering with button pins
+    // Initialize axis system (safe now - no axes defined in ConfigAxis.h)
+    setupUserAxes(MyJoystick);
     
     // Delay for USB enumeration
     delay(500);
@@ -84,8 +84,8 @@ void loop() {
     updateMatrix();    // Button matrix scanning
     updateEncoders();  // All encoder types
     
-    // SKIP AXIS READING - No axes connected, and this was causing interference
-    // readUserAxes(MyJoystick);  // DISABLED - was interfering with button pins
+    // Read axis values (safe now - no axes defined in ConfigAxis.h)
+    readUserAxes(MyJoystick);
     
     // Send all HID updates to computer
     MyJoystick.sendState();

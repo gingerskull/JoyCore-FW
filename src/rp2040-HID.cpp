@@ -16,8 +16,7 @@
  */
 
 #include "stdint.h"
-#include "PluggableUSBHID.h"
-#include "PicoGamepad.h"
+#include "rp2040-HID.h"
 #include "usb_phy_api.h"
 
 #define REPORT_ID_KEYBOARD 1
@@ -27,38 +26,37 @@ using namespace arduino;
 
 //uint8_t inputArray[35];
 
-PicoGamepad::PicoGamepad(bool connect, uint16_t vendor_id, uint16_t product_id, uint16_t product_release) : USBHID(get_usb_phy(), 0, 0, vendor_id, product_id, product_release)
+RP2040_HID::RP2040_HID(bool connect, uint16_t vendor_id, uint16_t product_id, uint16_t product_release) : USBHID(get_usb_phy(), 0, 0, vendor_id, product_id, product_release)
 {
-    //_lock_status = 0;
+    memset(inputArray, 0, sizeof(inputArray));
+    // Initialize all hat switches to center
     for (int i = 0; i < 4; i++)
     {
         SetHat(i, HAT_DIR_C);
     }
 }
 
-PicoGamepad::PicoGamepad(USBPhy *phy, uint16_t vendor_id, uint16_t product_id, uint16_t product_release) : USBHID(phy, 0, 0, vendor_id, product_id, product_release)
+RP2040_HID::RP2040_HID(USBPhy *phy, uint16_t vendor_id, uint16_t product_id, uint16_t product_release) : USBHID(phy, 0, 0, vendor_id, product_id, product_release)
 {
-    //_lock_status = 0;
-    for (int i = 0; i < 4; i++)
-    {
-        SetHat(i, HAT_DIR_C);
-    }
-    // User or child responsible for calling connect or init
-}
-
-PicoGamepad::~PicoGamepad()
-{
-    // for (int i = 0; i < 35; i++)
-    // {
-    //     inputArray[i] = 0;
-    // }
+    memset(inputArray, 0, sizeof(inputArray));
+    // Initialize all hat switches to center
     for (int i = 0; i < 4; i++)
     {
         SetHat(i, HAT_DIR_C);
     }
 }
 
-const uint8_t *PicoGamepad::report_desc()
+RP2040_HID::~RP2040_HID()
+{
+    // Reset all inputs and hat switches to center
+    memset(inputArray, 0, sizeof(inputArray));
+    for (int i = 0; i < 4; i++)
+    {
+        SetHat(i, HAT_DIR_C);
+    }
+}
+
+const uint8_t *RP2040_HID::report_desc()
 {
     static const uint8_t reportDescriptor[] = {
         // HEADER
@@ -127,7 +125,7 @@ const uint8_t *PicoGamepad::report_desc()
     return reportDescriptor;
 }
 
-bool PicoGamepad::randomizeInputs()
+bool RP2040_HID::randomizeInputs()
 {
     _mutex.lock();
 
@@ -149,7 +147,7 @@ bool PicoGamepad::randomizeInputs()
     return true;
 }
 
-void PicoGamepad::SetButton(int idx, bool val)
+void RP2040_HID::SetButton(int idx, bool val)
 {
     if (idx > 128 || idx < 0)
     {
@@ -158,7 +156,7 @@ void PicoGamepad::SetButton(int idx, bool val)
     bitWrite(inputArray[idx / 8], idx % 8, val);
 }
 
-void PicoGamepad::SetAxis(int idx, uint16_t val)
+void RP2040_HID::SetAxis(int idx, uint16_t val)
 {
     if (idx < 0 || idx > 15)
     {
@@ -172,110 +170,110 @@ void PicoGamepad::SetAxis(int idx, uint16_t val)
     inputArray[16 + (idx * 2)+1] = MSB(val);
 }
 
-void PicoGamepad::SetX(uint16_t val)
+void RP2040_HID::SetX(uint16_t val)
 {
     inputArray[X_AXIS_LSB] = LSB(val);
     inputArray[X_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetY(uint16_t val)
+void RP2040_HID::SetY(uint16_t val)
 {
     inputArray[Y_AXIS_LSB] = LSB(val);
     inputArray[Y_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetZ(uint16_t val)
+void RP2040_HID::SetZ(uint16_t val)
 {
     inputArray[Z_AXIS_LSB] = LSB(val);
     inputArray[Z_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetRx(uint16_t val)
+void RP2040_HID::SetRx(uint16_t val)
 {
     inputArray[Rx_AXIS_LSB] = LSB(val);
     inputArray[Rx_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetRy(uint16_t val)
+void RP2040_HID::SetRy(uint16_t val)
 {
     inputArray[Ry_AXIS_LSB] = LSB(val);
     inputArray[Ry_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetRz(uint16_t val)
+void RP2040_HID::SetRz(uint16_t val)
 {
     inputArray[Rz_AXIS_LSB] = LSB(val);
     inputArray[Rz_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetSlider(uint16_t val)
+void RP2040_HID::SetSlider(uint16_t val)
 {
     inputArray[SLIDER_AXIS_LSB] = LSB(val);
     inputArray[SLIDER_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetDial(uint16_t val)
+void RP2040_HID::SetDial(uint16_t val)
 {
     inputArray[DIAL_AXIS_LSB] = LSB(val);
     inputArray[DIAL_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetWheel(uint16_t val)
+void RP2040_HID::SetWheel(uint16_t val)
 {
     inputArray[WHEEL_AXIS_LSB] = LSB(val);
     inputArray[WHEEL_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetVx(uint16_t val)
+void RP2040_HID::SetVx(uint16_t val)
 {
     inputArray[Vx_AXIS_LSB] = LSB(val);
     inputArray[Vx_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetVy(uint16_t val)
+void RP2040_HID::SetVy(uint16_t val)
 {
     inputArray[Vy_AXIS_LSB] = LSB(val);
     inputArray[Vy_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetVz(uint16_t val)
+void RP2040_HID::SetVz(uint16_t val)
 {
     inputArray[Vz_AXIS_LSB] = LSB(val);
     inputArray[Vz_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetVbrx(uint16_t val)
+void RP2040_HID::SetVbrx(uint16_t val)
 {
     inputArray[Vbrx_AXIS_LSB] = LSB(val);
     inputArray[Vbrx_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetVbry(uint16_t val)
+void RP2040_HID::SetVbry(uint16_t val)
 {
     inputArray[Vbry_AXIS_LSB] = LSB(val);
     inputArray[Vbry_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetVbrz(uint16_t val)
+void RP2040_HID::SetVbrz(uint16_t val)
 {
     inputArray[Vbrz_AXIS_LSB] = LSB(val);
     inputArray[Vbrz_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetVno(uint16_t val)
+void RP2040_HID::SetVno(uint16_t val)
 {
     inputArray[Vno_AXIS_LSB] = LSB(val);
     inputArray[Vno_AXIS_MSB] = MSB(val);
 }
 
-void PicoGamepad::SetUndefined(uint16_t val)
+void RP2040_HID::SetUndefined(uint16_t val)
 {
     inputArray[UNDEF_AXIS_LSB] = LSB(val);
     inputArray[UNDEF_AXIS_MSB] = MSB(val);
 }
 
 
-void PicoGamepad::SetHat(uint8_t hatIdx, uint8_t dir)
+void RP2040_HID::SetHat(uint8_t hatIdx, uint8_t dir)
 {
     uint8_t hatDir[9][4] = {
         {0, 0, 0, 0},
@@ -316,7 +314,7 @@ void PicoGamepad::SetHat(uint8_t hatIdx, uint8_t dir)
     }
 }
 
-bool PicoGamepad::send_update()
+bool RP2040_HID::send_update()
 {
     _mutex.lock();
 
@@ -339,7 +337,7 @@ bool PicoGamepad::send_update()
     return true;
 }
 
-bool PicoGamepad::send_inputs(uint8_t *values)
+bool RP2040_HID::send_inputs(uint8_t *values)
 {
     _mutex.lock();
 
@@ -367,7 +365,7 @@ bool PicoGamepad::send_inputs(uint8_t *values)
 #define DEFAULT_CONFIGURATION (1)
 #define TOTAL_DESCRIPTOR_LENGTH ((1 * CONFIGURATION_DESCRIPTOR_LENGTH) + (1 * INTERFACE_DESCRIPTOR_LENGTH) + (1 * HID_DESCRIPTOR_LENGTH) + (2 * ENDPOINT_DESCRIPTOR_LENGTH))
 
-const uint8_t *PicoGamepad::configuration_desc(uint8_t index)
+const uint8_t *RP2040_HID::configuration_desc(uint8_t index)
 {
     if (index != 0)
     {
