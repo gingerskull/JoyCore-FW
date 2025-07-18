@@ -51,9 +51,9 @@
 // =============================================================================
 
 // X-Axis (Main stick pitch)
-#define USE_AXIS_X
+// #define USE_AXIS_X  // DISABLED - No axes connected, was interfering with button pins
 #ifdef USE_AXIS_X
-    #define AXIS_X_PIN              A0
+    #define AXIS_X_PIN              26
     #define AXIS_X_MIN              0
     #define AXIS_X_MAX              32767
     #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_MEDIUM
@@ -63,10 +63,10 @@
     #define AXIS_X_CURVE            CURVE_LINEAR
 #endif
 
-// Y-Axis (Main stick roll) - uncomment to enable
- #define USE_AXIS_Y
+//Y-Axis (Main stick yaw)
+#define USE_AXIS_Y  // DISABLED - No axes connected, was interfering with button pins
 #ifdef USE_AXIS_Y
-    #define AXIS_Y_PIN              ADS1115_CH1
+    #define AXIS_Y_PIN              ADS1115_CH0
     #define AXIS_Y_MIN              0
     #define AXIS_Y_MAX              32767
     #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_MEDIUM
@@ -164,7 +164,7 @@
  * @param pin Pin identifier (A0-A13 for analog pins, ADS1115_CH0-3 for ADS1115)
  * @param userMin User-defined minimum value for clipping
  * @param userMax User-defined maximum value for clipping
- * @return Mapped value in -32767 to 32767 range for PicoGamepad joystick
+ * @return Mapped value in -32767 to 32767 range for rp2040-HID joystick
  */
 inline int32_t mapAxisValue(int32_t rawValue, int8_t pin, int32_t userMin, int32_t userMax) {
     int32_t sourceMin, sourceMax;
@@ -186,7 +186,7 @@ inline int32_t mapAxisValue(int32_t rawValue, int8_t pin, int32_t userMin, int32
     // Then constrain to user-defined min/max (this allows rotation zone clipping)
     clippedValue = constrain(clippedValue, userMin, userMax);
     
-    // Finally, map to PicoGamepad joystick range (-32767 to 32767)
+    // Finally, map to rp2040-HID joystick range (-32767 to 32767)
     return map(clippedValue, userMin, userMax, -32767, 32767);
 }
 

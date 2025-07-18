@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
-// RP2040 Raspberry Pi Pico uses PicoGamepad library
+// RP2040 Raspberry Pi Pico uses rp2040-HID library
 // This wrapper provides the same interface as the Teensy version
-// but uses PicoGamepad functions
+// but uses rp2040-HID functions
 
-#include "PicoGamepad.h"
+#include "rp2040-HID.h"
 
 using namespace arduino;
 
 // Wrapper class that provides the same interface as the Teensy version
-// but uses PicoGamepad functions
+// but uses rp2040-HID functions
 class Joystick_ {
 private:
     uint8_t _buttonCount;
     uint8_t _hatSwitchCount;
     bool _autoSendState;
-    PicoGamepad _gamepad;
+    RP2040_HID _gamepad;
     
 public:
     // Constructor with compatible signature to the original
@@ -24,7 +24,7 @@ public:
         uint8_t hidReportId = 0x03,          // Not used on RP2040, but kept for compatibility
         uint8_t joystickType = 0x04,         // Not used on RP2040, but kept for compatibility  
         uint8_t buttonCount = 32,
-        uint8_t hatSwitchCount = 2,          // PicoGamepad supports 4 hat switches
+        uint8_t hatSwitchCount = 2,          // rp2040-HID supports 4 hat switches
         bool includeXAxis = true,
         bool includeYAxis = true,
         bool includeZAxis = true,
@@ -34,17 +34,17 @@ public:
         bool includeS1 = true,
         bool includeS2 = true
     ) : _buttonCount(buttonCount), _hatSwitchCount(hatSwitchCount), _autoSendState(true), _gamepad() {
-        // PicoGamepad handles axis configuration automatically
+        // rp2040-HID handles axis configuration automatically
     }
     
     void begin(bool initAutoSendState = true) {
         _autoSendState = initAutoSendState;
-        // PicoGamepad initializes automatically through USB
+        // rp2040-HID initializes automatically through USB
         delay(100); // Give USB time to initialize
     }
     
     void end() {
-        // Not implemented in PicoGamepad, but kept for compatibility
+        // Not implemented in rp2040-HID, but kept for compatibility
     }
     
     // Button functions
@@ -55,7 +55,7 @@ public:
             return;
         }
         
-        _gamepad.SetButton(button, value != 0); // PicoGamepad uses 0-based button numbering
+        _gamepad.SetButton(button, value != 0); // rp2040-HID uses 0-based button numbering
     }
     
     void pressButton(uint8_t button) {
@@ -66,9 +66,9 @@ public:
         setButton(button, 0);
     }
     
-    // Axis functions - convert from our 32-bit range to PicoGamepad's 16-bit range
+    // Axis functions - convert from our 32-bit range to rp2040-HID's 16-bit range
     void setAxis(uint8_t axis, int32_t value) {
-        // Convert to -32767 to 32767 range that PicoGamepad expects
+        // Convert to -32767 to 32767 range that rp2040-HID expects
         int16_t pico_value = constrain(value, -32767, 32767);
         
         switch(axis) {
@@ -100,13 +100,13 @@ public:
     }
     
     void setAxisRange(uint8_t axis, int32_t minimum, int32_t maximum) {
-        // PicoGamepad handles range internally, but we store for potential future use
-        // For now, we assume -32767 to 32767 range which is PicoGamepad's default
+        // rp2040-HID handles range internally, but we store for potential future use
+        // For now, we assume -32767 to 32767 range which is rp2040-HID's default
     }
     
     // Hat switch function
     void setHatSwitch(int8_t hatSwitchIndex, int16_t value) {
-        if (hatSwitchIndex < 0 || hatSwitchIndex >= 4) return; // PicoGamepad supports 4 hat switches
+        if (hatSwitchIndex < 0 || hatSwitchIndex >= 4) return; // rp2040-HID supports 4 hat switches
         
         uint8_t hatValue;
         if (value < 0) {
@@ -125,14 +125,14 @@ public:
     }
     
     // Additional compatibility functions for axis configuration
-    void setAxisFilterLevel(uint8_t axis, int level) { /* Not implemented on PicoGamepad */ }
-    void setAxisNoiseThreshold(uint8_t axis, int32_t threshold) { /* Not implemented on PicoGamepad */ }
-    void setAxisResponseCurve(uint8_t axis, int type) { /* Not implemented on PicoGamepad */ }
-    void setAxisCustomCurve(uint8_t axis, const int32_t* table, uint8_t points) { /* Not implemented on PicoGamepad */ }
-    void setAxisSmoothingFactor(uint8_t axis, uint8_t factor) { /* Not implemented on PicoGamepad */ }
-    void setAxisVelocityThreshold(uint8_t axis, int32_t threshold) { /* Not implemented on PicoGamepad */ }
-    void setAxisPin(uint8_t axis, int8_t pin) { /* Not implemented on PicoGamepad */ }
-    void readAllAxes() { /* Not implemented on PicoGamepad */ }
+    void setAxisFilterLevel(uint8_t axis, int level) { /* Not implemented on rp2040-HID */ }
+    void setAxisNoiseThreshold(uint8_t axis, int32_t threshold) { /* Not implemented on rp2040-HID */ }
+    void setAxisResponseCurve(uint8_t axis, int type) { /* Not implemented on rp2040-HID */ }
+    void setAxisCustomCurve(uint8_t axis, const int32_t* table, uint8_t points) { /* Not implemented on rp2040-HID */ }
+    void setAxisSmoothingFactor(uint8_t axis, uint8_t factor) { /* Not implemented on rp2040-HID */ }
+    void setAxisVelocityThreshold(uint8_t axis, int32_t threshold) { /* Not implemented on rp2040-HID */ }
+    void setAxisPin(uint8_t axis, int8_t pin) { /* Not implemented on rp2040-HID */ }
+    void readAllAxes() { /* Not implemented on rp2040-HID */ }
 };
 
 extern Joystick_ MyJoystick;
