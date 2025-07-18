@@ -11,11 +11,17 @@ void AxisFilter::reset() {
     lastProcessedValue = 0;
     lastUpdateTime = 0;
     initialized = false;
+    ewmaFilter.reset();
 }
 
 int32_t AxisFilter::filter(int32_t rawValue) {
     // If filtering is disabled, pass through raw value
     if (filterLevel == AXIS_FILTER_OFF) return rawValue;
+    
+    // Handle EWMA filtering separately
+    if (filterLevel == AXIS_FILTER_EWMA) {
+        return ewmaFilter.filter(rawValue);
+    }
     
     uint32_t currentTime = millis();
     
@@ -93,9 +99,17 @@ void AxisFilter::setLevel(AxisFilterLevel level) {
             break;
             
         case AXIS_FILTER_HIGH:
-            smoothingFactor = 4; 
-            noiseThreshold = 3; 
-            velocityThreshold = 25;
+            smoothingFactor = 10; 
+            noiseThreshold = 6; 
+            velocityThreshold = 50;
+            break;
+            
+        case AXIS_FILTER_EWMA:
+            // EWMA uses its own algorithm, so these parameters are not used
+            smoothingFactor = 0; 
+            noiseThreshold = 0; 
+            velocityThreshold = 0;
+            ewmaFilter.setAlpha(30); // Default alpha = 0.03 (30/1000)
             break;
     }
     
@@ -116,6 +130,10 @@ void AxisFilter::setSmoothingFactor(uint8_t factor) {
 
 void AxisFilter::setVelocityThreshold(int32_t threshold) {
     velocityThreshold = threshold;
+}
+
+void AxisFilter::setEwmaAlpha(uint32_t alphaValue) {
+    ewmaFilter.setAlpha(alphaValue);
 }
 
 // =============================================================================
@@ -150,7 +168,8 @@ int32_t AxisCurve::apply(int32_t input) {
     }
     
     // Perform linear interpolation between curve points
-    int32_t maxInput = 1023; // Expected input range
+    // Use the actual input range from the user configuration (0-32767)
+    int32_t maxInput = 32767; // User-defined range
     int32_t idx = (input * (points - 1)) / maxInput;
     
     // Clamp to valid index range
@@ -184,4 +203,156 @@ void AxisCurve::setCustomCurve(const int32_t* newTable, uint8_t newPoints) {
         points = newPoints;
         type = CURVE_CUSTOM;
     }
-} 
+}
+
+// =============================================================================
+// AXIS DEADBAND IMPLEMENTATION
+// =============================================================================
+
+int32_t AxisDeadband::apply(int32_t input) {
+    // If deadband is disabled, pass through unchanged
+    if (deadbandSize <= 0) {
+        return input;
+    }
+    
+    uint32_t currentTime = millis();
+    
+    // Initialize with first input value
+    if (!initialized) {
+        lastInput = input;
+        stableValue = input;
+        lastSampleTime = currentTime;
+        deadbandActive = false;
+        capturedStableValue = false;
+        initialized = true;
+        return input;
+    }
+    
+    // Sample movement at regular intervals for statistical analysis
+    if (currentTime - lastSampleTime >= (settleDuration / HISTORY_SIZE)) {
+        // Calculate movement since last reading
+        int32_t movement = abs(input - lastInput);
+        
+        // Add to movement history (ring buffer)
+        movementHistory[historyIndex] = movement;
+        historyIndex = (historyIndex + 1) % HISTORY_SIZE;
+        if (historySamples < HISTORY_SIZE) {
+            historySamples++;
+        }
+        
+        lastSampleTime = currentTime;
+        lastInput = input;
+        
+        // Only evaluate deadband state when we have sufficient samples
+        if (historySamples >= HISTORY_SIZE) {
+            int32_t avgMovement = getAverageMovement();
+            int32_t movementThreshold = deadbandSize / 8; // More sensitive threshold
+            
+            if (avgMovement <= movementThreshold) {
+                // Low average movement detected
+                if (!capturedStableValue) {
+                    // First time detecting minimal movement - capture the stable value now
+                    stableValue = input;
+                    capturedStableValue = true;
+                }
+                
+                // Activate deadband if not already active
+                if (!deadbandActive) {
+                    deadbandActive = true;
+                }
+            } else {
+                // High average movement - deactivate deadband and reset capture flag
+                deadbandActive = false;
+                capturedStableValue = false;
+            }
+        }
+    }
+    
+    // Return appropriate value based on deadband state
+    if (deadbandActive) {
+        // Deadband is active - check if movement exceeds threshold
+        if (abs(input - stableValue) > deadbandSize) {
+            // Large movement - deactivate deadband immediately
+            deadbandActive = false;
+            capturedStableValue = false;
+            stableValue = input;
+            // Clear movement history to avoid lag in reactivation
+            historySamples = 0;
+            historyIndex = 0;
+            return input;
+        } else {
+            // Small movement - maintain stable value
+            return stableValue;
+        }
+    } else {
+        // Deadband not active - pass through input
+        return input;
+    }
+}
+
+void AxisDeadband::setSize(int32_t size) {
+    deadbandSize = max(0, size); // Ensure non-negative
+}
+
+void AxisDeadband::setSettleDuration(uint32_t duration) {
+    settleDuration = duration;
+}
+
+void AxisDeadband::reset() {
+    initialized = false;
+    lastInput = 0;
+    stableValue = 0;
+    lastSampleTime = 0;
+    deadbandActive = false;
+    capturedStableValue = false;
+    historyIndex = 0;
+    historySamples = 0;
+    for (uint8_t i = 0; i < HISTORY_SIZE; i++) {
+        movementHistory[i] = 0;
+    }
+}
+
+int32_t AxisDeadband::getAverageMovement() const {
+    if (historySamples == 0) return 0;
+    
+    int32_t sum = 0;
+    for (uint8_t i = 0; i < historySamples; i++) {
+        sum += movementHistory[i];
+    }
+    return sum / historySamples;
+}
+
+// =============================================================================
+// EWMA FILTER IMPLEMENTATION
+// =============================================================================
+
+void EwmaFilter::reset() {
+    lastOutput = 0;
+    initialized = false;
+}
+
+int32_t EwmaFilter::filter(int32_t input) {
+    // Initialize filter on first run
+    if (!initialized) {
+        lastOutput = input;
+        initialized = true;
+        return input;
+    }
+    
+    // Apply EWMA formula: output = alpha * input + (1 - alpha) * lastOutput
+    // Using integer arithmetic: output = (alpha * input + (alphaScale - alpha) * lastOutput) / alphaScale
+    int32_t output = (alpha * input + (alphaScale - alpha) * lastOutput) / alphaScale;
+    
+    lastOutput = output;
+    return output;
+}
+
+void EwmaFilter::setAlpha(uint32_t alphaValue) {
+    // Clamp alpha to valid range [0, alphaScale]
+    if (alphaValue <= alphaScale) {
+        alpha = alphaValue;
+    }
+    
+    // Reset filter when alpha changes for clean transition
+    reset();
+}
