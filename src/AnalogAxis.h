@@ -31,6 +31,7 @@ private:
     // Per-axis processing
     AxisFilter _filters[ANALOG_AXIS_COUNT];
     AxisCurve _curves[ANALOG_AXIS_COUNT];
+    AxisDeadband _deadbands[ANALOG_AXIS_COUNT];
     
     // Axis enable flags
     uint8_t _enabledAxes = 0;
@@ -56,8 +57,12 @@ public:
     void setAxisNoiseThreshold(uint8_t axis, int32_t threshold);
     void setAxisSmoothingFactor(uint8_t axis, uint8_t factor);
     void setAxisVelocityThreshold(uint8_t axis, int32_t threshold);
+    void setAxisEwmaAlpha(uint8_t axis, uint32_t alphaValue);
     void setAxisResponseCurve(uint8_t axis, ResponseCurveType type);
     void setAxisCustomCurve(uint8_t axis, const int32_t* table, uint8_t points);
+    
+    // Deadband configuration
+    void setAxisDeadbandSize(uint8_t axis, int32_t size);
     
     // Pin assignment
     void setAxisPin(uint8_t axis, int8_t pin);
