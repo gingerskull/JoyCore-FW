@@ -1,7 +1,6 @@
 # JoyCore
 
-**JoyCore** is an Arduino-based USB game controller firmware. It supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and analog axes, letting you build a highly customizable button box or control panel.
-
+**JoyCore** is an Arduino-based USB game controller firmware. It supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and analog axes, letting you build customizable button boxes or control panels.
 ## 🔄 Firmware Versions
 
 JoyCore is being developed for multiple microcontroller platforms:
