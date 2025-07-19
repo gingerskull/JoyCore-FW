@@ -21,7 +21,7 @@ JoyCore is designed for basically any board based on the ATmega32U4 microcontrol
 - [SparkFun Pro Micro](https://www.sparkfun.com/products/12640)
 
 **⚠️ Untested (should work, but not verified):**
-- [Arduino Leonardo](https://store.arduino.cc/products/arduino-leonardo)
+- [Arduino Leonardo](https://docs.arduino.cc/hardware/leonardo/)
 - [Arduino Micro](https://store.arduino.cc/products/arduino-micro)
 - [Adafruit ItsyBitsy 32u4](https://www.adafruit.com/product/3677)
 - [Adafruit Feather 32u4](https://www.adafruit.com/product/2771)
