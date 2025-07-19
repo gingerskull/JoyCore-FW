@@ -7,7 +7,7 @@ JoyCore is being developed for multiple microcontroller platforms:
 
 - **[Leonardo/Micro (ATmega32U4)](https://github.com/gingerskull/JoyCore-FW/tree/main)** - This branch
 - **[Teensy 4.0](https://github.com/gingerskull/JoyCore-FW/tree/teensy40)** - High-performance ARM Cortex-M7
-- **[RP2040 Pico](https://github.com/gingerskull/JoyCore-FW/tree/rp2040)** - Raspberry Pi Pico and compatible boards
+- **[RP2040 Pico](https://github.com/gingerskull/JoyCore-FW/tree/rp2040-native)** - Raspberry Pi Pico and compatible boards
 
 Each version is optimized for its target platform while maintaining consistent functionality and configuration.
 
