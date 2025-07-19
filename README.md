@@ -2,6 +2,16 @@
 
 **JoyCore** is an Arduino-based USB game controller firmware. It supports matrix buttons, rotary encoders, direct pin buttons, shift register inputs, and analog axes, letting you build a highly customizable button box or control panel.
 
+## 🔄 Firmware Versions
+
+JoyCore is being developed for multiple microcontroller platforms:
+
+- **[Leonardo/Micro (ATmega32U4)](https://github.com/gingerskull/JoyCore-FW/tree/main)** - This branch
+- **[Teensy 4.0](https://github.com/gingerskull/JoyCore-FW/tree/teensy40)** - High-performance ARM Cortex-M7
+- **[RP2040 Pico](https://github.com/gingerskull/JoyCore-FW/tree/rp2040)** - Raspberry Pi Pico and compatible boards
+
+Each version is optimized for its target platform while maintaining consistent functionality and configuration.
+
 ---
 
 ## 🖥️ Supported Boards
