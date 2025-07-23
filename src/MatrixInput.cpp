@@ -109,13 +109,21 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
 }
 
 void updateMatrix() {
+    // Add a small delay to prevent rapid scanning that could cause double-triggers
+    static unsigned long lastScanTime = 0;
+    unsigned long currentTime = millis();
+    if (currentTime - lastScanTime < 5) {  // Minimum 5ms between scans
+        return;
+    }
+    lastScanTime = currentTime;
+    
     // First, do the regular button matrix scanning
     if (buttonMatrix->getKeys()) {
         // Process key events
         for (int i = 0; i < MATRIX_MAX_KEYS; i++) {
             if (buttonMatrix->key[i].stateChanged) {
                 char keyChar = buttonMatrix->key[i].kchar;
-                bool pressed = (buttonMatrix->key[i].kstate == MATRIX_PRESSED || buttonMatrix->key[i].kstate == MATRIX_HELD);
+                MatrixKeyState keyState = buttonMatrix->key[i].kstate;
                 
                 // Find the index for this key
                 uint8_t idx = 0;
@@ -135,65 +143,47 @@ void updateMatrix() {
 
                 switch (behavior) {
                     case NORMAL:
-                        MyJoystick.setButton(joyIdx, pressed);
+                        if (keyState == MATRIX_PRESSED) {
+                            MyJoystick.setButton(joyIdx, 1);  // Button pressed
+                        } else if (keyState == MATRIX_RELEASED) {
+                            MyJoystick.setButton(joyIdx, 0);  // Button released
+                        }
+                        // Don't send events for MATRIX_HELD state
                         break;
                     case MOMENTARY:
-                        if (pressed && !lastMomentaryStates[idx]) {
+                        if (keyState == MATRIX_PRESSED && !lastMomentaryStates[idx]) {
                             MyJoystick.setButton(joyIdx, 1);
                             delay(10);
                             MyJoystick.setButton(joyIdx, 0);
                         }
-                        lastMomentaryStates[idx] = pressed;
+                        lastMomentaryStates[idx] = (keyState == MATRIX_PRESSED || keyState == MATRIX_HELD);
                         break;
                     case ENC_A:
                     case ENC_B:
                         break;
                 }
-                lastStates[idx] = pressed;
+                lastStates[idx] = (keyState == MATRIX_PRESSED || keyState == MATRIX_HELD);
             }
         }
     }
     
-    // Now do a separate scan specifically for encoder pin states
+    // Update encoder pin states based on current matrix scan results
     // Initialize all encoder pin states to HIGH (default pullup state)
     for (uint8_t pin = 0; pin < 20; pin++) {
         g_encoderMatrixPinStates[pin] = 1;
     }
     
-    // Scan each column independently to get the true state of each row pin
-    for (uint8_t c = 0; c < COLS; c++) {
-        // Set this column LOW
-        pinMode(colPins[c], OUTPUT);
-        digitalWrite(colPins[c], LOW);
-        
-        // Set all other columns as INPUT_PULLUP (floating high)
-        for (uint8_t otherC = 0; otherC < COLS; otherC++) {
-            if (otherC != c) {
-                pinMode(colPins[otherC], INPUT_PULLUP);
-            }
-        }
-        
-        // Small delay for pin states to stabilize
-        delayMicroseconds(10);
-        
-        // Now read all row pins - they will be LOW if connected to the active column
-        for (uint8_t r = 0; r < ROWS; r++) {
-            pinMode(rowPins[r], INPUT_PULLUP);
-            bool pinState = digitalRead(rowPins[r]);
+    // Update encoder pin states based on current button states
+    for (uint8_t r = 0; r < ROWS; r++) {
+        for (uint8_t c = 0; c < COLS; c++) {
+            uint8_t idx = r * COLS + c;
+            char keyChar = keymap[idx];
+            bool isPressed = buttonMatrix->isPressed(keyChar);
             
-            // Only update to LOW if we detect a LOW state
-            // This preserves the state across multiple column scans
-            if (pinState == LOW) {
+            // If any button in this row is pressed, mark the row pin as LOW
+            if (isPressed) {
                 g_encoderMatrixPinStates[rowPins[r]] = 0;
             }
         }
-    }
-    
-    // Restore all pins to their default state
-    for (uint8_t r = 0; r < ROWS; r++) {
-        pinMode(rowPins[r], INPUT_PULLUP);
-    }
-    for (uint8_t c = 0; c < COLS; c++) {
-        pinMode(colPins[c], INPUT_PULLUP);
     }
 }
