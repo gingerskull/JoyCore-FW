@@ -35,4 +35,4 @@ void updateButtons();
 void updateShiftRegisterButtons();
 bool isRegularButton(const LogicalInput& input);
 void initRegularButtons(const LogicalInput* logicals, uint8_t logicalCount, uint8_t count);
-void initShiftRegisterIfNeeded(const LogicalInput* logicals, uint8_t logicalCount);
+void initShiftRegisterIfNeeded(const LogicalInput* logicals, uint8_t logicalCount); 

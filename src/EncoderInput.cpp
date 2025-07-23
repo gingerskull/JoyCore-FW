@@ -89,33 +89,7 @@ void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_
       pins[i].pinA, pins[i].pinB, latchMode, encoderReadPin
     );
     
-    // Debug output for latch mode selection
-    Serial.print("ENCODER ");
-    Serial.print(i);
-    Serial.print(" (pins ");
-    Serial.print(pins[i].pinA);
-    Serial.print("/");
-    Serial.print(pins[i].pinB);
-    Serial.print("): ");
-    if (latchMode == RotaryEncoder::LatchMode::FOUR0) {
-        Serial.print("FOUR0 mode");
-    } else {
-        Serial.print("FOUR3 mode");
-    }
-    
-    // Show latch mode
-    switch (pins[i].latchMode) {
-        case FOUR0:
-            Serial.print(" (FOUR0)");
-            break;
-        case FOUR3:
-            Serial.print(" (FOUR3)");
-            break;
-        case TWO03:
-            Serial.print(" (TWO03)");
-            break;
-    }
-    Serial.println();
+
     
     // Set pinMode for direct pins only (shift register pins are handled by encoderReadPin)
     if (pins[i].pinA < 100 && pins[i].pinB < 100) {
@@ -155,20 +129,7 @@ void updateEncoders() {
           uint8_t steps = abs(diff);
           uint8_t btn = (diff > 0) ? btnCW : btnCCW;
           
-          // Debug encoder detection with pin info
-          Serial.print("ENCODER ");
-          Serial.print(i);
-          Serial.print(" (pins ");
-          Serial.print(encoderBtnMap[i].cw);
-          Serial.print("/");
-          Serial.print(encoderBtnMap[i].ccw);
-          Serial.print("): ");
-          Serial.print(lastPositions[i]);
-          Serial.print(" -> ");
-          Serial.print(newPos);
-          Serial.print(" (");
-          Serial.print(diff > 0 ? "CW" : "CCW");
-          Serial.println(")");
+
           
           // Add to timing buffer
           addEncoderSteps(btn, steps);

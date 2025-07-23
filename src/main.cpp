@@ -33,29 +33,11 @@ extern ShiftRegister165* shiftReg;
 extern uint8_t* shiftRegBuffer;
 
 void setup() {
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, HIGH);
-
-    // Initialize serial for debugging
-    Serial.begin(115200);
-    
-    // Wait for serial connection on RP2040
-    uint32_t serialWait = millis();
-    while (!Serial && (millis() - serialWait < 2000)) {
-        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-        delay(100);
-    }
-    digitalWrite(LED_BUILTIN, LOW);
-    
-    Serial.println("JoyCore-FW RP2040 - Initializing...");
-    
     // Initialize USB joystick interface EARLY for HID functionality
     MyJoystick.begin();
-    
+ 
     // Explicitly set hat switch to neutral position
     MyJoystick.setHatSwitch(0, -1);
-    
-    Serial.println("Joystick initialized. Initializing input systems...");
     
     // Initialize all input subsystems
     initButtonsFromLogical(logicalInputs, logicalInputCount);
@@ -67,9 +49,6 @@ void setup() {
     
     // Delay for USB enumeration
     delay(500);
-    
-    Serial.println("JoyCore-FW initialized successfully!");
-    Serial.println("All button inputs should now work in HID applications.");
 }
 
 void loop() {
@@ -88,7 +67,4 @@ void loop() {
     
     // Send all HID updates to computer
     MyJoystick.sendState();
-    
-    // Small delay for optimal RP2040 performance
-    //delayMicroseconds(50);
 }
