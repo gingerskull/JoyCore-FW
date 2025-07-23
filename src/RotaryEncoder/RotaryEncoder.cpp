@@ -24,7 +24,7 @@
 #define LATCH3 3 // input state at position 3
 
 
-// The array holds the values �1 for the entries where a position was decremented,
+// The array holds the values1 for the entries where a position was decremented,
 // a 1 for the entries where the position was incremented
 // and 0 in all the other (no change or not valid) cases.
 
@@ -164,40 +164,6 @@ unsigned long RotaryEncoder::getRPM()
   unsigned long timeToLastPosition = millis() - _positionExtTime;
   unsigned long t = max(timeBetweenLastPositions, timeToLastPosition);
   return 60000.0 / ((float)(t * 20));
-}
-
-// Simple quadrature decoder implementation
-SimpleQuadratureDecoder::SimpleQuadratureDecoder(uint8_t pinA, uint8_t pinB, RotaryEncoder::PinReadFn pinRead)
-    : _pinA(pinA), _pinB(pinB), _pinReadFn(pinRead) {
-    _lastStateA = _pinReadFn ? _pinReadFn(_pinA) : digitalRead(_pinA);
-    _lastStateB = _pinReadFn ? _pinReadFn(_pinB) : digitalRead(_pinB);
-    _lastState = (_lastStateA << 1) | _lastStateB;
-}
-
-int8_t SimpleQuadratureDecoder::tick() {
-    uint8_t stateA = _pinReadFn ? _pinReadFn(_pinA) : digitalRead(_pinA);
-    uint8_t stateB = _pinReadFn ? _pinReadFn(_pinB) : digitalRead(_pinB);
-    
-    uint8_t currentState = (stateA << 1) | stateB;
-    
-    int8_t result = 0;
-    
-    // Only trigger on transitions TO state 3 (both pins HIGH) - like FOUR3 latch mode
-    if (_lastState != currentState && currentState == 3) {
-        // Determine direction based on previous state
-        // State transitions to 3: 1→3 (CW) or 2→3 (CCW)
-        if (_lastState == 1) {          // 01 → 11 = clockwise
-            result = 1;
-        } else if (_lastState == 2) {   // 10 → 11 = counter-clockwise  
-            result = -1;
-        }
-        // Ignore other transitions to state 3 (like 0→3) as they're invalid
-    }
-    
-    _lastStateA = stateA;
-    _lastStateB = stateB;
-    _lastState = currentState;
-    return result;
 }
 
 // End

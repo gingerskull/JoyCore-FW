@@ -63,20 +63,11 @@ static uint8_t bufferCount = 0;
 static const uint32_t PRESS_INTERVAL_US = 20000;  // 60ms interval between presses
 static const uint32_t PRESS_DURATION_US = 30000;  // 30ms press duration for USB
 
-// Dual encoder system: RotaryEncoder for direct pins, SimpleQuadratureDecoder for shift registers
+// Unified encoder system: RotaryEncoder for all encoders
 static RotaryEncoder** encoders = nullptr;
 static EncoderButtons* encoderBtnMap = nullptr;
 static int* lastPositions = nullptr;
 static uint8_t encoderTotal = 0;
-
-// Separate system for shift register encoders using SimpleQuadratureDecoder
-struct ShiftRegEncoder {
-    SimpleQuadratureDecoder* decoder;
-    uint8_t joyButtonCW, joyButtonCCW;
-    int lastPosition;
-};
-static ShiftRegEncoder* shiftRegEncoders = nullptr;
-static uint8_t shiftRegEncoderCount = 0;
 
 void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_t count) {
   encoderTotal = count;
@@ -86,12 +77,12 @@ void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_
   lastPositions = new int[count];
 
   for (uint8_t i = 0; i < count; i++) {
-    // Use FOUR3 mode for single click per detent - ONLY for direct pin encoders
+    // Use FOUR3 mode for single click per detent - for all encoders
     encoders[i] = new RotaryEncoder(
       pins[i].pinA, pins[i].pinB, RotaryEncoder::LatchMode::FOUR3, encoderReadPin
     );
     
-    // Only set pinMode for direct pins, not shift register pins
+    // Set pinMode for direct pins only (shift register pins are handled by encoderReadPin)
     if (pins[i].pinA < 100 && pins[i].pinB < 100) {
         pinMode(pins[i].pinA, INPUT_PULLUP);
         pinMode(pins[i].pinB, INPUT_PULLUP);
@@ -167,27 +158,7 @@ void ensureStableShiftRegRead() {
     }
 }
 
-// Handle shift register encoders using SimpleQuadratureDecoder
-void updateShiftRegEncoders() {
-    for (uint8_t i = 0; i < shiftRegEncoderCount; i++) {
-        int8_t direction = shiftRegEncoders[i].decoder->tick();
-        if (direction != 0) {
-            uint8_t btn = (direction > 0) ? shiftRegEncoders[i].joyButtonCW : shiftRegEncoders[i].joyButtonCCW;
-            
-            // Debug output
-            Serial.print("SHIFTREG ENCODER ");
-            Serial.print(i);
-            Serial.print(": ");
-            Serial.print(direction > 0 ? "CW" : "CCW");
-            Serial.println();
-            
-            // Add to timing buffer - same system for all encoder types
-            addEncoderSteps(btn, 1);
-            
-            shiftRegEncoders[i].lastPosition += direction;
-        }
-    }
-}
+
 
 // Process timing buffers for consistent intervals
 void processEncoderBuffers() {
@@ -285,7 +256,7 @@ void processEncoderBuffers() {
 }
 
 void updateEncoders() {
-    // Handle direct pin encoders with RotaryEncoder library
+    // Handle all encoders with RotaryEncoder library
     for (uint8_t i = 0; i < encoderTotal; i++) {
         // Call tick() multiple times to catch up on missed transitions
         for (uint8_t t = 0; t < 3; ++t) {
@@ -299,12 +270,12 @@ void updateEncoders() {
           uint8_t btnCW = encoderBtnMap[i].cw;
           uint8_t btnCCW = encoderBtnMap[i].ccw;
 
-          // Handle multiple steps for fast rotation - same timing buffer for all
+          // Handle multiple steps for fast rotation
           uint8_t steps = abs(diff);
           uint8_t btn = (diff > 0) ? btnCW : btnCCW;
           
           // Debug encoder detection with pin info
-          Serial.print("DIRECT ENCODER ");
+          Serial.print("ENCODER ");
           Serial.print(i);
           Serial.print(" (pins ");
           Serial.print(encoderBtnMap[i].cw);
@@ -318,92 +289,47 @@ void updateEncoders() {
           Serial.print(diff > 0 ? "CW" : "CCW");
           Serial.println(")");
           
-          // Add to timing buffer - same system for all encoder types
+          // Add to timing buffer
           addEncoderSteps(btn, steps);
           
           lastPositions[i] = newPos;
         }
     }
     
-    // Handle shift register encoders with SimpleQuadratureDecoder
-    updateShiftRegEncoders();
-    
-    // Process timing buffers for consistent intervals - unified system
+    // Process timing buffers for consistent intervals
     processEncoderBuffers();
 }
 
 void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
-    // Count direct pin encoders and shift register encoders separately
-    uint8_t directEncoderCount = 0;
-    shiftRegEncoderCount = 0;
+    // Count all encoder pairs
+    uint8_t encoderCount = 0;
     
     for (uint8_t i = 0; i < logicalCount - 1; ++i) {
-        // Check for shift register encoder pairs
-        if ((logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
-            (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
-            shiftRegEncoderCount++;
-        }
-        // Check for direct pin or matrix encoder pairs
-        else if (((logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) ||
-                  (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A)) &&
-                 ((logicals[i + 1].type == INPUT_PIN && logicals[i + 1].u.pin.behavior == ENC_B) ||
-                  (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B))) {
-            directEncoderCount++;
+        // Check for any encoder pairs (direct pin, matrix, or shift register)
+        if (((logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) ||
+             (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A) ||
+             (logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A)) &&
+            ((logicals[i + 1].type == INPUT_PIN && logicals[i + 1].u.pin.behavior == ENC_B) ||
+             (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B) ||
+             (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B))) {
+            encoderCount++;
         }
     }
     
-    // Initialize shift register encoders with SimpleQuadratureDecoder
-    if (shiftRegEncoderCount > 0) {
-        shiftRegEncoders = new ShiftRegEncoder[shiftRegEncoderCount];
+    // Initialize all encoders with RotaryEncoder library
+    if (encoderCount > 0) {
+        EncoderPins* pins = new EncoderPins[encoderCount];
+        EncoderButtons* buttons = new EncoderButtons[encoderCount];
         uint8_t idx = 0;
         
         for (uint8_t i = 0; i < logicalCount - 1; ++i) {
-            if ((logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
-                (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
-                
-                uint8_t pinA = 100 + (logicals[i].u.shiftreg.regIndex << 4) + logicals[i].u.shiftreg.bitIndex;
-                uint8_t pinB = 100 + (logicals[i + 1].u.shiftreg.regIndex << 4) + logicals[i + 1].u.shiftreg.bitIndex;
-                
-                shiftRegEncoders[idx].decoder = new SimpleQuadratureDecoder(pinA, pinB, encoderReadPin);
-                shiftRegEncoders[idx].joyButtonCW = logicals[i].u.shiftreg.joyButtonID;
-                shiftRegEncoders[idx].joyButtonCCW = logicals[i + 1].u.shiftreg.joyButtonID;
-                shiftRegEncoders[idx].lastPosition = 0;
-                
-                // Set up buffer entry for this encoder pair
-                if (bufferCount < MAX_ENCODERS) {
-                    encoderBuffers[bufferCount].cwButtonId = logicals[i].u.shiftreg.joyButtonID;
-                    encoderBuffers[bufferCount].ccwButtonId = logicals[i + 1].u.shiftreg.joyButtonID;
-                    encoderBuffers[bufferCount].pendingCwSteps = 0;
-                    encoderBuffers[bufferCount].pendingCcwSteps = 0;
-                    encoderBuffers[bufferCount].lastUsbPressTime = 0;
-                    encoderBuffers[bufferCount].usbButtonPressed = false;
-                    encoderBuffers[bufferCount].currentDirection = 0;
-                    bufferCount++;
-                }
-                
-                idx++;
-            }
-        }
-    }
-    
-    // Initialize direct pin encoders with RotaryEncoder library
-    if (directEncoderCount > 0) {
-        EncoderPins* pins = new EncoderPins[directEncoderCount];
-        EncoderButtons* buttons = new EncoderButtons[directEncoderCount];
-        uint8_t idx = 0;
-        
-        for (uint8_t i = 0; i < logicalCount - 1; ++i) {
-            // Skip shift register encoders (already handled above)
-            if ((logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) &&
-                (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B)) {
-                continue;
-            }
-            
-            // Check for direct pin or matrix encoder pairs
+            // Check for any encoder pairs
             if (((logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) ||
-                 (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A)) &&
+                 (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A) ||
+                 (logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A)) &&
                 ((logicals[i + 1].type == INPUT_PIN && logicals[i + 1].u.pin.behavior == ENC_B) ||
-                 (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B))) {
+                 (logicals[i + 1].type == INPUT_MATRIX && logicals[i + 1].u.matrix.behavior == ENC_B) ||
+                 (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B))) {
                 
                 bool isEncA = false, isEncB = false;
                 uint8_t pinA = 0, pinB = 0;
@@ -429,6 +355,11 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                         }
                     }
                     joyA = logicals[i].u.matrix.joyButtonID;
+                } else if (logicals[i].type == INPUT_SHIFTREG && logicals[i].u.shiftreg.behavior == ENC_A) {
+                    isEncA = true;
+                    // Encode shift register info in pin number: (reg << 4) | bit
+                    pinA = 100 + (logicals[i].u.shiftreg.regIndex << 4) + logicals[i].u.shiftreg.bitIndex;
+                    joyA = logicals[i].u.shiftreg.joyButtonID;
                 }
                 
                 // Get ENC_B info
@@ -450,6 +381,11 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                         }
                     }
                     joyB = logicals[i + 1].u.matrix.joyButtonID;
+                } else if (logicals[i + 1].type == INPUT_SHIFTREG && logicals[i + 1].u.shiftreg.behavior == ENC_B) {
+                    isEncB = true;
+                    // Encode shift register info in pin number: (reg << 4) | bit
+                    pinB = 100 + (logicals[i + 1].u.shiftreg.regIndex << 4) + logicals[i + 1].u.shiftreg.bitIndex;
+                    joyB = logicals[i + 1].u.shiftreg.joyButtonID;
                 }
                 
                 if (isEncA && isEncB) {
@@ -462,7 +398,7 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
             }
         }
         
-        initEncoders(pins, buttons, directEncoderCount);
+        initEncoders(pins, buttons, encoderCount);
         delete[] pins;
         delete[] buttons;
     }
