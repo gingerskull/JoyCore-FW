@@ -90,5 +90,5 @@ void loop() {
     MyJoystick.sendState();
     
     // Small delay for optimal RP2040 performance
-    delayMicroseconds(50);
+    //delayMicroseconds(50);
 }
