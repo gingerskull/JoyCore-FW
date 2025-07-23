@@ -32,9 +32,9 @@ static const PinMapEntry hardwarePinMap[] = {
 // ===========================
 
 constexpr LogicalInput logicalInputs[] = {
-  // Direct pin buttons
-  { INPUT_PIN, { .pin = {10, 1, ENC_A} } },
-  { INPUT_PIN, { .pin = {11, 2, ENC_B} } },
+  // Direct pin encoders
+  { INPUT_PIN, { .pin = {10, 1, ENC_A} }, FOUR3 },
+  { INPUT_PIN, { .pin = {11, 2, ENC_B} }, FOUR3 },
 
   // Regular buttons on pins 9,10 (joyButtons 20,21)
   //{ INPUT_PIN, { .pin = {4, 3, NORMAL} } },
@@ -50,8 +50,8 @@ constexpr LogicalInput logicalInputs[] = {
   //{ INPUT_MATRIX, { .matrix = {3, 0, 4, NORMAL} } },
  
   // Shift register inputs
-  { INPUT_SHIFTREG, { .shiftreg = {0, 0, 6, ENC_A} } },
-  { INPUT_SHIFTREG, { .shiftreg = {0, 1, 7, ENC_B} } },
+  { INPUT_SHIFTREG, { .shiftreg = {0, 0, 6, ENC_A} }, FOUR0 },
+  { INPUT_SHIFTREG, { .shiftreg = {0, 1, 7, ENC_B} }, FOUR0 },
   { INPUT_SHIFTREG, { .shiftreg = {0, 2, 8, NORMAL} } },
   { INPUT_SHIFTREG, { .shiftreg = {0, 3, 9, NORMAL} } },
   { INPUT_SHIFTREG, { .shiftreg = {0, 4, 10, NORMAL} } }
