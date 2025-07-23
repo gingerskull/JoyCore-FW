@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "EncoderInput.h"
+#include "EncoderBuffer.h"
 #include "JoystickWrapper.h"
 #include "Config.h"
 #include "RotaryEncoder/RotaryEncoder.h"
@@ -46,22 +47,7 @@ static int encoderReadPin(uint8_t pin) {
     }
 }
 
-// Timing buffer system for consistent press intervals
-#define MAX_ENCODERS 16  // Maximum number of encoders supported
-struct EncoderBuffer {
-    uint8_t cwButtonId;
-    uint8_t ccwButtonId;
-    uint8_t pendingCwSteps;
-    uint8_t pendingCcwSteps;
-    uint32_t lastUsbPressTime;  // Timing for USB output
-    bool usbButtonPressed;      // State for USB output
-    uint8_t currentDirection;   // 0 = none, 1 = CW, 2 = CCW
-};
 
-static EncoderBuffer encoderBuffers[MAX_ENCODERS];
-static uint8_t bufferCount = 0;
-static const uint32_t PRESS_INTERVAL_US = 40000;  // 40ms interval between presses
-static const uint32_t PRESS_DURATION_US = 40000;  // 40ms press duration for USB
 
 // Unified encoder system: RotaryEncoder for all encoders
 static RotaryEncoder** encoders = nullptr;
@@ -71,6 +57,9 @@ static uint8_t encoderTotal = 0;
 
 void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_t count) {
   encoderTotal = count;
+
+  // Initialize encoder buffer system
+  initEncoderBuffers();
 
   encoders = new RotaryEncoder*[count];
   encoderBtnMap = new EncoderButtons[count];
@@ -138,152 +127,14 @@ void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_
     lastPositions[i] = encoders[i]->getPosition();
     
     // Set up buffer entry for this encoder pair - one buffer per encoder
-    if (bufferCount < MAX_ENCODERS) {
-        encoderBuffers[bufferCount].cwButtonId = buttons[i].cw;
-        encoderBuffers[bufferCount].ccwButtonId = buttons[i].ccw;
-        encoderBuffers[bufferCount].pendingCwSteps = 0;
-        encoderBuffers[bufferCount].pendingCcwSteps = 0;
-        encoderBuffers[bufferCount].lastUsbPressTime = 0;
-        encoderBuffers[bufferCount].usbButtonPressed = false;
-        encoderBuffers[bufferCount].currentDirection = 0;
-        bufferCount++;
-    }
+    createEncoderBufferEntry(buttons[i].cw, buttons[i].ccw);
   }
 }
 
-// Add steps to buffer for consistent timing
-void addEncoderSteps(uint8_t buttonId, uint8_t steps) {
-    for (uint8_t i = 0; i < bufferCount; i++) {
-        bool isCw = (encoderBuffers[i].cwButtonId == buttonId);
-        bool isCcw = (encoderBuffers[i].ccwButtonId == buttonId);
-        
-        if (isCw || isCcw) {
-            // Prevent buffer overflow - cap at reasonable maximum
-            uint8_t maxSteps = 50;
-            
-            if (isCw) {
-                if (encoderBuffers[i].pendingCwSteps < maxSteps) {
-                    encoderBuffers[i].pendingCwSteps += steps;
-                    if (encoderBuffers[i].pendingCwSteps > maxSteps) {
-                        encoderBuffers[i].pendingCwSteps = maxSteps;
-                    }
-                    
-                    // Debug output
-                    Serial.print("ADD CW: ");
-                    Serial.print(steps);
-                    Serial.print(" -> ");
-                    Serial.println(encoderBuffers[i].pendingCwSteps);
-                }
-            } else { // isCcw
-                if (encoderBuffers[i].pendingCcwSteps < maxSteps) {
-                    encoderBuffers[i].pendingCcwSteps += steps;
-                    if (encoderBuffers[i].pendingCcwSteps > maxSteps) {
-                        encoderBuffers[i].pendingCcwSteps = maxSteps;
-                    }
-                    
-                    // Debug output
-                    Serial.print("ADD CCW: ");
-                    Serial.print(steps);
-                    Serial.print(" -> ");
-                    Serial.println(encoderBuffers[i].pendingCcwSteps);
-                }
-            }
-            break;
-        }
-    }
-}
 
 
-// Process timing buffers for consistent intervals
-void processEncoderBuffers() {
-    uint32_t currentTime = micros();
-    
-    for (uint8_t i = 0; i < bufferCount; i++) {
-        EncoderBuffer& buffer = encoderBuffers[i];
-        
-        // Handle USB button release timing
-        if (buffer.usbButtonPressed && (currentTime - buffer.lastUsbPressTime >= PRESS_DURATION_US)) {
-            // Release the current button
-            uint8_t currentButtonId = (buffer.currentDirection == 1) ? buffer.cwButtonId : buffer.ccwButtonId;
-            uint8_t joyIdx = (currentButtonId > 0) ? (currentButtonId - 1) : 0;
-            MyJoystick.setButton(joyIdx, 0);  // Release USB button
-            buffer.usbButtonPressed = false;
-            // DON'T reset currentDirection here - keep it for direction change detection
-        }
-        
-        // Process buffer: decide which direction to process next
-        if (!buffer.usbButtonPressed && (buffer.pendingCwSteps > 0 || buffer.pendingCcwSteps > 0)) {
-            uint32_t timeSinceLastCycle = currentTime - buffer.lastUsbPressTime;
-            
-            // Determine which direction to process
-            uint8_t nextDirection = 0;
-            uint8_t nextButtonId = 0;
-            
-            // Priority logic: continue current direction until exhausted, then switch
-            if (buffer.currentDirection == 1 && buffer.pendingCwSteps > 0) {
-                // Continue CW if we have pending CW steps
-                nextDirection = 1;
-                nextButtonId = buffer.cwButtonId;
-            } else if (buffer.currentDirection == 2 && buffer.pendingCcwSteps > 0) {
-                // Continue CCW if we have pending CCW steps
-                nextDirection = 2;
-                nextButtonId = buffer.ccwButtonId;
-            } else if (buffer.pendingCwSteps > 0) {
-                // Switch to CW if current direction is exhausted
-                nextDirection = 1;
-                nextButtonId = buffer.cwButtonId;
-            } else if (buffer.pendingCcwSteps > 0) {
-                // Switch to CCW if current direction is exhausted
-                nextDirection = 2;
-                nextButtonId = buffer.ccwButtonId;
-            }
-            
-            // Check timing constraints
-            bool canProcess = false;
-            if (buffer.lastUsbPressTime == 0) {
-                // First press ever - allow immediate processing
-                canProcess = true;
-            } else if (nextDirection != buffer.currentDirection) {
-                // Direction change - allow immediate processing
-                canProcess = true;
-            } else {
-                // Same direction - need to wait for proper timing
-                uint32_t fullCycleTime = PRESS_DURATION_US + PRESS_INTERVAL_US;
-                if (timeSinceLastCycle >= fullCycleTime) {
-                    canProcess = true;
-                }
-            }
-            
-            if (canProcess && nextDirection > 0) {
-                uint8_t joyIdx = (nextButtonId > 0) ? (nextButtonId - 1) : 0;
-                MyJoystick.setButton(joyIdx, 1);  // Press USB button
-                buffer.usbButtonPressed = true;
-                buffer.lastUsbPressTime = currentTime;
-                buffer.currentDirection = nextDirection;
-                
-                // Decrement the appropriate counter
-                if (nextDirection == 1) {
-                    buffer.pendingCwSteps--;
-                    Serial.print("PRESS CW -> pending: ");
-                    Serial.println(buffer.pendingCwSteps);
-                } else {
-                    buffer.pendingCcwSteps--;
-                    Serial.print("PRESS CCW -> pending: ");
-                    Serial.println(buffer.pendingCcwSteps);
-                }
-            }
-        }
-        
-        // Safety mechanism: if we have a stuck USB button for too long, force release
-        if (buffer.usbButtonPressed && (currentTime - buffer.lastUsbPressTime >= PRESS_DURATION_US * 2)) {
-            uint8_t currentButtonId = (buffer.currentDirection == 1) ? buffer.cwButtonId : buffer.ccwButtonId;
-            uint8_t joyIdx = (currentButtonId > 0) ? (currentButtonId - 1) : 0;
-            MyJoystick.setButton(joyIdx, 0);  // Force release
-            buffer.usbButtonPressed = false;
-            // DON'T reset currentDirection here either - keep it for direction tracking
-        }
-    }
-}
+
+
 
 void updateEncoders() {
     // Handle all encoders with RotaryEncoder library
