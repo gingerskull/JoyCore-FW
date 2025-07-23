@@ -33,4 +33,4 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
 /**
  * @brief Update all encoder states and send joystick events
  */
-void updateEncoders();
+void updateEncoders(); 
