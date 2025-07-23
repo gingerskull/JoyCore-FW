@@ -83,21 +83,6 @@ private:
   unsigned long _positionExtTimePrev; // The time the previous position change was detected.
 };
 
-// Add a simple quadrature decoder for shift register encoders
-class SimpleQuadratureDecoder {
-public:
-    SimpleQuadratureDecoder(uint8_t pinA, uint8_t pinB, RotaryEncoder::PinReadFn pinRead);
-    
-    // Returns -1 for CCW, 0 for no change, 1 for CW
-    int8_t tick();
-    
-private:
-    uint8_t _pinA, _pinB;
-    uint8_t _lastStateA, _lastStateB;
-    RotaryEncoder::PinReadFn _pinReadFn;
-    uint8_t _lastState;     // Previous quadrature state (simple approach)
-};
-
 #endif
 
 // End
