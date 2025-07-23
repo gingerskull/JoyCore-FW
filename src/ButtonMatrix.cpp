@@ -2,7 +2,7 @@
 #include "ButtonMatrix.h"
 
 ButtonMatrix::ButtonMatrix(char* keymap, byte* rowPins, byte* colPins, uint8_t numRows, uint8_t numCols)
-    : keymap(keymap), rowPins(rowPins), colPins(colPins), numRows(numRows), numCols(numCols), debounceTime(10) {
+    : keymap(keymap), rowPins(rowPins), colPins(colPins), numRows(numRows), numCols(numCols), debounceTime(20) {
     
     uint8_t totalKeys = numRows * numCols;
     
