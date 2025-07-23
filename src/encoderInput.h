@@ -9,6 +9,7 @@
 struct EncoderPins {
     uint8_t pinA;
     uint8_t pinB;
+    LatchMode latchMode;
 };
 
 /**

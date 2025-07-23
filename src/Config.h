@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <Arduino.h>
+#include "RotaryEncoder/RotaryEncoder.h"
 
 // ===========================
 // 🛠️ Hardware Pin Definitions
@@ -43,6 +44,13 @@ enum ButtonBehavior : uint8_t {
     ENC_B   // Encoder channel B (counter-clockwise)
 };
 
+// Simplified latch mode enum for configuration
+enum LatchMode : uint8_t {
+    FOUR3 = 1,  // Maps to RotaryEncoder::LatchMode::FOUR3
+    FOUR0 = 2,  // Maps to RotaryEncoder::LatchMode::FOUR0
+    TWO03 = 3   // Maps to RotaryEncoder::LatchMode::TWO03
+};
+
 struct LogicalInput {
     InputType type;
     union {
@@ -50,6 +58,8 @@ struct LogicalInput {
         struct { uint8_t row; uint8_t col; uint8_t joyButtonID; ButtonBehavior behavior; } matrix;
         struct { uint8_t regIndex; uint8_t bitIndex; uint8_t joyButtonID; ButtonBehavior behavior; } shiftreg;
     } u;
+    // Optional latch mode for encoders (only used when behavior is ENC_A or ENC_B)
+    LatchMode encoderLatchMode = FOUR3;
 };
 
 // --- USER CONFIGURATION ---

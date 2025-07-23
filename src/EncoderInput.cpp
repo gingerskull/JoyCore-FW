@@ -47,7 +47,7 @@ static int encoderReadPin(uint8_t pin) {
 }
 
 // Timing buffer system for consistent press intervals
-#define MAX_ENCODERS 16  // Increased to handle both direct and shift register encoders
+#define MAX_ENCODERS 16  // Maximum number of encoders supported
 struct EncoderBuffer {
     uint8_t cwButtonId;
     uint8_t ccwButtonId;
@@ -60,8 +60,8 @@ struct EncoderBuffer {
 
 static EncoderBuffer encoderBuffers[MAX_ENCODERS];
 static uint8_t bufferCount = 0;
-static const uint32_t PRESS_INTERVAL_US = 20000;  // 60ms interval between presses
-static const uint32_t PRESS_DURATION_US = 30000;  // 30ms press duration for USB
+static const uint32_t PRESS_INTERVAL_US = 40000;  // 40ms interval between presses
+static const uint32_t PRESS_DURATION_US = 40000;  // 40ms press duration for USB
 
 // Unified encoder system: RotaryEncoder for all encoders
 static RotaryEncoder** encoders = nullptr;
@@ -77,10 +77,56 @@ void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_
   lastPositions = new int[count];
 
   for (uint8_t i = 0; i < count; i++) {
-    // Use FOUR3 mode for single click per detent - for all encoders
+    // Use the latch mode specified in the encoder configuration
+    RotaryEncoder::LatchMode latchMode;
+    
+    // Convert simplified LatchMode to RotaryEncoder::LatchMode
+    switch (pins[i].latchMode) {
+        case FOUR3:
+            latchMode = RotaryEncoder::LatchMode::FOUR3;
+            break;
+        case FOUR0:
+            latchMode = RotaryEncoder::LatchMode::FOUR0;
+            break;
+        case TWO03:
+            latchMode = RotaryEncoder::LatchMode::TWO03;
+            break;
+        default:
+            latchMode = RotaryEncoder::LatchMode::FOUR3;
+            break;
+    }
+    
     encoders[i] = new RotaryEncoder(
-      pins[i].pinA, pins[i].pinB, RotaryEncoder::LatchMode::FOUR3, encoderReadPin
+      pins[i].pinA, pins[i].pinB, latchMode, encoderReadPin
     );
+    
+    // Debug output for latch mode selection
+    Serial.print("ENCODER ");
+    Serial.print(i);
+    Serial.print(" (pins ");
+    Serial.print(pins[i].pinA);
+    Serial.print("/");
+    Serial.print(pins[i].pinB);
+    Serial.print("): ");
+    if (latchMode == RotaryEncoder::LatchMode::FOUR0) {
+        Serial.print("FOUR0 mode");
+    } else {
+        Serial.print("FOUR3 mode");
+    }
+    
+    // Show latch mode
+    switch (pins[i].latchMode) {
+        case FOUR0:
+            Serial.print(" (FOUR0)");
+            break;
+        case FOUR3:
+            Serial.print(" (FOUR3)");
+            break;
+        case TWO03:
+            Serial.print(" (TWO03)");
+            break;
+    }
+    Serial.println();
     
     // Set pinMode for direct pins only (shift register pins are handled by encoderReadPin)
     if (pins[i].pinA < 100 && pins[i].pinB < 100) {
@@ -147,18 +193,6 @@ void addEncoderSteps(uint8_t buttonId, uint8_t steps) {
     }
 }
 
-// Helper to ensure stable shift register reads for encoders
-void ensureStableShiftRegRead() {
-    if (shiftReg && shiftRegBuffer) {
-        // Read multiple times to ensure stable data
-        for (uint8_t i = 0; i < 3; i++) {
-            shiftReg->read(shiftRegBuffer);
-            delayMicroseconds(5);
-        }
-    }
-}
-
-
 
 // Process timing buffers for consistent intervals
 void processEncoderBuffers() {
@@ -175,15 +209,11 @@ void processEncoderBuffers() {
             MyJoystick.setButton(joyIdx, 0);  // Release USB button
             buffer.usbButtonPressed = false;
             // DON'T reset currentDirection here - keep it for direction change detection
-            
-
         }
         
         // Process buffer: decide which direction to process next
         if (!buffer.usbButtonPressed && (buffer.pendingCwSteps > 0 || buffer.pendingCcwSteps > 0)) {
             uint32_t timeSinceLastCycle = currentTime - buffer.lastUsbPressTime;
-            
-
             
             // Determine which direction to process
             uint8_t nextDirection = 0;
@@ -391,6 +421,18 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                 if (isEncA && isEncB) {
                     pins[idx].pinA = pinA;
                     pins[idx].pinB = pinB;
+                    
+                    // Get latch mode from ENC_A configuration (both should be the same)
+                    LatchMode latchMode = FOUR3; // Default
+                    if (logicals[i].type == INPUT_PIN) {
+                        latchMode = logicals[i].encoderLatchMode;
+                    } else if (logicals[i].type == INPUT_MATRIX) {
+                        latchMode = logicals[i].encoderLatchMode;
+                    } else if (logicals[i].type == INPUT_SHIFTREG) {
+                        latchMode = logicals[i].encoderLatchMode;
+                    }
+                    pins[idx].latchMode = latchMode;
+                    
                     buttons[idx].cw = joyA;
                     buttons[idx].ccw = joyB;
                     idx++;
