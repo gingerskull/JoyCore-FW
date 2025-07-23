@@ -53,11 +53,7 @@ void addEncoderSteps(uint8_t buttonId, uint8_t steps) {
                         encoderBuffers[i].pendingCwSteps = maxSteps;
                     }
                     
-                    // Debug output
-                    Serial.print("ADD CW: ");
-                    Serial.print(steps);
-                    Serial.print(" -> ");
-                    Serial.println(encoderBuffers[i].pendingCwSteps);
+
                 }
             } else { // isCcw
                 if (encoderBuffers[i].pendingCcwSteps < maxSteps) {
@@ -66,11 +62,7 @@ void addEncoderSteps(uint8_t buttonId, uint8_t steps) {
                         encoderBuffers[i].pendingCcwSteps = maxSteps;
                     }
                     
-                    // Debug output
-                    Serial.print("ADD CCW: ");
-                    Serial.print(steps);
-                    Serial.print(" -> ");
-                    Serial.println(encoderBuffers[i].pendingCcwSteps);
+
                 }
             }
             break;
@@ -147,12 +139,8 @@ void processEncoderBuffers() {
                 // Decrement the appropriate counter
                 if (nextDirection == 1) {
                     buffer.pendingCwSteps--;
-                    Serial.print("PRESS CW -> pending: ");
-                    Serial.println(buffer.pendingCwSteps);
                 } else {
                     buffer.pendingCcwSteps--;
-                    Serial.print("PRESS CCW -> pending: ");
-                    Serial.println(buffer.pendingCcwSteps);
                 }
             }
         }

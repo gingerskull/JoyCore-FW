@@ -48,10 +48,8 @@ public:
     }
     
     // Button functions
-    void setButton(uint8_t button, uint8_t value) {
+        void setButton(uint8_t button, uint8_t value) {
         if (button >= _buttonCount) {
-            Serial.print("ERROR: Button "); Serial.print(button); 
-            Serial.print(" >= max count "); Serial.println(_buttonCount);
             return;
         }
         
