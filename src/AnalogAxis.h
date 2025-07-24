@@ -3,52 +3,19 @@
 
 #include <stdint.h>
 #include <Arduino.h>
+#include <Adafruit_ADS1X15.h>
+#include "AxisProcessing.h"
 
-enum ResponseCurveType {
-    CURVE_LINEAR,
-    CURVE_S_CURVE,
-    CURVE_EXPONENTIAL,
-    CURVE_CUSTOM
-};
+// ADS1115 channel definitions
+#define ADS1115_CH0 100
+#define ADS1115_CH1 101
+#define ADS1115_CH2 102
+#define ADS1115_CH3 103
 
-enum AxisFilterLevel {
-    AXIS_FILTER_OFF,
-    AXIS_FILTER_LOW,
-    AXIS_FILTER_MEDIUM,
-    AXIS_FILTER_HIGH
-};
+#define ANALOG_AXIS_COUNT 4 // X, Y only (saves ~600+ bytes RAM)
 
-#define ANALOG_AXIS_COUNT 8 // X, Y, Z, Rx, Ry, Rz, S1, S2
-
-struct AxisFilter {
-    int32_t filteredValue = 0;
-    int32_t lastRawValue = 0;
-    int32_t noiseThreshold = 2;
-    uint8_t smoothingFactor = 3;
-    bool initialized = false;
-    AxisFilterLevel filterLevel = AXIS_FILTER_MEDIUM;
-    
-    int32_t velocityThreshold = 20;
-    int32_t lastProcessedValue = 0;
-    uint32_t lastUpdateTime = 0;
-
-    void reset();
-    int32_t filter(int32_t rawValue);
-    void setLevel(AxisFilterLevel level);
-    void setNoiseThreshold(int32_t threshold);
-    void setSmoothingFactor(uint8_t factor);
-    void setVelocityThreshold(int32_t threshold);
-};
-
-struct AxisCurve {
-    ResponseCurveType type = CURVE_LINEAR;
-    int32_t customTable[11] = {0, 102, 204, 306, 408, 512, 614, 716, 818, 920, 1023};
-    uint8_t points = 11;
-
-    int32_t apply(int32_t input);
-    void setType(ResponseCurveType newType);
-    void setCustomCurve(const int32_t* newTable, uint8_t newPoints);
-};
+// Forward declarations - actual implementations are in AxisProcessing.h
+// This keeps the interface clean while the processing logic is modularized
 
 class AnalogAxisManager {
 private:
@@ -64,6 +31,7 @@ private:
     // Per-axis processing
     AxisFilter _filters[ANALOG_AXIS_COUNT];
     AxisCurve _curves[ANALOG_AXIS_COUNT];
+    AxisDeadband _deadbands[ANALOG_AXIS_COUNT];
     
     // Axis enable flags
     uint8_t _enabledAxes = 0;
@@ -89,8 +57,12 @@ public:
     void setAxisNoiseThreshold(uint8_t axis, int32_t threshold);
     void setAxisSmoothingFactor(uint8_t axis, uint8_t factor);
     void setAxisVelocityThreshold(uint8_t axis, int32_t threshold);
+    void setAxisEwmaAlpha(uint8_t axis, uint32_t alphaValue);
     void setAxisResponseCurve(uint8_t axis, ResponseCurveType type);
     void setAxisCustomCurve(uint8_t axis, const int32_t* table, uint8_t points);
+    
+    // Deadband configuration
+    void setAxisDeadbandSize(uint8_t axis, int32_t size);
     
     // Pin assignment
     void setAxisPin(uint8_t axis, int8_t pin);
@@ -116,10 +88,11 @@ public:
     }
 };
 
-static constexpr int32_t PRESET_TABLES[3][11] = {
-  {0,102,204,306,408,512,614,716,818,920,1023},  // linear
-  {0,10,40,120,260,512,764,904,984,1013,1023},  // s-curve
-  {0,5,20,45,80,125,180,245,320,405,1023}       // expo
-};
+// Function to initialize ADS1115 if needed
+void initializeADS1115IfNeeded();
+
+// Functions for round-robin ADS1115 reading to prevent encoder lag
+void registerADS1115Channel(uint8_t channel);
+void performRoundRobinADS1115Read();
 
 #endif // ANALOGAXIS_h

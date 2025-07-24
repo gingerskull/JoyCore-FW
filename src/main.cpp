@@ -20,9 +20,12 @@
 #include "ShiftRegister165.h"
 #include "ConfigAxis.h"
 
-// USB joystick configuration: 32 buttons, no analog axes
+// Global AnalogAxisManager to reduce stack usage
+AnalogAxisManager g_axisManager;
+
+// USB joystick configuration: minimal configuration for maximum RAM savings
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
-                   32, 0, true, false, false,
+                   16, 0, true, true, false,
                    false, false, false,
                    false, false);
 

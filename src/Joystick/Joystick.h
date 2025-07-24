@@ -22,7 +22,7 @@
 #define JOYSTICK_h
 
 #include "../DynamicHID/DynamicHID.h"
-#include "AnalogAxis.h"
+#include "../AnalogAxis.h"
 #include "../Buttons.h"
 
 #if ARDUINO < 10606
@@ -107,6 +107,12 @@ public:
     }
     inline void setAxisVelocityThreshold(uint8_t axis, int32_t threshold) {
         _analogAxes.setAxisVelocityThreshold(axis, threshold);
+    }
+    inline void setAxisEwmaAlpha(uint8_t axis, uint32_t alphaValue) {
+        _analogAxes.setAxisEwmaAlpha(axis, alphaValue);
+    }
+    inline void setAxisDeadbandSize(uint8_t axis, int32_t size) {
+        _analogAxes.setAxisDeadbandSize(axis, size);
     }
     
     // Digital inputs
