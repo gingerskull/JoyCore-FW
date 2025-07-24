@@ -147,7 +147,7 @@ int32_t AxisCurve::apply(int32_t input) {
     }
     
     // Select the appropriate curve table
-    const int32_t* table;
+    const int16_t* table;
     
     switch (type) {
         case CURVE_LINEAR:
@@ -193,7 +193,7 @@ void AxisCurve::setType(ResponseCurveType newType) {
     type = newType;
 }
 
-void AxisCurve::setCustomCurve(const int32_t* newTable, uint8_t newPoints) {
+void AxisCurve::setCustomCurve(const int16_t* newTable, uint8_t newPoints) {
     // Validate input parameters
     if (newPoints > 1 && newPoints <= 11 && newTable != nullptr) {
         // Copy the new curve points
@@ -290,7 +290,7 @@ int32_t AxisDeadband::apply(int32_t input) {
     }
 }
 
-void AxisDeadband::setSize(int32_t size) {
+void AxisDeadband::setSize(int16_t size) {
     deadbandSize = max(0, size); // Ensure non-negative
 }
 

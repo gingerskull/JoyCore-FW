@@ -231,15 +231,15 @@ class AxisDeadband {
 private:
     static constexpr uint8_t HISTORY_SIZE = 10;  ///< Number of samples for movement analysis
     
-    int32_t deadbandSize = 0;         ///< Size of deadband (0 = disabled)
-    int32_t lastInput = 0;            ///< Previous input value
-    int32_t stableValue = 0;          ///< Value to hold when deadband is active
+    int16_t deadbandSize = 0;         ///< Size of deadband (0 = disabled)
+    int16_t lastInput = 0;            ///< Previous input value
+    int16_t stableValue = 0;          ///< Value to hold when deadband is active
     uint32_t settleDuration = 150;    ///< Time to wait before activating deadband (ms)
     bool deadbandActive = false;      ///< Whether deadband is currently active
     bool initialized = false;         ///< Whether filter has been initialized
     
     // Movement history for statistical analysis
-    int32_t movementHistory[HISTORY_SIZE] = {0}; ///< Ring buffer of recent movements
+    int16_t movementHistory[HISTORY_SIZE] = {0}; ///< Ring buffer of recent movements
     uint8_t historyIndex = 0;         ///< Current position in ring buffer
     uint8_t historySamples = 0;       ///< Number of samples collected
     uint32_t lastSampleTime = 0;      ///< Time of last sample
@@ -252,7 +252,7 @@ public:
      * @brief Constructor with deadband size
      * @param size Size of deadband zone (0 = disabled)
      */
-    AxisDeadband(int32_t size = 0) : deadbandSize(size) {}
+    AxisDeadband(int16_t size = 0) : deadbandSize(size) {}
     
     /**
      * @brief Apply deadband to input value
@@ -271,7 +271,7 @@ public:
      * - 1000-2000: Medium deadband for joysticks
      * - 2000-5000: Heavy deadband for worn controls
      */
-    void setSize(int32_t size);
+    void setSize(int16_t size);
     
     /**
      * @brief Set settle duration - time to wait before activating deadband
@@ -285,7 +285,7 @@ public:
     void reset();
     
     // Getters
-    int32_t getSize() const { return deadbandSize; }
+    int16_t getSize() const { return deadbandSize; }
     uint32_t getSettleDuration() const { return settleDuration; }
     bool isActive() const { return deadbandActive; }
 
@@ -315,7 +315,7 @@ private:
 class AxisCurve {
 private:
     ResponseCurveType type = CURVE_LINEAR; ///< Current curve type
-    int32_t customTable[11] = {0, 102, 204, 306, 408, 512, 614, 716, 818, 920, 1023}; ///< Custom curve points
+    int16_t customTable[11] = {0, 102, 204, 306, 408, 512, 614, 716, 818, 920, 1023}; ///< Custom curve points
     uint8_t points = 11; ///< Number of points in custom curve
 
 public:
@@ -340,12 +340,12 @@ public:
      * The curve points should span the expected input range.
      * Linear interpolation is used between points.
      */
-    void setCustomCurve(const int32_t* newTable, uint8_t newPoints);
+    void setCustomCurve(const int16_t* newTable, uint8_t newPoints);
     
     // Getters for current settings
     ResponseCurveType getType() const { return type; }
     uint8_t getPointCount() const { return points; }
-    const int32_t* getCustomTable() const { return customTable; }
+    const int16_t* getCustomTable() const { return customTable; }
 };
 
 // =============================================================================
@@ -360,7 +360,7 @@ public:
  * - S-Curve: Gentle in center, steep at edges (good for flight controls)
  * - Exponential: Gentle at start, steep at end (good for throttles)
  */
-static constexpr int32_t PRESET_CURVES[3][11] = {
+static constexpr int16_t PRESET_CURVES[3][11] = {
     // CURVE_LINEAR: 1:1 linear response
     {0, 102, 204, 306, 408, 512, 614, 716, 818, 920, 1023},
     
@@ -380,7 +380,7 @@ static constexpr int32_t PRESET_CURVES[3][11] = {
  * @param type Curve type
  * @return Pointer to curve table (11 points)
  */
-inline const int32_t* getPresetCurve(ResponseCurveType type) {
+inline const int16_t* getPresetCurve(ResponseCurveType type) {
     switch (type) {
         case CURVE_LINEAR:      return PRESET_CURVES[0];
         case CURVE_S_CURVE:     return PRESET_CURVES[1];
@@ -419,4 +419,4 @@ inline const char* getCurveTypeName(ResponseCurveType type) {
     }
 }
 
-#endif // AXIS_PROCESSING_H 
+#endif // AXIS_PROCESSING_H

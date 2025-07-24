@@ -12,7 +12,7 @@
 #define ADS1115_CH2 102
 #define ADS1115_CH3 103
 
-#define ANALOG_AXIS_COUNT 4 // X, Y only (saves ~600+ bytes RAM)
+#define ANALOG_AXIS_COUNT 6 // X, Y only (saves ~600+ bytes RAM)
 
 // Forward declarations - actual implementations are in AxisProcessing.h
 // This keeps the interface clean while the processing logic is modularized
@@ -20,13 +20,13 @@
 class AnalogAxisManager {
 private:
     // Axis ranges and calibration
-    int32_t _axisMinimum[ANALOG_AXIS_COUNT];
-    int32_t _axisMaximum[ANALOG_AXIS_COUNT];
-    int32_t _axisCalibMin[ANALOG_AXIS_COUNT];
-    int32_t _axisCalibMax[ANALOG_AXIS_COUNT];
+    int16_t _axisMinimum[ANALOG_AXIS_COUNT];
+    int16_t _axisMaximum[ANALOG_AXIS_COUNT];
+    int16_t _axisCalibMin[ANALOG_AXIS_COUNT];
+    int16_t _axisCalibMax[ANALOG_AXIS_COUNT];
     
     // Current axis values
-    int32_t _axisValues[ANALOG_AXIS_COUNT];
+    int16_t _axisValues[ANALOG_AXIS_COUNT];
     
     // Per-axis processing
     AxisFilter _filters[ANALOG_AXIS_COUNT];
@@ -59,7 +59,7 @@ public:
     void setAxisVelocityThreshold(uint8_t axis, int32_t threshold);
     void setAxisEwmaAlpha(uint8_t axis, uint32_t alphaValue);
     void setAxisResponseCurve(uint8_t axis, ResponseCurveType type);
-    void setAxisCustomCurve(uint8_t axis, const int32_t* table, uint8_t points);
+    void setAxisCustomCurve(uint8_t axis, const int16_t* table, uint8_t points);
     
     // Deadband configuration
     void setAxisDeadbandSize(uint8_t axis, int32_t size);

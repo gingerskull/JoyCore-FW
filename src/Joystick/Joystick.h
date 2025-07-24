@@ -99,7 +99,7 @@ public:
     inline void setAxisResponseCurve(uint8_t axis, ResponseCurveType type) {
         _analogAxes.setAxisResponseCurve(axis, type);
     }
-    inline void setAxisCustomCurve(uint8_t axis, const int32_t* table, uint8_t points) {
+    inline void setAxisCustomCurve(uint8_t axis, const int16_t* table, uint8_t points) {
         _analogAxes.setAxisCustomCurve(axis, table, points);
     }
     inline void setAxisSmoothingFactor(uint8_t axis, uint8_t factor) {

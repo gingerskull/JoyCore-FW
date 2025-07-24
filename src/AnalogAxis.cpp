@@ -78,7 +78,7 @@ void AnalogAxisManager::setAxisResponseCurve(uint8_t axis, ResponseCurveType typ
     if (axis < ANALOG_AXIS_COUNT) _curves[axis].setType(type);
 }
 
-void AnalogAxisManager::setAxisCustomCurve(uint8_t axis, const int32_t* table, uint8_t points) {
+void AnalogAxisManager::setAxisCustomCurve(uint8_t axis, const int16_t* table, uint8_t points) {
     if (axis < ANALOG_AXIS_COUNT) _curves[axis].setCustomCurve(table, points);
 }
 
