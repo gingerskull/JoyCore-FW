@@ -12,7 +12,7 @@
 #define ADS1115_CH2 102
 #define ADS1115_CH3 103
 
-#define ANALOG_AXIS_COUNT 6 // X, Y only (saves ~600+ bytes RAM)
+#define ANALOG_AXIS_COUNT 8 
 
 // Forward declarations - actual implementations are in AxisProcessing.h
 // This keeps the interface clean while the processing logic is modularized
@@ -55,7 +55,6 @@ public:
     // Filtering and curves
     void setAxisFilterLevel(uint8_t axis, AxisFilterLevel level);
     void setAxisNoiseThreshold(uint8_t axis, int32_t threshold);
-    void setAxisSmoothingFactor(uint8_t axis, uint8_t factor);
     void setAxisVelocityThreshold(uint8_t axis, int32_t threshold);
     void setAxisEwmaAlpha(uint8_t axis, uint32_t alphaValue);
     void setAxisResponseCurve(uint8_t axis, ResponseCurveType type);

@@ -49,22 +49,13 @@ int32_t AxisFilter::filter(int32_t rawValue) {
         return filteredValue;
     }
     
-    // Adaptive smoothing: reduce smoothing factor during fast movements
-    uint8_t adaptiveSmoothingFactor = smoothingFactor;
-    if (velocity > velocityThreshold) {
-        adaptiveSmoothingFactor = max(0, smoothingFactor - 2);
-    }
-    
     // Emergency pass-through for very fast movements or large jumps
     if (velocity > velocityThreshold * 3 || deltaValue > 100) {
-        filteredValue = rawValue;
-    } else if (adaptiveSmoothingFactor == 0) {
-        // No smoothing
         filteredValue = rawValue;
     } else {
         // Apply exponential smoothing: filtered += (raw - filtered) >> smoothingFactor
         int32_t delta = rawValue - filteredValue;
-        filteredValue += (delta >> adaptiveSmoothingFactor);
+        filteredValue += (delta >> 2); // Fixed smoothing factor of 4
     }
     
     // Update state for next iteration
@@ -81,32 +72,27 @@ void AxisFilter::setLevel(AxisFilterLevel level) {
     // Set predefined parameters for each filter level
     switch (level) {
         case AXIS_FILTER_OFF:
-            smoothingFactor = 0; 
             noiseThreshold = 0; 
             velocityThreshold = 0;
             break;
             
         case AXIS_FILTER_LOW:
-            smoothingFactor = 1; 
             noiseThreshold = 1; 
             velocityThreshold = 15;
             break;
             
         case AXIS_FILTER_MEDIUM:
-            smoothingFactor = 3; 
             noiseThreshold = 2; 
             velocityThreshold = 20;
             break;
             
         case AXIS_FILTER_HIGH:
-            smoothingFactor = 10; 
             noiseThreshold = 6; 
             velocityThreshold = 50;
             break;
             
         case AXIS_FILTER_EWMA:
             // EWMA uses its own algorithm, so these parameters are not used
-            smoothingFactor = 0; 
             noiseThreshold = 0; 
             velocityThreshold = 0;
             ewmaFilter.setAlpha(30); // Default alpha = 0.03 (30/1000)
@@ -119,13 +105,6 @@ void AxisFilter::setLevel(AxisFilterLevel level) {
 
 void AxisFilter::setNoiseThreshold(int32_t threshold) {
     noiseThreshold = threshold;
-}
-
-void AxisFilter::setSmoothingFactor(uint8_t factor) {
-    // Clamp to valid range (0-7)
-    if (factor <= 7) {
-        smoothingFactor = factor;
-    }
 }
 
 void AxisFilter::setVelocityThreshold(int32_t threshold) {
@@ -160,7 +139,7 @@ int32_t AxisCurve::apply(int32_t input) {
             table = PRESET_CURVES[2];
             break;
         case CURVE_CUSTOM:
-            table = customTable;
+            table = PRESET_CURVES[3];
             break;
         default:
             table = PRESET_CURVES[0]; // Default to linear
@@ -194,13 +173,15 @@ void AxisCurve::setType(ResponseCurveType newType) {
 }
 
 void AxisCurve::setCustomCurve(const int16_t* newTable, uint8_t newPoints) {
-    // Validate input parameters
-    if (newPoints > 1 && newPoints <= 11 && newTable != nullptr) {
-        // Copy the new curve points
-        for (uint8_t i = 0; i < newPoints; ++i) {
-            customTable[i] = newTable[i];
+    // Validate input parameters - we only support 11 points for preset curves
+    if (newPoints == 11 && newTable != nullptr) {
+        // Copy the new curve points to the global custom curve slot
+        // Note: This modifies the global PRESET_CURVES[3] array, so all axes
+        // using CURVE_CUSTOM will share the same custom curve
+        for (uint8_t i = 0; i < 11; ++i) {
+            // We need to cast away const to modify the array
+            const_cast<int16_t*>(PRESET_CURVES[3])[i] = newTable[i];
         }
-        points = newPoints;
         type = CURVE_CUSTOM;
     }
 }

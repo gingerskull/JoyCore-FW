@@ -62,10 +62,6 @@ void AnalogAxisManager::setAxisNoiseThreshold(uint8_t axis, int32_t threshold) {
     if (axis < ANALOG_AXIS_COUNT) _filters[axis].setNoiseThreshold(threshold);
 }
 
-void AnalogAxisManager::setAxisSmoothingFactor(uint8_t axis, uint8_t factor) {
-    if (axis < ANALOG_AXIS_COUNT) _filters[axis].setSmoothingFactor(factor);
-}
-
 void AnalogAxisManager::setAxisVelocityThreshold(uint8_t axis, int32_t threshold) {
     if (axis < ANALOG_AXIS_COUNT) _filters[axis].setVelocityThreshold(threshold);
 }

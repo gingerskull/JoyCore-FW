@@ -140,7 +140,6 @@ private:
     
     // Filter parameters
     int32_t noiseThreshold = 2;       ///< Minimum change required to update (0-10 typical)
-    uint8_t smoothingFactor = 3;      ///< Exponential smoothing factor (0-7)
     int32_t velocityThreshold = 20;   ///< Speed threshold for adaptive smoothing
     AxisFilterLevel filterLevel = AXIS_FILTER_MEDIUM; ///< Current filter level
     
@@ -176,16 +175,6 @@ public:
     void setNoiseThreshold(int32_t threshold);
     
     /**
-     * @brief Set smoothing factor
-     * @param factor Exponential smoothing factor (0-7)
-     * 
-     * 0 = no smoothing (immediate response)
-     * 7 = maximum smoothing (very slow response)
-     * Higher values = smoother but less responsive
-     */
-    void setSmoothingFactor(uint8_t factor);
-    
-    /**
      * @brief Set velocity threshold for adaptive smoothing
      * @param threshold Speed threshold for reducing smoothing (0-50 typical)
      * 
@@ -204,10 +193,36 @@ public:
     
     // Getters for current settings
     int32_t getNoiseThreshold() const { return noiseThreshold; }
-    uint8_t getSmoothingFactor() const { return smoothingFactor; }
     int32_t getVelocityThreshold() const { return velocityThreshold; }
     AxisFilterLevel getFilterLevel() const { return filterLevel; }
     uint32_t getEwmaAlpha() const { return ewmaFilter.getAlpha(); }
+};
+
+// =============================================================================
+// PRESET CURVE TABLES
+// =============================================================================
+
+/**
+ * @brief Predefined response curve lookup tables
+ * 
+ * These tables define the shape of each curve type:
+ * - Linear: Straight 1:1 mapping
+ * - S-Curve: Gentle in center, steep at edges (good for flight controls)
+ * - Exponential: Gentle at start, steep at end (good for throttles)
+ * - Custom: User-defined curve (initially set to linear)
+ */
+static constexpr int16_t PRESET_CURVES[4][11] = {
+    // CURVE_LINEAR: 1:1 linear response
+    {0, 102, 204, 306, 408, 512, 614, 716, 818, 920, 1023},
+    
+    // CURVE_S_CURVE: Gentle center, steep edges
+    {0, 10, 40, 120, 260, 512, 764, 904, 984, 1013, 1023},
+    
+    // CURVE_EXPONENTIAL: Gentle start, steep end
+    {0, 5, 20, 45, 80, 125, 180, 245, 320, 405, 1023},
+    
+    // CURVE_CUSTOM: User-defined curve (default to linear, can be modified at runtime)
+    {0, 102, 204, 306, 408, 512, 614, 716, 818, 920, 1023}
 };
 
 // =============================================================================
@@ -315,8 +330,7 @@ private:
 class AxisCurve {
 private:
     ResponseCurveType type = CURVE_LINEAR; ///< Current curve type
-    int16_t customTable[11] = {0, 102, 204, 306, 408, 512, 614, 716, 818, 920, 1023}; ///< Custom curve points
-    uint8_t points = 11; ///< Number of points in custom curve
+    uint8_t points = 11; ///< Number of points in curve (always 11 for preset curves)
 
 public:
     /**
@@ -335,40 +349,18 @@ public:
     /**
      * @brief Define custom response curve
      * @param newTable Array of curve points (must be in ascending order)
-     * @param newPoints Number of points in the curve (2-11)
+     * @param newPoints Number of points in the curve (must be 11)
      * 
      * The curve points should span the expected input range.
      * Linear interpolation is used between points.
+     * Note: This modifies the global PRESET_CURVES[3] array.
      */
     void setCustomCurve(const int16_t* newTable, uint8_t newPoints);
     
     // Getters for current settings
     ResponseCurveType getType() const { return type; }
     uint8_t getPointCount() const { return points; }
-    const int16_t* getCustomTable() const { return customTable; }
-};
-
-// =============================================================================
-// PRESET CURVE TABLES
-// =============================================================================
-
-/**
- * @brief Predefined response curve lookup tables
- * 
- * These tables define the shape of each curve type:
- * - Linear: Straight 1:1 mapping
- * - S-Curve: Gentle in center, steep at edges (good for flight controls)
- * - Exponential: Gentle at start, steep at end (good for throttles)
- */
-static constexpr int16_t PRESET_CURVES[3][11] = {
-    // CURVE_LINEAR: 1:1 linear response
-    {0, 102, 204, 306, 408, 512, 614, 716, 818, 920, 1023},
-    
-    // CURVE_S_CURVE: Gentle center, steep edges
-    {0, 10, 40, 120, 260, 512, 764, 904, 984, 1013, 1023},
-    
-    // CURVE_EXPONENTIAL: Gentle start, steep end
-    {0, 5, 20, 45, 80, 125, 180, 245, 320, 405, 1023}
+    const int16_t* getCustomTable() const { return PRESET_CURVES[3]; }
 };
 
 // =============================================================================
@@ -385,6 +377,7 @@ inline const int16_t* getPresetCurve(ResponseCurveType type) {
         case CURVE_LINEAR:      return PRESET_CURVES[0];
         case CURVE_S_CURVE:     return PRESET_CURVES[1];
         case CURVE_EXPONENTIAL: return PRESET_CURVES[2];
+        case CURVE_CUSTOM:      return PRESET_CURVES[3];
         default:                return PRESET_CURVES[0]; // Default to linear
     }
 }

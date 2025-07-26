@@ -102,9 +102,6 @@ public:
     inline void setAxisCustomCurve(uint8_t axis, const int16_t* table, uint8_t points) {
         _analogAxes.setAxisCustomCurve(axis, table, points);
     }
-    inline void setAxisSmoothingFactor(uint8_t axis, uint8_t factor) {
-        _analogAxes.setAxisSmoothingFactor(axis, factor);
-    }
     inline void setAxisVelocityThreshold(uint8_t axis, int32_t threshold) {
         _analogAxes.setAxisVelocityThreshold(axis, threshold);
     }
