@@ -13,9 +13,9 @@
  * 
  * FILTER_LEVEL options:
  *   AXIS_FILTER_OFF    - No filtering (raw values)
- *   AXIS_FILTER_LOW    - Light filtering
- *   AXIS_FILTER_MEDIUM - Moderate filtering
- *   AXIS_FILTER_HIGH   - Heavy filtering
+ *   AXIS_FILTER_LOW    - Light filtering (reduces minor noise)
+ *   AXIS_FILTER_MEDIUM - Moderate filtering (balanced smoothing)
+ *   AXIS_FILTER_HIGH   - Heavy filtering (maximum smoothing)
  *   AXIS_FILTER_EWMA   - EWMA filtering (configurable alpha parameter)
  * 
  * EWMA_ALPHA: Alpha parameter for EWMA filtering (0-1000, scaled by 1000)
@@ -23,6 +23,7 @@
  *   Lower values = more smoothing (less responsive)
  *   Common values: 30 (0.03), 100 (0.1), 200 (0.2), 500 (0.5)
  *   Only used when FILTER_LEVEL is set to AXIS_FILTER_EWMA
+ *   Recommended: 200 for precision controls, 30-100 for throttles
  * 
  * DEADBAND: Dead zone around current axis position (0 = disabled)
  *   Prevents small fluctuations when user stops moving the control
@@ -33,7 +34,10 @@
  *   CURVE_LINEAR      - Linear response (1:1 mapping)
  *   CURVE_S_CURVE     - S-curve (gentle at center, steeper at edges)
  *   CURVE_EXPONENTIAL - Exponential (gentle at start, steep at end)
- *   CURVE_CUSTOM      - Custom curve (define your own)
+ *   CURVE_CUSTOM      - Custom curve using predefined lookup table
+ * 
+ * Note: All curves use optimized preset lookup tables for memory efficiency.
+ * Custom curves are implemented as static arrays, not user-definable at runtime.
  * 
  * AXIS PIN CONFIGURATION: ANALOG PINS AND ADS1115 CHANNELS
  * 
