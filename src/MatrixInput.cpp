@@ -11,9 +11,19 @@ static byte* rowPins = nullptr;
 static byte* colPins = nullptr;
 static char* keymap = nullptr;  // Changed from char** to char*
 static ButtonMatrix* buttonMatrix = nullptr;
-static uint8_t* joyButtonIDs = nullptr;
-static ButtonBehavior* behaviors = nullptr;
-static bool* lastStates = nullptr;
+
+// Support multiple logical buttons per physical position
+struct MatrixLogicalButton {
+    uint8_t joyButtonID;
+    ButtonBehavior behavior;
+    uint8_t reverse;
+    bool lastState;
+    bool lastMomentaryState;
+};
+
+static MatrixLogicalButton** logicalButtons = nullptr; // Array of arrays
+static uint8_t* logicalButtonCounts = nullptr; // Count per position
+
 static bool* lastMomentaryStates = nullptr;
 
 bool g_encoderMatrixPinStates[20] = {1}; // indexed by pin number, default HIGH
@@ -41,18 +51,21 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     // Allocate arrays
     if (rowPins) delete[] rowPins;
     if (colPins) delete[] colPins;
-    if (keymap) delete[] keymap;  // Changed from keys cleanup
-    if (joyButtonIDs) delete[] joyButtonIDs;
-    if (behaviors) delete[] behaviors;
-    if (lastStates) delete[] lastStates;
+    if (keymap) delete[] keymap;
+    if (logicalButtons) {
+        for (uint8_t i = 0; i < ROWS * COLS; i++) {
+            delete[] logicalButtons[i];
+        }
+        delete[] logicalButtons;
+    }
+    if (logicalButtonCounts) delete[] logicalButtonCounts;
     if (lastMomentaryStates) delete[] lastMomentaryStates;
 
     rowPins = new byte[ROWS];
     colPins = new byte[COLS];
     keymap = new char[ROWS * COLS];  // Flat array for keymap
-    joyButtonIDs = new uint8_t[ROWS * COLS];
-    behaviors = new ButtonBehavior[ROWS * COLS];
-    lastStates = new bool[ROWS * COLS]{}; // All false (not pressed)
+    logicalButtons = new MatrixLogicalButton*[ROWS * COLS];
+    logicalButtonCounts = new uint8_t[ROWS * COLS]();
     lastMomentaryStates = new bool[ROWS * COLS]{}; // All false
 
     // Fill row/col pins from hardwarePinMap, but exclude encoder pins
@@ -77,33 +90,71 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
         }
     }
 
-    // Fill keymap, joyButtonIDs, behaviors
+    // Fill keymap
     for (uint8_t r = 0; r < ROWS; ++r)
         for (uint8_t c = 0; c < COLS; ++c)
             keymap[r * COLS + c] = 'A' + r * COLS + c; // unique char
 
+    // Initialize logical button arrays
     for (uint8_t i = 0; i < ROWS * COLS; ++i) {
-        joyButtonIDs[i] = 0xFF; // default invalid
-        behaviors[i] = NORMAL;
+        logicalButtons[i] = nullptr;
+        logicalButtonCounts[i] = 0;
     }
+
+    // Count logical buttons per position
     for (uint8_t i = 0; i < logicalCount; ++i) {
         if (logicals[i].type == INPUT_MATRIX) {
             uint8_t idx = logicals[i].u.matrix.row * COLS + logicals[i].u.matrix.col;
-            joyButtonIDs[idx] = logicals[i].u.matrix.joyButtonID;
-            behaviors[idx] = logicals[i].u.matrix.behavior;
+            logicalButtonCounts[idx]++;
+        }
+    }
+
+    // Allocate logical button arrays
+    for (uint8_t i = 0; i < ROWS * COLS; ++i) {
+        if (logicalButtonCounts[i] > 0) {
+            logicalButtons[i] = new MatrixLogicalButton[logicalButtonCounts[i]];
+        }
+    }
+
+    // Reset counts for filling
+    for (uint8_t i = 0; i < ROWS * COLS; ++i) {
+        logicalButtonCounts[i] = 0;
+    }
+
+    // Fill logical button configurations
+    for (uint8_t i = 0; i < logicalCount; ++i) {
+        if (logicals[i].type == INPUT_MATRIX) {
+            uint8_t idx = logicals[i].u.matrix.row * COLS + logicals[i].u.matrix.col;
+            uint8_t btnIdx = logicalButtonCounts[idx]++;
+            
+            logicalButtons[idx][btnIdx].joyButtonID = logicals[i].u.matrix.joyButtonID;
+            logicalButtons[idx][btnIdx].behavior = logicals[i].u.matrix.behavior;
+            logicalButtons[idx][btnIdx].reverse = logicals[i].u.matrix.reverse;
+            logicalButtons[idx][btnIdx].lastState = false;
+            logicalButtons[idx][btnIdx].lastMomentaryState = false;
         }
     }
 
     // Create button matrix - pass the flat keymap directly
     buttonMatrix = new ButtonMatrix(keymap, rowPins, colPins, ROWS, COLS);
 
-    // Initialize lastStates to current state (like ButtonInput.cpp does)
+    // Initialize lastStates for all logical buttons
     buttonMatrix->getKeys();
     for (uint8_t r = 0; r < ROWS; ++r) {
         for (uint8_t c = 0; c < COLS; ++c) {
             uint8_t idx = r * COLS + c;
             char keyChar = keymap[idx];
-            lastStates[idx] = buttonMatrix->isPressed(keyChar);
+            bool physicalPressed = buttonMatrix->isPressed(keyChar);
+            
+            // Initialize all logical buttons at this position
+            for (uint8_t btnIdx = 0; btnIdx < logicalButtonCounts[idx]; btnIdx++) {
+                bool effectivePressed = physicalPressed;
+                if (logicalButtons[idx][btnIdx].reverse) {
+                    effectivePressed = !effectivePressed;
+                }
+                logicalButtons[idx][btnIdx].lastState = effectivePressed;
+                logicalButtons[idx][btnIdx].lastMomentaryState = effectivePressed;
+            }
         }
     }
 }
@@ -134,35 +185,57 @@ void updateMatrix() {
                     }
                 }
                 
-                if (joyButtonIDs[idx] == 0xFF) continue; // skip unused
-                ButtonBehavior behavior = behaviors[idx];
+                // Process all logical buttons at this position
+                for (uint8_t btnIdx = 0; btnIdx < logicalButtonCounts[idx]; btnIdx++) {
+                    MatrixLogicalButton& logicalBtn = logicalButtons[idx][btnIdx];
+                    
+                    // Skip encoder behaviors in matrix (they should be handled by EncoderInput)
+                    if (logicalBtn.behavior == ENC_A || logicalBtn.behavior == ENC_B) continue;
 
-                uint8_t joyIdx = (joyButtonIDs[idx] > 0) ? (joyButtonIDs[idx] - 1) : 0;
-                // Skip encoder behaviors in matrix (they should be handled by EncoderInput)
-                if (behavior == ENC_A || behavior == ENC_B) continue;
+                    // Apply reverse logic to the key states
+                    MatrixKeyState effectiveKeyState = keyState;
+                    if (logicalBtn.reverse) {
+                        switch (keyState) {
+                            case MATRIX_PRESSED:
+                                effectiveKeyState = MATRIX_RELEASED;
+                                break;
+                            case MATRIX_RELEASED:
+                                effectiveKeyState = MATRIX_PRESSED;
+                                break;
+                            case MATRIX_HELD:
+                                effectiveKeyState = MATRIX_IDLE; // When reversed, held becomes idle
+                                break;
+                            case MATRIX_IDLE:
+                                effectiveKeyState = MATRIX_HELD; // When reversed, idle becomes held
+                                break;
+                        }
+                    }
 
-                switch (behavior) {
-                    case NORMAL:
-                        if (keyState == MATRIX_PRESSED) {
-                            MyJoystick.setButton(joyIdx, 1);  // Button pressed
-                        } else if (keyState == MATRIX_RELEASED) {
-                            MyJoystick.setButton(joyIdx, 0);  // Button released
-                        }
-                        // Don't send events for MATRIX_HELD state
-                        break;
-                    case MOMENTARY:
-                        if (keyState == MATRIX_PRESSED && !lastMomentaryStates[idx]) {
-                            MyJoystick.setButton(joyIdx, 1);
-                            delay(10);
-                            MyJoystick.setButton(joyIdx, 0);
-                        }
-                        lastMomentaryStates[idx] = (keyState == MATRIX_PRESSED || keyState == MATRIX_HELD);
-                        break;
-                    case ENC_A:
-                    case ENC_B:
-                        break;
+                    uint8_t joyIdx = (logicalBtn.joyButtonID > 0) ? (logicalBtn.joyButtonID - 1) : 0;
+
+                    switch (logicalBtn.behavior) {
+                        case NORMAL:
+                            if (effectiveKeyState == MATRIX_PRESSED) {
+                                MyJoystick.setButton(joyIdx, 1);  // Button pressed
+                            } else if (effectiveKeyState == MATRIX_RELEASED) {
+                                MyJoystick.setButton(joyIdx, 0);  // Button released
+                            }
+                            // Don't send events for MATRIX_HELD state
+                            break;
+                        case MOMENTARY:
+                            if (effectiveKeyState == MATRIX_PRESSED && !logicalBtn.lastMomentaryState) {
+                                MyJoystick.setButton(joyIdx, 1);
+                                delay(10);
+                                MyJoystick.setButton(joyIdx, 0);
+                            }
+                            logicalBtn.lastMomentaryState = (effectiveKeyState == MATRIX_PRESSED || effectiveKeyState == MATRIX_HELD);
+                            break;
+                        case ENC_A:
+                        case ENC_B:
+                            break;
+                    }
+                    logicalBtn.lastState = (effectiveKeyState == MATRIX_PRESSED || effectiveKeyState == MATRIX_HELD);
                 }
-                lastStates[idx] = (keyState == MATRIX_PRESSED || keyState == MATRIX_HELD);
             }
         }
     }
