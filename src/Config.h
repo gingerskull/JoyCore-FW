@@ -54,9 +54,9 @@ enum LatchMode : uint8_t {
 struct LogicalInput {
     InputType type;
     union {
-        struct { uint8_t pin; uint8_t joyButtonID; ButtonBehavior behavior; } pin;
-        struct { uint8_t row; uint8_t col; uint8_t joyButtonID; ButtonBehavior behavior; } matrix;
-        struct { uint8_t regIndex; uint8_t bitIndex; uint8_t joyButtonID; ButtonBehavior behavior; } shiftreg;
+        struct { uint8_t pin; uint8_t joyButtonID; ButtonBehavior behavior; uint8_t reverse; } pin;
+        struct { uint8_t row; uint8_t col; uint8_t joyButtonID; ButtonBehavior behavior; uint8_t reverse; } matrix;
+        struct { uint8_t regIndex; uint8_t bitIndex; uint8_t joyButtonID; ButtonBehavior behavior; uint8_t reverse; } shiftreg;
     } u;
     // Optional latch mode for encoders (only used when behavior is ENC_A or ENC_B)
     LatchMode encoderLatchMode = FOUR3;

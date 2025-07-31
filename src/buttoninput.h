@@ -10,6 +10,7 @@ struct ButtonConfig {
     uint8_t pin;
     uint8_t joyButtonID;
     ButtonBehavior behavior;
+    uint8_t reverse;
 };
 
 /**
