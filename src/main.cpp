@@ -52,9 +52,17 @@ void setup() {
 }
 
 void loop() {
-    // Read shift register data for button updates
+    static uint32_t lastShiftRegRead = 0;
+    uint32_t currentTime = millis();
+    
+    // Read shift register data for button updates - throttle for stability with multiple registers
     if (shiftReg && shiftRegBuffer) {
-        shiftReg->read(shiftRegBuffer);
+        // Read shift registers every 5ms for 2+ registers, every 1ms for single register
+        uint32_t readInterval = (SHIFTREG_COUNT > 1) ? 5 : 1;
+        if (currentTime - lastShiftRegRead >= readInterval) {
+            shiftReg->read(shiftRegBuffer);
+            lastShiftRegRead = currentTime;
+        }
     }
     
     // Update all input types in proper sequence

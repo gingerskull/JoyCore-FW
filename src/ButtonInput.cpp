@@ -123,7 +123,6 @@ void updateButtons() {
                         Serial.println(logicalBtn.joyButtonID);
                         MyJoystick.setButton(joyIdx, true);
                         MyJoystick.sendState();  // Send the press immediately
-                        delay(50);  // Brief pulse duration
                         MyJoystick.setButton(joyIdx, false);
                         MyJoystick.sendState();  // Send the release immediately
                     }
@@ -153,7 +152,7 @@ void updateShiftRegisterButtons() {
     for (uint8_t groupIdx = 0; groupIdx < shiftRegGroupCount; groupIdx++) {
         ShiftRegButtonGroup& group = shiftRegGroups[groupIdx];
         
-        if (group.regIndex >= SHIFTREG_COUNT) continue;
+        if (group.regIndex >= SHIFTREG_COUNT || group.bitIndex >= 8) continue;
         
         bool physicalPressed = (shiftRegBuffer[group.regIndex] & (1 << group.bitIndex)) == 0; // 74HC165: LOW = pressed
         
@@ -178,7 +177,7 @@ void updateShiftRegisterButtons() {
                 case MOMENTARY:
                     if (!logicalBtn.lastState && pressed) {
                         MyJoystick.setButton(joyIdx, true);
-                        delay(50);
+                        MyJoystick.sendState();  // Send immediately
                         MyJoystick.setButton(joyIdx, false);
                     }
                     break;
@@ -330,6 +329,10 @@ void initShiftRegisterIfNeeded(const LogicalInput* logicals, uint8_t logicalCoun
         shiftReg->begin();
         delete[] shiftRegBuffer;
         shiftRegBuffer = new uint8_t[SHIFTREG_COUNT];
+        // Initialize buffer to all high (no buttons pressed)
+        for (uint8_t i = 0; i < SHIFTREG_COUNT; i++) {
+            shiftRegBuffer[i] = 0xFF;
+        }
     }
     
     // Count unique shift register positions (regIndex, bitIndex pairs)
