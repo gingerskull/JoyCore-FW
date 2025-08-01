@@ -13,22 +13,21 @@ void ShiftRegister165::begin() {
 }
 
 void ShiftRegister165::read(uint8_t* buffer) {
-    // Parallel load: latch inputs - reduced timing for faster response
+    // Parallel load: latch inputs - stable timing for reliable operation
     digitalWrite(_plPin, LOW);
-    delayMicroseconds(1);  // Reduced from 2µs
+    delayMicroseconds(2);  // Stable timing for 74HC165
     digitalWrite(_plPin, HIGH);
-    delayMicroseconds(1);  // Reduced from 2µs
+    delayMicroseconds(2);  // Ensure latch completes
 
-    // Read bits (LSB first for each byte) - optimized timing
+    // Read bits (LSB first for each byte) - stable timing
     for (uint8_t i = 0; i < _count; ++i) {
         uint8_t value = 0;
         for (uint8_t b = 0; b < 8; ++b) {
             value |= (digitalRead(_qhPin) ? 1 : 0) << b;
             digitalWrite(_clkPin, LOW);
-            // No delay needed - Teensy 4.0 is fast enough
+            delayMicroseconds(1);  // Stable clock timing
             digitalWrite(_clkPin, HIGH);
-            // Minimal delay only if needed
-            if (b < 7) delayMicroseconds(1);  // Only between bits, not after last bit
+            delayMicroseconds(1);  // Ensure clock completes
         }
         buffer[i] = value;
     }
