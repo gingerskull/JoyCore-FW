@@ -94,6 +94,21 @@ void updateButtons() {
                 // Don't reverse wasPressed - it's already stored in effective form
             }
             
+            // Debug: Print button state changes
+            if (isPressed != wasPressed) {
+                Serial.print("Pin ");
+                Serial.print(group.pin);
+                Serial.print(" (Joy ID ");
+                Serial.print(logicalBtn.joyButtonID);
+                Serial.print(", reverse=");
+                Serial.print(logicalBtn.reverse);
+                Serial.print("): ");
+                Serial.print(isPressed ? "PRESSED" : "RELEASED");
+                Serial.print(" (physical: ");
+                Serial.print(physicalPressed ? "LOW" : "HIGH");
+                Serial.println(")");
+            }
+            
             uint8_t joyIdx = (logicalBtn.joyButtonID > 0) ? (logicalBtn.joyButtonID - 1) : 0;
             
             switch (logicalBtn.behavior) {
@@ -102,10 +117,15 @@ void updateButtons() {
                     break;
                     
                 case MOMENTARY:
+                    // Generate a brief pulse when button is first pressed
                     if (!wasPressed && isPressed) {
+                        Serial.print("MOMENTARY trigger for Joy Button ");
+                        Serial.println(logicalBtn.joyButtonID);
                         MyJoystick.setButton(joyIdx, true);
-                        delay(50);
+                        MyJoystick.sendState();  // Send the press immediately
+                        delay(50);  // Brief pulse duration
                         MyJoystick.setButton(joyIdx, false);
+                        MyJoystick.sendState();  // Send the release immediately
                     }
                     break;
                     
