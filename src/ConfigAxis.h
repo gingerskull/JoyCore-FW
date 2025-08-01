@@ -56,7 +56,7 @@
 // X-Axis (Main stick pitch)
 #define USE_AXIS_X
 #ifdef USE_AXIS_X
-    #define AXIS_X_PIN              ADS1115_CH0
+    #define AXIS_X_PIN              A1
     #define AXIS_X_MIN              0
     #define AXIS_X_MAX              32767
     #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_EWMA
@@ -68,7 +68,7 @@
 //Y-Axis (Main stick yaw)
 #define USE_AXIS_Y
 #ifdef USE_AXIS_Y
-    #define AXIS_Y_PIN              ADS1115_CH3
+    #define AXIS_Y_PIN              A2
     #define AXIS_Y_MIN              0
     #define AXIS_Y_MAX              32767
     #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_EWMA
