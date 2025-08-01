@@ -3,12 +3,11 @@
  * JoyCore-FW: RP2040 USB Game Controller
  * 
  * A versatile RP2040-based USB game controller supporting:
- * - Matrix button scanning
- * - Rotary encoders (matrix, direct pin, and shift register)
- * - Direct pin buttons
- * - 74HC165 shift register expansion
- * - ADS1115 external ADC for high-resolution analog inputs
- * - Advanced axis signal processing and filtering
+` * - Direct pin buttons (pins 4-13)
+ * - 74HC165 shift register expansion (2 registers, 16 inputs)
+ * - Matrix button scanning (currently disabled)
+ * - Rotary encoders (via shift register)
+ * - Analog axes with advanced signal processing and filtering
  * 
  * Uses rp2040-HID library for native USB HID gamepad functionality.
  */
