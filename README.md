@@ -52,14 +52,22 @@ Connect your RP2040 board and configure the pin mapping in `src/ConfigDigital.h`
 
 ```cpp
 static const PinMapEntry hardwarePinMap[] = {
-  {"2", BTN_ROW},         // Matrix row
-  {"3", BTN_ROW},
-  {"4", BTN_ROW},
-  {"5", BTN_ROW},
-  {"6", BTN_COL},         // Matrix column
-  {"16", SHIFTREG_QH},    // 74HC165 QH (serial out)
-  {"14", SHIFTREG_PL},    // 74HC165 PL (parallel load)
-  {"15", SHIFTREG_CLK}    // 74HC165 CLK (clock)
+  // Direct button inputs (pins 4-13 in current config)
+  {"4", BTN},   // Button 9 (MOMENTARY)
+  {"5", BTN},   // Button 10 (MOMENTARY)
+  {"6", BTN},   // Button 1 (NORMAL)
+  {"7", BTN},   // Button 2 (NORMAL)
+  {"8", BTN},   // Button 3 (MOMENTARY)
+  {"9", BTN},   // Button 4 (MOMENTARY)
+  {"10", BTN},  // Button 5 (NORMAL)
+  {"11", BTN},  // Button 6 (NORMAL)
+  {"12", BTN},  // Button 7 (NORMAL)
+  {"13", BTN},  // Button 8 (NORMAL)
+  
+  // 74HC165 shift register control pins
+  {"18", SHIFTREG_QH},   // Serial data out pin
+  {"19", SHIFTREG_PL},   // Parallel load pin
+  {"20", SHIFTREG_CLK}   // Clock pin
 };
 ```
 
@@ -69,16 +77,18 @@ Define your logical inputs in `src/ConfigDigital.h`:
 
 ```cpp
 constexpr LogicalInput logicalInputs[] = {
-  // Matrix buttons
-  { INPUT_MATRIX, { .matrix = {0, 0, 1, NORMAL} } },
-  { INPUT_MATRIX, { .matrix = {1, 0, 2, NORMAL} } },
+  // Direct pin buttons (pins 4-13 mapped to joystick buttons 1-10)
+  { INPUT_PIN, { .pin = {4, 9, MOMENTARY, 0} } },    // Pin 4 -> Button 9
+  { INPUT_PIN, { .pin = {5, 10, MOMENTARY, 0} } },   // Pin 5 -> Button 10
+  { INPUT_PIN, { .pin = {6, 1, NORMAL, 0} } },       // Pin 6 -> Button 1
+  { INPUT_PIN, { .pin = {7, 2, NORMAL, 0} } },       // Pin 7 -> Button 2
+  { INPUT_PIN, { .pin = {8, 3, MOMENTARY, 0} } },    // Pin 8 -> Button 3
   
-  // Matrix encoders
-  { INPUT_MATRIX, { .matrix = {2, 0, 3, ENC_A} } },
-  { INPUT_MATRIX, { .matrix = {3, 0, 4, ENC_B} } },
-  
-  // Shift register inputs
-  { INPUT_SHIFTREG, { .shiftreg = {0, 0, 5, NORMAL} } }
+  // Shift register inputs (Register 0, bits 0-7)
+  { INPUT_SHIFTREG, { .shiftreg = {0, 0, 11, NORMAL, 0} } },     // Reg 0, bit 0 -> Button 11
+  { INPUT_SHIFTREG, { .shiftreg = {0, 1, 12, NORMAL, 0} } },     // Reg 0, bit 1 -> Button 12
+  { INPUT_SHIFTREG, { .shiftreg = {0, 2, 13, ENC_A, 0} }, FOUR0 }, // Encoder A
+  { INPUT_SHIFTREG, { .shiftreg = {0, 3, 14, ENC_B, 0} }, FOUR0 }, // Encoder B
 };
 ```
 
@@ -90,25 +100,37 @@ Set up analog axes in `src/ConfigAxis.h`:
 // X-Axis with advanced processing
 #define USE_AXIS_X
 #ifdef USE_AXIS_X
-    #define AXIS_X_PIN              26              // Built-in analog pin
+    #define AXIS_X_PIN              A1              // Built-in analog pin
     #define AXIS_X_MIN              0               // Input range minimum
     #define AXIS_X_MAX              32767           // Input range maximum
     #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_EWMA // Filter type
-    #define AXIS_X_EWMA_ALPHA       50              // EWMA alpha (0-1000)
+    #define AXIS_X_EWMA_ALPHA       200             // EWMA alpha (0-1000)
     #define AXIS_X_DEADBAND         250             // Deadband size
     #define AXIS_X_CURVE            CURVE_LINEAR    // Response curve
 #endif
 
-// Y-Axis with ADS1115 high-resolution input
+// Y-Axis with built-in analog input
 #define USE_AXIS_Y
 #ifdef USE_AXIS_Y
-    #define AXIS_Y_PIN              ADS1115_CH0     // 16-bit ADC channel
+    #define AXIS_Y_PIN              A2              // Built-in analog pin
     #define AXIS_Y_MIN              0
     #define AXIS_Y_MAX              32767
-    #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_MEDIUM
-    #define AXIS_Y_EWMA_ALPHA       30
-    #define AXIS_Y_DEADBAND         500
-    #define AXIS_Y_CURVE            CURVE_S_CURVE
+    #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_EWMA
+    #define AXIS_Y_EWMA_ALPHA       200
+    #define AXIS_Y_DEADBAND         250
+    #define AXIS_Y_CURVE            CURVE_LINEAR
+#endif
+
+// Z-Axis with ADS1115 high-resolution input (example)
+// #define USE_AXIS_Z
+#ifdef USE_AXIS_Z
+    #define AXIS_Z_PIN              ADS1115_CH0     // 16-bit ADC channel
+    #define AXIS_Z_MIN              0
+    #define AXIS_Z_MAX              32767
+    #define AXIS_Z_FILTER_LEVEL     AXIS_FILTER_MEDIUM
+    #define AXIS_Z_EWMA_ALPHA       30
+    #define AXIS_Z_DEADBAND         0
+    #define AXIS_Z_CURVE            CURVE_LINEAR
 #endif
 ```
 
@@ -147,7 +169,7 @@ RP2040 has different pin numbering and capabilities than other boards:
 Set the number of chained 74HC165 chips:
 
 ```cpp
-#define SHIFTREG_COUNT    1  // Number of 74HC165 chips
+#define SHIFTREG_COUNT    2  // Number of 74HC165 chips (current config uses 2)
 ```
 
 ### Analog Axis Configuration
@@ -155,9 +177,9 @@ Set the number of chained 74HC165 chips:
 Configure analog axes in `src/ConfigAxis.h`. You can use built-in analog pins or ADS1115 channels:
 
 **Built-in Analog Pins (RP2040):**
-- `GPIO26` - Built-in ADC (12-bit resolution)
-- `GPIO27` - Built-in ADC (12-bit resolution) 
-- `GPIO28` - Built-in ADC (12-bit resolution)
+- `A1` (GPIO27) - Built-in ADC (12-bit resolution)
+- `A2` (GPIO28) - Built-in ADC (12-bit resolution) 
+- `A3` (GPIO29) - Built-in ADC (12-bit resolution)
 
 **ADS1115 Channels:**
 - `ADS1115_CH0` - Channel 0 (pins 0-1)
@@ -166,10 +188,11 @@ Configure analog axes in `src/ConfigAxis.h`. You can use built-in analog pins or
 - `ADS1115_CH3` - Channel 3 (pins 6-7)
 
 **ADS1115 Wiring (RP2040):**
-- SDA → GPIO 4 (Pin 6 on Pico)
-- SCL → GPIO 5 (Pin 7 on Pico)
-- VCC → 3.3V
+- SDA → GPIO 4 (Pin 6 on Pico) - Default I2C0 SDA
+- SCL → GPIO 5 (Pin 7 on Pico) - Default I2C0 SCL
+- VCC → 3.3V (3V3 pin)
 - GND → GND
+- ADDR → GND (for I2C address 0x48)
 
 The ADS1115 is automatically initialized when any axis uses ADS1115 channels.
 
@@ -215,8 +238,11 @@ Define your logical inputs in the `logicalInputs` array:
 # Build the project
 pio run
 
-# Upload to RP2040
+# Upload to RP2040 (put board in bootloader mode first)
 pio run --target upload
+
+# Or upload with specific environment
+pio run -e rp2040 --target upload
 ```
 
 ---
@@ -293,7 +319,7 @@ When migrating between platforms, update pin numbers in `ConfigDigital.h`:
 {"2", BTN_ROW},    // Pin 2 (same number)
 
 // RP2040
-{"2", BTN_ROW},    // GPIO 2 (same number, different naming)
+{"4", BTN},        // GPIO 4 (direct button, not matrix in current config)
 ```
 
 ### Configuration Utility Compatibility (**FUTURE**)
@@ -348,6 +374,7 @@ Raw Input → Deadband → Noise Filter → Velocity-Adaptive Smoothing → Resp
 
 **High-Precision Control (Flight Stick):**
 ```cpp
+#define AXIS_X_PIN              A1              // Built-in analog pin
 #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_EWMA
 #define AXIS_X_EWMA_ALPHA       25              // Heavy smoothing
 #define AXIS_X_DEADBAND         500             // Light deadband
@@ -356,14 +383,16 @@ Raw Input → Deadband → Noise Filter → Velocity-Adaptive Smoothing → Resp
 
 **Responsive Control (Racing Wheel):**
 ```cpp
+#define AXIS_Y_PIN              A2              // Built-in analog pin
 #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_LOW
 #define AXIS_Y_EWMA_ALPHA       200             // Light smoothing
 #define AXIS_Y_DEADBAND         0               // No deadband
 #define AXIS_Y_CURVE            CURVE_LINEAR    // Direct response
 ```
 
-**Noisy Sensor (Potentiometer):**
+**High-Resolution External ADC:**
 ```cpp
+#define AXIS_Z_PIN              ADS1115_CH0     // 16-bit external ADC
 #define AXIS_Z_FILTER_LEVEL     AXIS_FILTER_HIGH
 #define AXIS_Z_EWMA_ALPHA       30              // Heavy smoothing
 #define AXIS_Z_DEADBAND         1000            // Medium deadband
@@ -376,9 +405,9 @@ Raw Input → Deadband → Noise Filter → Velocity-Adaptive Smoothing → Resp
 
 - **PlatformIO**: Development platform
 - **RP2040**: Target hardware (Raspberry Pi Pico, Adafruit Feather RP2040, etc.)
-- **Arduino-Pico**: Arduino-compatible framework for RP2040
-- **rp2040-HID**: Native HID implementation for RP2040
-- **Adafruit ADS1X15**: For analog input support
+- **Arduino-Pico**: Arduino-compatible framework for RP2040 (framework-arduino-mbed)
+- **USBHID**: Native USB HID implementation for RP2040
+- **Adafruit ADS1X15**: For high-resolution analog input support (16-bit ADC)
 
 ---
 
@@ -396,10 +425,11 @@ Raw Input → Deadband → Noise Filter → Velocity-Adaptive Smoothing → Resp
 ## Troubleshooting
 
 ### Common Issues
-1. **Pin numbering**: RP2040 uses GPIO numbering (0-28) instead of Arduino pin numbers
-2. **Analog pins**: Only 3 built-in analog pins available (GPIO26-28)
-3. **Voltage levels**: Ensure 3.3V compatibility of your components
-4. **USB type**: Uses rp2040-HID with automatic HID descriptor generation
+1. **Pin numbering**: Use Arduino pin format (A1, A2, A3) for analog pins in configuration
+2. **Analog pins**: Only 3 built-in analog pins available (A1-A3), use ADS1115 for more
+3. **Voltage levels**: Ensure 3.3V compatibility of your components (RP2040 is NOT 5V tolerant)
+4. **USB enumeration**: Uses USBHID library with automatic descriptor generation
+5. **Upload mode**: Hold BOOTSEL button while connecting USB to enter bootloader mode
 
 ### Debug Options
 - **Serial Monitor**: Available for debugging
@@ -417,5 +447,6 @@ Raw Input → Deadband → Noise Filter → Velocity-Adaptive Smoothing → Resp
 - The ADS1115 provides 16-bit resolution vs 12-bit for built-in analog pins
 - Advanced signal processing includes EWMA filtering, intelligent deadband, and velocity-adaptive smoothing
 - Configuration format is identical between branches - only hardware platform differs
-- RP2040's limited analog pins make ADS1115 more valuable for complex setups
+- RP2040's limited analog pins (A1-A3) make ADS1115 valuable for complex setups with multiple axes
+- Current configuration uses direct pin buttons (4-13) and shift register expansion for scalability
 - New processing chain: Raw Input → Deadband → Noise Filter → Velocity-Adaptive Smoothing → Response Curve → Output
