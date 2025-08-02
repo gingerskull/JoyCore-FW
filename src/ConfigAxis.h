@@ -6,47 +6,37 @@
 #include "JoystickWrapper.h"
 
 /*
- * HOTAS User Configuration
- * 
- * Configure your axes here by uncommenting and modifying the settings below.
- * Add more axes as needed by copying the pattern.
- * 
- * FILTER_LEVEL options:
- *   AXIS_FILTER_OFF    - No filtering (raw values)
- *   AXIS_FILTER_LOW    - Light filtering
- *   AXIS_FILTER_MEDIUM - Moderate filtering
- *   AXIS_FILTER_HIGH   - Heavy filtering
- *   AXIS_FILTER_EWMA   - EWMA filtering (configurable alpha parameter)
- * 
- * EWMA_ALPHA: Alpha parameter for EWMA filtering (0-1000, scaled by 1000)
- *   Higher values = less smoothing (more responsive)
- *   Lower values = more smoothing (less responsive)
- *   Common values: 30 (0.03), 100 (0.1), 200 (0.2), 500 (0.5)
- *   Only used when FILTER_LEVEL is set to AXIS_FILTER_EWMA
- * 
- * DEADBAND: Dead zone around current axis position (0 = disabled)
- *   Prevents small fluctuations when user stops moving the control
- *   Typical values: 0 (off), 500-1000 (light), 1000-2000 (medium), 2000-5000 (heavy)
- *   Works around the CURRENT axis value, not a fixed center point
- * 
- * CURVE options:
- *   CURVE_LINEAR      - Linear response (1:1 mapping)
- *   CURVE_S_CURVE     - S-curve (gentle at center, steeper at edges)
- *   CURVE_EXPONENTIAL - Exponential (gentle at start, steep at end)
- *   CURVE_CUSTOM      - Custom curve (define your own)
- * 
- * AXIS PIN CONFIGURATION: ANALOG PINS AND ADS1115 CHANNELS
- * 
- * To use a built-in analog pin for an axis, set AXIS_X_PIN, AXIS_Y_PIN, etc. to A0, A1, etc.
- * To use an external ADS1115 ADC channel, set the pin to one of:
- *   ADS1115_CH0, ADS1115_CH1, ADS1115_CH2, ADS1115_CH3
- * 
- * Example:
- *   #define AXIS_X_PIN ADS1115_CH0  // Uses ADS1115 channel 0 (high resolution)
- *   #define AXIS_Y_PIN A1           // Uses built-in analog pin A1
+ * HOTAS Axis Configuration (runtime behavior reflects the whole codebase)
  *
- * The ADS1115 is automatically initialized when any axis uses ADS1115 channels.
- * No manual initialization required - just change the pin definition!
+ * Pipeline per axis (AnalogAxisManager):
+ *   Raw hardware -> map to user range -> Deadband (dynamic around current pos)
+ *   -> Filter (adaptive smoothing or EWMA) -> Response Curve -> HID mapping
+ *
+ * Hardware ranges:
+ *   - Built-in analog pins: 10-bit (0..1023)
+ *   - ADS1115 channels (ADS1115_CH0..CH3): cached 16-bit (0..16383), read in round-robin
+ *
+ * HID mapping:
+ *   - Processed user range (e.g., 0..32767) is mapped to -32767..32767 for rp2040-HID.
+ *
+ * FILTER_LEVEL options (AxisProcessing.cpp):
+ *   AXIS_FILTER_OFF    - Pass-through (no smoothing)
+ *   AXIS_FILTER_LOW    - Light smoothing, low velocity threshold
+ *   AXIS_FILTER_MEDIUM - Moderate smoothing (default behavior)
+ *   AXIS_FILTER_HIGH   - Heavy smoothing for noisy inputs
+ *   AXIS_FILTER_EWMA   - EWMA filter; uses AXIS_*_EWMA_ALPHA (0..1000), higher alpha = more responsive
+ *
+ * Deadband:
+ *   - Dynamic around current position; activates when average movement is low to hold value steady.
+ *   - Applied BEFORE filtering/curves; good for eliminating jitter at rest.
+ *
+ * ADS1115 behavior:
+ *   - Automatically initialized if any axis pin is ADS1115_CH0..CH3.
+ *   - Channels registered once and read in a non-blocking round-robin (20 ms per channel),
+ *     with latest values cached to avoid blocking and prevent encoder lag.
+ *
+ * Enabling axes:
+ *   - Uncomment USE_AXIS_* and set AXIS_*_* values. AxisManager is configured once on first read.
  */
 
 // =============================================================================
@@ -155,9 +145,11 @@
 
 
 
-// =============================================================================
-// SETUP FUNCTION - DO NOT MODIFY
-// =============================================================================
+ // =============================================================================
+ // SETUP FUNCTION - DO NOT MODIFY
+ // Initializes ADS1115 only if any axis uses ADS1115_CH*.
+ // Axis parameters are applied in readUserAxes() during first run.
+ // =============================================================================
 
 inline void setupUserAxes(Joystick_& joystick) {
     // Check if any axis uses ADS1115 channels and initialize if needed
@@ -197,11 +189,12 @@ inline void setupUserAxes(Joystick_& joystick) {
 }
 
 inline void readUserAxes(Joystick_& joystick) {
-    // Use the AnalogAxisManager to read all axes (handles both analog pins and ADS1115)
+    // Configure once, then read/process all enabled axes each loop.
+    // AnalogAxisManager enforces ~5 ms read cadence and uses cached ADS1115 values (round-robin).
     static AnalogAxisManager axisManager;
     static bool configured = false;
     
-    // Configure axis manager on first run
+    // Configure axis manager on first run (per-axis pin, range, filter, EWMA alpha, deadband, curve)
     if (!configured) {
         #ifdef USE_AXIS_X
             axisManager.setAxisPin(AnalogAxisManager::AXIS_X, AXIS_X_PIN);
