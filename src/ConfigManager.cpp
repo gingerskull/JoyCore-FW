@@ -141,7 +141,7 @@ bool ConfigManager::saveToStorage() {
     }
     
     uint8_t buffer[2048];
-    size_t totalSize;
+    size_t totalSize = 0;
     
     if (!getSerializedConfig(buffer, sizeof(buffer), &totalSize)) {
         return false;
@@ -273,7 +273,15 @@ bool ConfigManager::getSerializedConfig(uint8_t* buffer, size_t bufferSize, size
     size_t maxVariableSize = bufferSize - sizeof(StoredConfig);
     size_t variableSize;
     
-    return convertRuntimeToStored(config, variableData, &variableSize, maxVariableSize);
+    if (!convertRuntimeToStored(config, variableData, &variableSize, maxVariableSize)) {
+        return false;
+    }
+    
+    if (actualSize) {
+        *actualSize = sizeof(StoredConfig) + variableSize;
+    }
+    
+    return true;
 }
 
 bool ConfigManager::convertStoredToRuntime(const StoredConfig* config, const uint8_t* variableData, size_t variableSize) {
