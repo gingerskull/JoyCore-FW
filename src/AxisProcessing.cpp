@@ -6,10 +6,6 @@
 // =============================================================================
 
 void AxisFilter::reset() {
-    filteredValue = 0;
-    lastRawValue = 0;
-    lastProcessedValue = 0;
-    lastUpdateTime = 0;
     initialized = false;
     ewmaFilter.reset();
 }
@@ -18,97 +14,25 @@ int32_t AxisFilter::filter(int32_t rawValue) {
     // If filtering is disabled, pass through raw value
     if (filterLevel == AXIS_FILTER_OFF) return rawValue;
     
-    // Handle EWMA filtering separately
+    // Handle EWMA filtering
     if (filterLevel == AXIS_FILTER_EWMA) {
         return ewmaFilter.filter(rawValue);
     }
     
-    uint32_t currentTime = millis();
-    
-    // Initialize filter on first run
-    if (!initialized) {
-        filteredValue = rawValue;
-        lastRawValue = rawValue;
-        lastProcessedValue = rawValue;
-        lastUpdateTime = currentTime;
-        initialized = true;
-        return rawValue;
-    }
-    
-    // Calculate change metrics
-    int32_t deltaValue = abs(rawValue - lastProcessedValue);
-    uint32_t deltaTime = currentTime - lastUpdateTime;
-    if (deltaTime == 0) deltaTime = 1; // Prevent division by zero
-    
-    // Calculate velocity (change per unit time * 100 for scaling)
-    int32_t velocity = (deltaValue * 100) / deltaTime;
-    
-    // If change is below noise threshold and velocity is low, return cached value
-    if (deltaValue < noiseThreshold && velocity < velocityThreshold) {
-        lastUpdateTime = currentTime;
-        return filteredValue;
-    }
-    
-    // Adaptive smoothing: reduce smoothing factor during fast movements
-    uint8_t adaptiveSmoothingFactor = smoothingFactor;
-    if (velocity > velocityThreshold) {
-        adaptiveSmoothingFactor = max(0, smoothingFactor - 2);
-    }
-    
-    // Emergency pass-through for very fast movements or large jumps
-    if (velocity > velocityThreshold * 3 || deltaValue > 100) {
-        filteredValue = rawValue;
-    } else if (adaptiveSmoothingFactor == 0) {
-        // No smoothing
-        filteredValue = rawValue;
-    } else {
-        // Apply exponential smoothing: filtered += (raw - filtered) >> smoothingFactor
-        int32_t delta = rawValue - filteredValue;
-        filteredValue += (delta >> adaptiveSmoothingFactor);
-    }
-    
-    // Update state for next iteration
-    lastRawValue = rawValue;
-    lastProcessedValue = rawValue;
-    lastUpdateTime = currentTime;
-    
-    return filteredValue;
+    // Default fallback (should not be reached)
+    return rawValue;
 }
 
 void AxisFilter::setLevel(AxisFilterLevel level) {
     filterLevel = level;
     
-    // Set predefined parameters for each filter level
+    // Set parameters based on filter level
     switch (level) {
         case AXIS_FILTER_OFF:
-            smoothingFactor = 0; 
-            noiseThreshold = 0; 
-            velocityThreshold = 0;
-            break;
-            
-        case AXIS_FILTER_LOW:
-            smoothingFactor = 1; 
-            noiseThreshold = 1; 
-            velocityThreshold = 15;
-            break;
-            
-        case AXIS_FILTER_MEDIUM:
-            smoothingFactor = 3; 
-            noiseThreshold = 2; 
-            velocityThreshold = 20;
-            break;
-            
-        case AXIS_FILTER_HIGH:
-            smoothingFactor = 10; 
-            noiseThreshold = 6; 
-            velocityThreshold = 50;
+            // No filtering - pass through
             break;
             
         case AXIS_FILTER_EWMA:
-            // EWMA uses its own algorithm, so these parameters are not used
-            smoothingFactor = 0; 
-            noiseThreshold = 0; 
-            velocityThreshold = 0;
             ewmaFilter.setAlpha(30); // Default alpha = 0.03 (30/1000)
             break;
     }
@@ -117,20 +41,6 @@ void AxisFilter::setLevel(AxisFilterLevel level) {
     reset();
 }
 
-void AxisFilter::setNoiseThreshold(int32_t threshold) {
-    noiseThreshold = threshold;
-}
-
-void AxisFilter::setSmoothingFactor(uint8_t factor) {
-    // Clamp to valid range (0-7)
-    if (factor <= 7) {
-        smoothingFactor = factor;
-    }
-}
-
-void AxisFilter::setVelocityThreshold(int32_t threshold) {
-    velocityThreshold = threshold;
-}
 
 void AxisFilter::setEwmaAlpha(uint32_t alphaValue) {
     ewmaFilter.setAlpha(alphaValue);
@@ -141,31 +51,8 @@ void AxisFilter::setEwmaAlpha(uint32_t alphaValue) {
 // =============================================================================
 
 int32_t AxisCurve::apply(int32_t input) {
-    // Linear curve is a simple pass-through
-    if (type == CURVE_LINEAR) {
-        return input;
-    }
-    
-    // Select the appropriate curve table
-    const int32_t* table;
-    
-    switch (type) {
-        case CURVE_LINEAR:
-            table = PRESET_CURVES[0];
-            break;
-        case CURVE_S_CURVE:
-            table = PRESET_CURVES[1];
-            break;
-        case CURVE_EXPONENTIAL:
-            table = PRESET_CURVES[2];
-            break;
-        case CURVE_CUSTOM:
-            table = customTable;
-            break;
-        default:
-            table = PRESET_CURVES[0]; // Default to linear
-            break;
-    }
+    // All curves now use custom table (EEPROM-stored configuration)
+    const int32_t* table = customTable;
     
     // Perform linear interpolation between curve points
     // Use the actual input range from the user configuration (0-32767)
@@ -190,7 +77,8 @@ int32_t AxisCurve::apply(int32_t input) {
 }
 
 void AxisCurve::setType(ResponseCurveType newType) {
-    type = newType;
+    // Only CURVE_CUSTOM is supported now
+    type = CURVE_CUSTOM;
 }
 
 void AxisCurve::setCustomCurve(const int32_t* newTable, uint8_t newPoints) {
