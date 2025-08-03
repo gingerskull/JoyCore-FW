@@ -119,6 +119,19 @@ const uint8_t *RP2040_HID::report_desc()
         0x09, 0x39, 0x81, 0x02,  // Hat switch 3
         0x09, 0x39, 0x81, 0x02,  // Hat switch 4
 
+        0xC0,               // END_COLLECTION
+        
+        // Configuration feature report
+        0x06, 0x00, 0xFF,   // USAGE_PAGE (Vendor Defined)
+        0x09, 0x01,         // USAGE (Vendor Usage 1)
+        0xA1, 0x01,         // COLLECTION (Application)
+        0x85, 0x02,         // REPORT_ID (2) - CONFIG_USB_FEATURE_REPORT_ID
+        0x09, 0x02,         // USAGE (Vendor Usage 2)
+        0x15, 0x00,         // LOGICAL_MINIMUM (0)
+        0x26, 0xFF, 0x00,   // LOGICAL_MAXIMUM (255)
+        0x75, 0x08,         // REPORT_SIZE (8)
+        0x95, 0x3F,         // REPORT_COUNT (63) - 64 bytes total including report ID
+        0xB1, 0x02,         // FEATURE (Data,Var,Abs)
         0xC0                // END_COLLECTION
     };
     reportLength = sizeof(reportDescriptor);
@@ -421,4 +434,44 @@ const uint8_t *RP2040_HID::configuration_desc(uint8_t index)
     MBED_ASSERT(sizeof(configuration_descriptor_temp) == sizeof(_configuration_descriptor));
     memcpy(_configuration_descriptor, configuration_descriptor_temp, sizeof(_configuration_descriptor));
     return _configuration_descriptor;
+}
+
+void RP2040_HID::set_feature_report(const uint8_t *data, uint16_t length) {
+    // Debug: Flash built-in LED to indicate method was called
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(100);
+    digitalWrite(LED_BUILTIN, LOW);
+    
+#if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
+    if (data && length > 0) {
+        // Process incoming feature report with configuration protocol
+        extern ConfigProtocol g_configProtocol;
+        g_configProtocol.processFeatureReport(data[0], data, length);
+    }
+#endif
+}
+
+void RP2040_HID::get_feature_report(uint8_t *data, uint16_t length) {
+    // Debug: Flash built-in LED to indicate method was called  
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(50);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(50);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(50);
+    digitalWrite(LED_BUILTIN, LOW);
+    
+#if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
+    if (data && length > 0) {
+        // Generate outgoing feature report with configuration protocol
+        extern ConfigProtocol g_configProtocol;
+        uint16_t actualLength;
+        if (g_configProtocol.generateFeatureReport(data[0], data, length, &actualLength)) {
+            // Response generated successfully
+        } else {
+            // No response available, clear the buffer
+            memset(data, 0, length);
+        }
+    }
+#endif
 }
