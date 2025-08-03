@@ -21,9 +21,6 @@
  *
  * FILTER_LEVEL options (AxisProcessing.cpp):
  *   AXIS_FILTER_OFF    - Pass-through (no smoothing)
- *   AXIS_FILTER_LOW    - Light smoothing, low velocity threshold
- *   AXIS_FILTER_MEDIUM - Moderate smoothing (default behavior)
- *   AXIS_FILTER_HIGH   - Heavy smoothing for noisy inputs
  *   AXIS_FILTER_EWMA   - EWMA filter; uses AXIS_*_EWMA_ALPHA (0..1000), higher alpha = more responsive
  *
  * Deadband:
@@ -52,7 +49,7 @@
     #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_EWMA
     #define AXIS_X_EWMA_ALPHA       200
     #define AXIS_X_DEADBAND         250
-    #define AXIS_X_CURVE            CURVE_LINEAR
+    #define AXIS_X_CURVE            CURVE_CUSTOM
 #endif
 
 //Y-Axis (Main stick yaw)
@@ -64,7 +61,7 @@
     #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_EWMA
     #define AXIS_Y_EWMA_ALPHA       200
     #define AXIS_Y_DEADBAND         250
-    #define AXIS_Y_CURVE            CURVE_LINEAR
+    #define AXIS_Y_CURVE            CURVE_CUSTOM
 #endif
 
 // Z-Axis - uncomment to enable
@@ -73,10 +70,10 @@
     #define AXIS_Z_PIN              A4
     #define AXIS_Z_MIN              0
     #define AXIS_Z_MAX              32767
-    #define AXIS_Z_FILTER_LEVEL     AXIS_FILTER_MEDIUM
+    #define AXIS_Z_FILTER_LEVEL     AXIS_FILTER_EWMA
     #define AXIS_Z_EWMA_ALPHA       30
     #define AXIS_Z_DEADBAND         0
-    #define AXIS_Z_CURVE            CURVE_LINEAR
+    #define AXIS_Z_CURVE            CURVE_CUSTOM
 #endif
 
 // RX-Axis - uncomment to enable
@@ -85,10 +82,10 @@
     #define AXIS_RX_PIN             A5
     #define AXIS_RX_MIN             0
     #define AXIS_RX_MAX             32767
-    #define AXIS_RX_FILTER_LEVEL    AXIS_FILTER_MEDIUM
+    #define AXIS_RX_FILTER_LEVEL    AXIS_FILTER_EWMA
     #define AXIS_RX_EWMA_ALPHA      30
     #define AXIS_RX_DEADBAND        0
-    #define AXIS_RX_CURVE           CURVE_LINEAR
+    #define AXIS_RX_CURVE           CURVE_CUSTOM
 #endif
 
 // RY-Axis - uncomment to enable
@@ -97,10 +94,10 @@
     #define AXIS_RY_PIN             A6
     #define AXIS_RY_MIN             0
     #define AXIS_RY_MAX             32767
-    #define AXIS_RY_FILTER_LEVEL    AXIS_FILTER_MEDIUM
+    #define AXIS_RY_FILTER_LEVEL    AXIS_FILTER_EWMA
     #define AXIS_RY_EWMA_ALPHA      30
     #define AXIS_RY_DEADBAND        0
-    #define AXIS_RY_CURVE           CURVE_LINEAR
+    #define AXIS_RY_CURVE           CURVE_CUSTOM
 #endif
 
 // RZ-Axis (Rudder/twist) - uncomment to enable
@@ -109,10 +106,10 @@
     #define AXIS_RZ_PIN             A2
     #define AXIS_RZ_MIN             0
     #define AXIS_RZ_MAX             32767
-    #define AXIS_RZ_FILTER_LEVEL    AXIS_FILTER_HIGH
+    #define AXIS_RZ_FILTER_LEVEL    AXIS_FILTER_EWMA
     #define AXIS_RZ_EWMA_ALPHA      30
     #define AXIS_RZ_DEADBAND        0
-    #define AXIS_RZ_CURVE           CURVE_LINEAR
+    #define AXIS_RZ_CURVE           CURVE_CUSTOM
 #endif
 
 // S1-Axis (Throttle) - uncomment to enable
@@ -121,10 +118,10 @@
     #define AXIS_S1_PIN             A3
     #define AXIS_S1_MIN             0
     #define AXIS_S1_MAX             32767
-    #define AXIS_S1_FILTER_LEVEL    AXIS_FILTER_LOW
+    #define AXIS_S1_FILTER_LEVEL    AXIS_FILTER_EWMA
     #define AXIS_S1_EWMA_ALPHA      30
     #define AXIS_S1_DEADBAND        0
-    #define AXIS_S1_CURVE           CURVE_LINEAR
+    #define AXIS_S1_CURVE           CURVE_CUSTOM
 #endif
 
 // S2-Axis (Second throttle/slider) - uncomment to enable
@@ -133,10 +130,10 @@
     #define AXIS_S2_PIN             A7
     #define AXIS_S2_MIN             0
     #define AXIS_S2_MAX             1023
-    #define AXIS_S2_FILTER_LEVEL    AXIS_FILTER_LOW
+    #define AXIS_S2_FILTER_LEVEL    AXIS_FILTER_EWMA
     #define AXIS_S2_EWMA_ALPHA      30
     #define AXIS_S2_DEADBAND        0
-    #define AXIS_S2_CURVE           CURVE_LINEAR
+    #define AXIS_S2_CURVE           CURVE_CUSTOM
 #endif
 
 // =============================================================================
