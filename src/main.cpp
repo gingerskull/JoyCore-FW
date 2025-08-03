@@ -28,6 +28,11 @@
 #include "MatrixInput.h"
 #include "ShiftRegister165.h"
 #include "ConfigAxis.h"
+#include "ConfigManager.h"
+
+#if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
+    #include "usb/ConfigProtocol.h"
+#endif
 
 
  // USB joystick configuration: exposes 32 buttons, 1 hat switch, and 8 axes to the wrapper.
@@ -39,11 +44,19 @@ extern ShiftRegister165* shiftReg;
 extern uint8_t* shiftRegBuffer;
 
 void setup() {
+    // Initialize configuration manager
+    g_configManager.initialize();
+    
     // Initialize USB joystick interface EARLY for HID functionality
     MyJoystick.begin();
  
     // Explicitly set hat switch to neutral position
     MyJoystick.setHatSwitch(0, -1);
+    
+    // Initialize configuration protocol
+#if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
+    g_configProtocol.initialize();
+#endif
     
     // Initialize all input subsystems
     initButtonsFromLogical(logicalInputs, logicalInputCount);
@@ -55,9 +68,30 @@ void setup() {
     
     // Delay for USB enumeration
     delay(500);
+    
+    // Debug: Enable serial communication for testing
+    Serial.begin(115200);
+    Serial.println("JoyCore Configuration System Ready");
 }
 
 void loop() {
+    // Check for serial commands (for debugging/testing)
+    if (Serial.available()) {
+        String command = Serial.readStringUntil('\n');
+        command.trim();
+        
+        if (command == "STATUS") {
+            ConfigStatus status = g_configManager.getStatus();
+            Serial.print("Config Status - Storage: ");
+            Serial.print(status.storageInitialized ? "OK" : "FAIL");
+            Serial.print(", Loaded: ");
+            Serial.print(status.configLoaded ? "YES" : "NO");
+            Serial.print(", Mode: ");
+            Serial.print(status.currentMode);
+            Serial.print(", Version: ");
+            Serial.println(status.configVersion);
+        }
+    }
     static uint32_t lastShiftRegRead = 0;
     uint32_t currentTime = millis();
     
