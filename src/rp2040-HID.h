@@ -209,7 +209,7 @@ namespace arduino
         virtual const uint8_t *configuration_desc(uint8_t index);
 
     private:
-        uint8_t inputArray[51];
+        uint8_t inputArray[52];
 
         uint8_t _configuration_descriptor[41];
         PlatformMutex _mutex;
