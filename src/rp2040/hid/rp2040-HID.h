@@ -188,12 +188,17 @@ namespace arduino
         void SetHat(uint8_t hatIdx, uint8_t dir);
 
         bool send_update();
+        
         /*
     * To define the report descriptor. Warning: this method has to store the length of the report descriptor in reportLength.
     *
     * @returns pointer to the report descriptor
     */
         virtual const uint8_t *report_desc();
+        
+        // Feature report handling for configuration protocol
+        virtual void set_feature_report(const uint8_t *data, uint16_t length);
+        virtual void get_feature_report(uint8_t *data, uint16_t length);
 
     protected:
         /*
@@ -204,7 +209,7 @@ namespace arduino
         virtual const uint8_t *configuration_desc(uint8_t index);
 
     private:
-        uint8_t inputArray[51];
+        uint8_t inputArray[52];
 
         uint8_t _configuration_descriptor[41];
         PlatformMutex _mutex;
