@@ -11,11 +11,11 @@ import sys
 import re
 import os
 
-# USB HID constants from ConfigMode.h
+# USB HID constants from src/config/core/ConfigMode.h
 CONFIG_USB_FEATURE_REPORT_ID = 0x02
 CONFIG_USB_MAX_PACKET_SIZE = 64
 
-# Message types from ConfigStructs.h
+# Message types from src/config/core/ConfigStructs.h
 class ConfigMessageType:
     GET_CONFIG = 0x01
     SET_CONFIG = 0x02
@@ -213,7 +213,7 @@ def parse_config_data(config_data):
         return
         
     try:
-        # Configuration data structure (based on ConfigStructs.h):
+        # Configuration data structure (based on src/config/core/ConfigStructs.h):
         # struct Config {
         #     uint32_t magic;           // Magic number to validate config
         #     uint16_t version;         // Config version
@@ -458,7 +458,7 @@ def read_config_digital_h():
     """Read and parse the ConfigDigital.h file to show expected configuration"""
     print("\n=== Expected Configuration from ConfigDigital.h ===")
     
-    config_file = "src/ConfigDigital.h"
+    config_file = "src/config/ConfigDigital.h"
     if not os.path.exists(config_file):
         print(f"Config file {config_file} not found")
         return
