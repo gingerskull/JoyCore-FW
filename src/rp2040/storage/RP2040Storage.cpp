@@ -4,9 +4,10 @@
 #include <stdio.h>
 
 #if CONFIG_FEATURE_STORAGE_ENABLED && CONFIG_STORAGE_USE_LITTLEFS
-    #include "LittleFS_Mbed_RP2040.h"
-    // Create static instance of LittleFS_MBED
-    static LittleFS_MBED* littleFS_instance = nullptr;
+    #include <LittleFS.h>
+    #include <VFS.h>
+    // Use built-in LittleFS from arduino-pico
+    static bool littleFS_initialized = false;
 #endif
 
 RP2040Storage::RP2040Storage() : StorageInterface() {
@@ -25,14 +26,15 @@ StorageResult RP2040Storage::initialize() {
 
 StorageResult RP2040Storage::initializeLittleFS() {
 #if CONFIG_FEATURE_STORAGE_ENABLED && CONFIG_STORAGE_USE_LITTLEFS
-    // Create LittleFS instance if needed
-    if (!littleFS_instance) {
-        littleFS_instance = new LittleFS_MBED();
-    }
-    
-    // Initialize LittleFS - it will auto-format if no filesystem is detected
-    if (!littleFS_instance->init()) {
-        return StorageResult::ERROR_NOT_INITIALIZED;
+    // Initialize built-in LittleFS
+    if (!littleFS_initialized) {
+        if (!LittleFS.begin()) {
+            return StorageResult::ERROR_NOT_INITIALIZED;
+        }
+        
+        // Set VFS root to LittleFS for POSIX file operations
+        VFS.root(LittleFS);
+        littleFS_initialized = true;
     }
     
     m_initialized = true;
@@ -134,8 +136,15 @@ size_t RP2040Storage::getAvailableSpace() const {
         return 0;
     }
     
-    // For mbed RP2040, return a reasonable estimate
-    // The actual implementation would need to use filesystem-specific methods
+#if CONFIG_FEATURE_STORAGE_ENABLED && CONFIG_STORAGE_USE_LITTLEFS
+    // Get actual filesystem info from built-in LittleFS
+    FSInfo fsInfo;
+    if (LittleFS.info(fsInfo)) {
+        return fsInfo.totalBytes - fsInfo.usedBytes;
+    }
+#endif
+    
+    // Fallback estimate
     return 1024 * 1024; // 1MB estimate
 }
 
@@ -144,20 +153,32 @@ size_t RP2040Storage::getUsedSpace() const {
         return 0;
     }
     
-    // For mbed RP2040, return a reasonable estimate
-    // The actual implementation would need to use filesystem-specific methods
-    return 0; // Placeholder
+#if CONFIG_FEATURE_STORAGE_ENABLED && CONFIG_STORAGE_USE_LITTLEFS
+    // Get actual filesystem info from built-in LittleFS
+    FSInfo fsInfo;
+    if (LittleFS.info(fsInfo)) {
+        return fsInfo.usedBytes;
+    }
+#endif
+    
+    return 0; // Fallback
 }
 
 StorageResult RP2040Storage::format() {
 #if CONFIG_FEATURE_STORAGE_ENABLED && CONFIG_STORAGE_USE_LITTLEFS
-    // Note: LittleFS auto-formats, so this is mainly for explicit clearing
+    // Format the built-in LittleFS filesystem
     m_initialized = false;
-    if (littleFS_instance) {
-        littleFS_instance->unmount();
+    littleFS_initialized = false;
+    
+    // End current filesystem
+    LittleFS.end();
+    
+    // Format and reinitialize
+    if (!LittleFS.format()) {
+        return StorageResult::ERROR_NOT_INITIALIZED;
     }
     
-    // Reinitialize (which will auto-format if needed)
+    // Reinitialize after format
     return initialize();
 #else
     return StorageResult::ERROR_NOT_INITIALIZED;
