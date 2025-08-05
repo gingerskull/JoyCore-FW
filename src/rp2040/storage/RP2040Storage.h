@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StorageInterface.h"
+#include "../../StorageInterface.h"
 #include <stdio.h>
 
 #if CONFIG_FEATURE_STORAGE_ENABLED && CONFIG_STORAGE_USE_LITTLEFS

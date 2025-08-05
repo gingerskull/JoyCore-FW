@@ -22,16 +22,16 @@
 #include <Arduino.h>
 #include "Config.h"
 #define DEFINE_MYJOYSTICK
-#include "JoystickWrapper.h"
-#include "ButtonInput.h"
-#include "EncoderInput.h"
-#include "MatrixInput.h"
-#include "ShiftRegister165.h"
-#include "ConfigAxis.h"
-#include "ConfigManager.h"
+#include "rp2040/JoystickWrapper.h"
+#include "inputs/buttons/ButtonInput.h"
+#include "inputs/encoders/EncoderInput.h"
+#include "inputs/buttons/MatrixInput.h"
+#include "inputs/shift_register/ShiftRegister165.h"
+#include "config/ConfigAxis.h"
+#include "config/core/ConfigManager.h"
 
 #if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
-    #include "usb/ConfigProtocol.h"
+    #include "rp2040/hid/ConfigProtocol.h"
 #endif
 
 

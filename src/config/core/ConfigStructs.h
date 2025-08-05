@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../Config.h"
-#include "../ConfigMode.h"
+#include "../../Config.h"
+#include "ConfigMode.h"
 
 // Serializable configuration structures for storage and USB communication
 // These structures pack the current configuration data into binary format

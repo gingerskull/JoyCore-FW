@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "MatrixInput.h"
-#include "Config.h"
-#include "JoystickWrapper.h"
+#include "../../Config.h"
+#include "../../rp2040/JoystickWrapper.h"
 #include "ButtonMatrix.h"
 
 // Dynamic matrix config

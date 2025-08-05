@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <Arduino.h>
-#include "RotaryEncoder/RotaryEncoder.h"
+#include "inputs/encoders/RotaryEncoder.h"
 
 // ===========================
 // 🛠️ Hardware Pin Definitions
@@ -64,7 +64,7 @@ struct LogicalInput {
 
 // --- USER CONFIGURATION ---
 // User must provide hardwarePinMap, hardwarePinMapCount, logicalInputs, logicalInputCount in UserConfig.h
-#include "ConfigDigital.h"
+#include "config/ConfigDigital.h"
 
 constexpr uint8_t hardwarePinMapCount = sizeof(hardwarePinMap) / sizeof(hardwarePinMap[0]);
 constexpr uint8_t logicalInputCount = sizeof(logicalInputs) / sizeof(logicalInputs[0]);

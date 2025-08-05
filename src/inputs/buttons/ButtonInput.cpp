@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "ButtonInput.h"
-#include "JoystickWrapper.h"
-#include "Config.h"
-#include "ShiftRegister165.h"
+#include "../../rp2040/JoystickWrapper.h"
+#include "../../Config.h"
+#include "../shift_register/ShiftRegister165.h"
 
 // Static variables for button management
 struct PinLogicalButton {
