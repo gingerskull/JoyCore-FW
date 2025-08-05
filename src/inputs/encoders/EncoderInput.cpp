@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "EncoderInput.h"
 #include "EncoderBuffer.h"
-#include "JoystickWrapper.h"
-#include "Config.h"
-#include "RotaryEncoder/RotaryEncoder.h"
-#include "ShiftRegister165.h"
+#include "../../rp2040/JoystickWrapper.h"
+#include "../../Config.h"
+#include "RotaryEncoder.h"
+#include "../shift_register/ShiftRegister165.h"
 
 // External variable for matrix pin states
 extern bool g_encoderMatrixPinStates[20];

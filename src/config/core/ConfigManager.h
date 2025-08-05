@@ -1,11 +1,11 @@
 #pragma once
 
 #include "ConfigMode.h"
-#include "config/ConfigStructs.h"
+#include "ConfigStructs.h"
 
 #if CONFIG_FEATURE_STORAGE_ENABLED
-    #include "storage/StorageInterface.h"
-    #include "storage/RP2040Storage.h"
+    #include "../../StorageInterface.h"
+    #include "../../rp2040/storage/RP2040Storage.h"
 #endif
 
 #include <stdint.h>

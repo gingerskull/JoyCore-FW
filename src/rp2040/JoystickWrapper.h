@@ -5,7 +5,7 @@
 // This wrapper provides the same interface as the Teensy version
 // but uses rp2040-HID functions
 
-#include "rp2040-HID.h"
+#include "hid/rp2040-HID.h"
 
 using namespace arduino;
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../ConfigMode.h"
-#include "../config/ConfigStructs.h"
-#include "../ConfigManager.h"
+#include "../../config/core/ConfigMode.h"
+#include "../../config/core/ConfigStructs.h"
+#include "../../config/core/ConfigManager.h"
 
 #if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
 
