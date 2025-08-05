@@ -1,30 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
-// RP2040 Raspberry Pi Pico uses rp2040-HID library
+// RP2040 Raspberry Pi Pico uses TinyUSB for optimized HID performance
 // This wrapper provides the same interface as the Teensy version
-// but uses rp2040-HID functions
+// but uses our optimized TinyUSBGamepad implementation
 
-#include "hid/rp2040-HID.h"
-
-using namespace arduino;
+#include "hid/TinyUSBGamepad.h"
 
 // Wrapper class that provides the same interface as the Teensy version
-// but uses rp2040-HID functions
+// but uses our optimized TinyUSBGamepad implementation
 class Joystick_ {
 private:
     uint8_t _buttonCount;
     uint8_t _hatSwitchCount;
     bool _autoSendState;
-    RP2040_HID _gamepad;
+    TinyUSBGamepad* _gamepad;
     
 public:
     // Constructor with compatible signature to the original
     Joystick_(
-        uint8_t hidReportId = 0x03,          // Not used on RP2040, but kept for compatibility
-        uint8_t joystickType = 0x04,         // Not used on RP2040, but kept for compatibility  
-        uint8_t buttonCount = 32,
-        uint8_t hatSwitchCount = 2,          // rp2040-HID supports 4 hat switches
+        uint8_t hidReportId = 0x03,          // Not used with TinyUSB, but kept for compatibility
+        uint8_t joystickType = 0x04,         // Not used with TinyUSB, but kept for compatibility  
+        uint8_t buttonCount = 128,           // TinyUSBGamepad supports up to 128 buttons
+        uint8_t hatSwitchCount = 4,          // TinyUSBGamepad supports 4 hat switches
         bool includeXAxis = true,
         bool includeYAxis = true,
         bool includeZAxis = true,
@@ -33,27 +31,29 @@ public:
         bool includeRzAxis = true,
         bool includeS1 = true,
         bool includeS2 = true
-    ) : _buttonCount(buttonCount), _hatSwitchCount(hatSwitchCount), _autoSendState(true), _gamepad() {
-        // rp2040-HID handles axis configuration automatically
+    ) : _buttonCount(buttonCount), _hatSwitchCount(hatSwitchCount), _autoSendState(true) {
+        // Use global MyGamepad instance for optimized performance
+        _gamepad = &MyGamepad;
     }
     
     void begin(bool initAutoSendState = true) {
         _autoSendState = initAutoSendState;
-        // rp2040-HID initializes automatically through USB
-        delay(100); // Give USB time to initialize
+        // Initialize TinyUSBGamepad with auto-send preference
+        _gamepad->begin(_autoSendState);
     }
     
     void end() {
-        // Not implemented in rp2040-HID, but kept for compatibility
+        // End TinyUSBGamepad operation
+        _gamepad->end();
     }
     
     // Button functions
-        void setButton(uint8_t button, uint8_t value) {
+    void setButton(uint8_t button, uint8_t value) {
         if (button >= _buttonCount) {
             return;
         }
         
-        _gamepad.SetButton(button, value != 0); // rp2040-HID uses 0-based button numbering
+        _gamepad->setButton(button, value != 0);
     }
     
     void pressButton(uint8_t button) {
@@ -64,65 +64,55 @@ public:
         setButton(button, 0);
     }
     
-    // Axis functions - convert from our 32-bit range to rp2040-HID's 16-bit range
+    // Axis functions - convert from our 32-bit range to TinyUSB's 16-bit range
     void setAxis(uint8_t axis, int32_t value) {
-        // Convert to -32767 to 32767 range that rp2040-HID expects
-        int16_t pico_value = constrain(value, -32767, 32767);
+        // Convert to -32767 to 32767 range that TinyUSBGamepad expects
+        int16_t gamepad_value = constrain(value, -32767, 32767);
         
-        switch(axis) {
-            case 0: // X axis
-                _gamepad.SetX(pico_value);
-                break;
-            case 1: // Y axis  
-                _gamepad.SetY(pico_value);
-                break;
-            case 2: // Z axis
-                _gamepad.SetZ(pico_value);
-                break;
-            case 3: // Rx axis
-                _gamepad.SetRx(pico_value);
-                break;
-            case 4: // Ry axis
-                _gamepad.SetRy(pico_value);
-                break;
-            case 5: // Rz axis
-                _gamepad.SetRz(pico_value);
-                break;
-            case 6: // Slider 1
-                _gamepad.SetSlider(pico_value);
-                break;
-            case 7: // Slider 2
-                _gamepad.SetDial(pico_value);
-                break;
+        // TinyUSBGamepad supports up to 16 axes directly
+        if (axis < 16) {
+            _gamepad->setAxis(axis, gamepad_value);
         }
     }
     
     void setAxisRange(uint8_t axis, int32_t minimum, int32_t maximum) {
-        // rp2040-HID handles range internally, but we store for potential future use
-        // For now, we assume -32767 to 32767 range which is rp2040-HID's default
+        // TinyUSBGamepad uses fixed -32767 to 32767 range internally
+        // This function is kept for compatibility but doesn't change behavior
     }
     
     // Hat switch function
     void setHatSwitch(int8_t hatSwitchIndex, int16_t value) {
-        if (hatSwitchIndex < 0 || hatSwitchIndex >= 4) return; // rp2040-HID supports 4 hat switches
+        if (hatSwitchIndex < 0 || hatSwitchIndex >= 4) return; // TinyUSBGamepad supports 4 hat switches
         
-        uint8_t hatValue;
+        int8_t hatValue;
         if (value < 0) {
-            hatValue = HAT_DIR_C; // Center/neutral
+            hatValue = -1; // Center/neutral (converted internally to HAT_DIR_C)
         } else {
             // Convert from degrees to hat direction
             // 0=N, 45=NE, 90=E, 135=SE, 180=S, 225=SW, 270=W, 315=NW
             hatValue = (value / 45) % 8;
         }
         
-        _gamepad.SetHat(hatSwitchIndex, hatValue);
+        _gamepad->setHat(hatSwitchIndex, hatValue);
     }
     
     void sendState() {
-        _gamepad.send_update();
+        _gamepad->sendReport();
     }
     
+    // Auto-send control for MOMENTARY button handling
+    void setAutoSend(bool autoSend) {
+        _gamepad->setAutoSend(autoSend);
+    }
+    
+    bool getAutoSend() const {
+        return _gamepad->getAutoSend();
+    }
 
 };
 
+#ifdef DEFINE_MYJOYSTICK
 extern Joystick_ MyJoystick;
+#else
+extern Joystick_ MyJoystick;
+#endif
