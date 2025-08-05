@@ -106,8 +106,9 @@ void updateButtons() {
                     if (!wasPressed && isPressed) {
                         MyJoystick.setButton(joyIdx, true);
                         MyJoystick.sendState();  // Send the press immediately
+                        delay(30);  // Small delay between press and release
                         MyJoystick.setButton(joyIdx, false);
-                        MyJoystick.sendState();  // Send the release immediately
+                        MyJoystick.sendState();  // Send the release
                     }
                     break;
                     
@@ -161,7 +162,9 @@ void updateShiftRegisterButtons() {
                     if (!logicalBtn.lastState && pressed) {
                         MyJoystick.setButton(joyIdx, true);
                         MyJoystick.sendState();  // Send immediately
+                        delay(30);  // Small delay between press and release
                         MyJoystick.setButton(joyIdx, false);
+                        MyJoystick.sendState();  // Send the release
                     }
                     break;
                     
