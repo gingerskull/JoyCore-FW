@@ -1,4 +1,5 @@
 #include "ConfigProtocol.h"
+#include "TinyUSBGamepad.h"
 #include <string.h>
 
 #if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
@@ -30,6 +31,20 @@ bool ConfigProtocol::initialize() {
     m_pendingResponse = false;
     m_responseReportID = 0;
     memset(&m_transferState, 0, sizeof(m_transferState));
+    
+    // Set up TinyUSB feature report callbacks
+    TinyUSBGamepad::setFeatureReportCallback(
+        // GET_REPORT callback
+        [](uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) -> uint16_t {
+            uint16_t actualLength = 0;
+            g_configProtocol.generateFeatureReport(report_id, buffer, reqlen, &actualLength);
+            return actualLength;
+        },
+        // SET_REPORT callback
+        [](uint8_t report_id, hid_report_type_t report_type, const uint8_t* buffer, uint16_t bufsize) {
+            g_configProtocol.processFeatureReport(report_id, buffer, bufsize);
+        }
+    );
     
     m_initialized = true;
     return true;

@@ -10,6 +10,8 @@ struct PinLogicalButton {
     ButtonBehavior behavior;
     uint8_t reverse;
     bool lastState;
+    uint32_t momentaryStartTime;  // For non-blocking MOMENTARY timing
+    bool momentaryActive;         // Track if MOMENTARY pulse is active
 };
 
 struct PinButtonGroup {
@@ -27,6 +29,8 @@ struct ShiftRegLogicalButton {
     ButtonBehavior behavior;
     uint8_t reverse;
     bool lastState;
+    uint32_t momentaryStartTime;  // For non-blocking MOMENTARY timing
+    bool momentaryActive;         // Track if MOMENTARY pulse is active
 };
 
 struct ShiftRegButtonGroup {
@@ -103,12 +107,17 @@ void updateButtons() {
                     
                 case MOMENTARY:
                     // Generate a brief pulse when button is first pressed
-                    if (!wasPressed && isPressed) {
+                    if (!wasPressed && isPressed && !logicalBtn.momentaryActive) {
+                        // Start MOMENTARY pulse
                         MyJoystick.setButton(joyIdx, true);
-                        MyJoystick.sendState();  // Send the press immediately
-                        delay(30);  // Small delay between press and release
+                        logicalBtn.momentaryStartTime = millis();
+                        logicalBtn.momentaryActive = true;
+                    }
+                    
+                    // Check if MOMENTARY pulse should end (non-blocking)
+                    if (logicalBtn.momentaryActive && (millis() - logicalBtn.momentaryStartTime >= 50)) {
                         MyJoystick.setButton(joyIdx, false);
-                        MyJoystick.sendState();  // Send the release
+                        logicalBtn.momentaryActive = false;
                     }
                     break;
                     
@@ -159,12 +168,18 @@ void updateShiftRegisterButtons() {
                     break;
                     
                 case MOMENTARY:
-                    if (!logicalBtn.lastState && pressed) {
+                    // Generate a brief pulse when button is first pressed
+                    if (!logicalBtn.lastState && pressed && !logicalBtn.momentaryActive) {
+                        // Start MOMENTARY pulse
                         MyJoystick.setButton(joyIdx, true);
-                        MyJoystick.sendState();  // Send immediately
-                        delay(30);  // Small delay between press and release
+                        logicalBtn.momentaryStartTime = millis();
+                        logicalBtn.momentaryActive = true;
+                    }
+                    
+                    // Check if MOMENTARY pulse should end (non-blocking)
+                    if (logicalBtn.momentaryActive && (millis() - logicalBtn.momentaryStartTime >= 50)) {
                         MyJoystick.setButton(joyIdx, false);
-                        MyJoystick.sendState();  // Send the release
+                        logicalBtn.momentaryActive = false;
                     }
                     break;
                     
@@ -270,6 +285,8 @@ void initRegularButtons(const LogicalInput* logicals, uint8_t logicalCount, uint
                     effectivePressed = !effectivePressed;
                 }
                 pinGroups[pinIdx].logicalButtons[btnIdx].lastState = effectivePressed;
+                pinGroups[pinIdx].logicalButtons[btnIdx].momentaryStartTime = 0;
+                pinGroups[pinIdx].logicalButtons[btnIdx].momentaryActive = false;
                 
                 btnIdx++;
             }
@@ -390,6 +407,8 @@ void initShiftRegisterIfNeeded(const LogicalInput* logicals, uint8_t logicalCoun
                 shiftRegGroups[posIdx].logicalButtons[btnIdx].behavior = logicals[i].u.shiftreg.behavior;
                 shiftRegGroups[posIdx].logicalButtons[btnIdx].reverse = logicals[i].u.shiftreg.reverse;
                 shiftRegGroups[posIdx].logicalButtons[btnIdx].lastState = false; // Initialize to not pressed
+                shiftRegGroups[posIdx].logicalButtons[btnIdx].momentaryStartTime = 0;
+                shiftRegGroups[posIdx].logicalButtons[btnIdx].momentaryActive = false;
                 
                 btnIdx++;
             }
