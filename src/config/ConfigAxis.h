@@ -1,9 +1,9 @@
 #ifndef USER_CONFIG_H
 #define USER_CONFIG_H
 
-#include "AnalogAxis.h"
-#include "AxisProcessing.h"
-#include "JoystickWrapper.h"
+#include "../inputs/analog/AnalogAxis.h"
+#include "../inputs/analog/AxisProcessing.h"
+#include "../rp2040/JoystickWrapper.h"
 
 /*
  * HOTAS Axis Configuration (runtime behavior reflects the whole codebase)

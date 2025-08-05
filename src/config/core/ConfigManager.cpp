@@ -1,7 +1,7 @@
 #include "ConfigManager.h"
-#include "Config.h"
-#include "ConfigDigital.h"
-#include "ConfigAxis.h"
+#include "../../Config.h"
+#include "../ConfigDigital.h"
+#include "../ConfigAxis.h"
 #include <string.h>
 
 // Global instance

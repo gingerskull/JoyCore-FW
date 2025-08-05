@@ -1,5 +1,5 @@
 #include "RP2040Storage.h"
-#include "../ConfigMode.h"
+#include "../../config/core/ConfigMode.h"
 #include <string.h>
 #include <stdio.h>
 
