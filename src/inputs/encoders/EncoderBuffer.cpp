@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "EncoderBuffer.h"
-#include "JoystickWrapper.h"
+#include "../../rp2040/JoystickWrapper.h"
 
 // Global encoder buffer storage
 static EncoderBuffer encoderBuffers[MAX_ENCODERS];

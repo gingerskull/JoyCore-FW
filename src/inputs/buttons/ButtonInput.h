@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <Arduino.h>
-#include "Config.h"
+#include "../../Config.h"
 
 /**
  * @brief Configuration for a single button input
