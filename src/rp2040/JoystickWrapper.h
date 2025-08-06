@@ -109,6 +109,11 @@ public:
         return _gamepad->getAutoSend();
     }
 
+    // USB device descriptor configuration (must be called before begin())
+    void setUSBDescriptor(uint16_t vid, uint16_t pid, const char* manufacturer = nullptr, const char* product = nullptr) {
+        TinyUSBGamepad::setUSBDescriptor(vid, pid, manufacturer, product);
+    }
+
 };
 
 #ifdef DEFINE_MYJOYSTICK
