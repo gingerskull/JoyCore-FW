@@ -47,6 +47,16 @@ const uint8_t TinyUSBGamepad::_hid_descriptor[] = {
     // Hat switches temporarily removed due to phantom input issues
     // TODO: Re-enable when hat switch phantom issues are resolved
     
+    // Feature Reports for configuration protocol
+    0x06, 0x00, 0xFF,              // USAGE_PAGE (Vendor Defined)
+    0x09, 0x01,                    // USAGE (Vendor Usage 1)
+    0x85, 0x02,                    // REPORT_ID (2) - CONFIG_USB_FEATURE_REPORT_ID
+    0x95, 0x40,                    // REPORT_COUNT (64) - CONFIG_USB_MAX_PACKET_SIZE
+    0x75, 0x08,                    // REPORT_SIZE (8)
+    0x15, 0x00,                    // LOGICAL_MINIMUM (0)
+    0x26, 0xFF, 0x00,              // LOGICAL_MAXIMUM (255)
+    0xB1, 0x02,                    // FEATURE (Data,Var,Abs) - Bidirectional feature report
+    
     0xc0                           // END_COLLECTION
 };
 
