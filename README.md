@@ -1,14 +1,16 @@
-# 🎮 JoyCore-FW
-> **Next-Generation USB Game Controller Firmware for RP2040**
+
 
 <div align="center">
+
+# 🎮 JoyCore-FW
+**Next-Generation USB Game Controller Firmware for RP2040**
 
 ![RP2040 Badge](https://img.shields.io/badge/RP2040-Native-brightgreen?style=flat&logo=raspberrypi)
 ![PlatformIO](https://img.shields.io/badge/PlatformIO-Compatible-orange?style=flat&logo=platformio)
 ![TinyUSB](https://img.shields.io/badge/TinyUSB-HID-blue?style=flat&logo=adafruit)
 ![License](https://img.shields.io/badge/License-GPL--3.0-red?style=flat)
 
-**⚠️ RP2040 Native Branch - For Arduino Pro Micro see [`main`](../../tree/main) | For Teensy 4.0 see [`teensy40`](../../tree/teensy40)**
+**⚠️ RP2040 Branch - For Arduino Pro Micro see [`main`](../../tree/main) | For Teensy 4.0 see [`teensy40`](../../tree/teensy40)**
 
 ![RP2040 Pico Pinout](images/rp2040-pico-pinout.png)
 
@@ -18,25 +20,20 @@
 
 ## 🚀 **Key Advantages & Features**
 
-### **💰 Unbeatable Value**
-- **~$4-8** cost vs $20+ alternatives (Teensy 4.0)
-- **Wide board support** - Raspberry Pi Pico, Adafruit Feather RP2040, SparkFun Pro Micro RP2040
-- **Native USB-C** on most modern boards
-
-### **⚡ Superior Performance**  
+### **⚡Performance**  
 - **Dual ARM Cortex-M0+** processors @ 133MHz
 - **264KB SRAM** + 2MB Flash memory
 - **Hardware PIO** for accelerated I/O operations
 - **<2ms button response** time with excellent USB reliability
 
-### **🎮 Comprehensive Input Support**
-- **🎯 Direct Pins**: Up to ~26 individual button/encoder connections
-- **🔘 Matrix Scanning**: 8×8 row/column multiplexing (64 buttons max)
-- **⚡ Shift Registers**: 74HC165 expansion for 128+ inputs
-- **📊 Analog Axes**: Built-in 12-bit ADC + 16-bit ADS1115 external ADC (8 axes total)
-- **🔄 Rotary Encoders**: Supported on all input types with configurable latch modes
+### **🎮 Input Support**
+- **Direct Pins**: Up to ~26 individual button/encoder connections
+- **Matrix Scanning**: 8×8 row/column multiplexing (64 buttons max)
+- **Shift Registers**: 74HC165 expansion for 128+ inputs
+- **Analog Axes**: Built-in 12-bit ADC + 16-bit ADS1115 external ADC (8 axes total)
+- **Rotary Encoders**: Supported on all input types with configurable latch modes
 
-### **🧠 Advanced Signal Processing**
+### **🧠 Signal Processing**
 - **EWMA filtering** with configurable responsiveness
 - **Intelligent deadband** with statistical movement analysis  
 - **Custom response curves** with up to 11 interpolation points
@@ -112,11 +109,11 @@ constexpr LogicalInput logicalInputs[] = {
 
 ### 🎛️ **Button Behaviors**
 
-| Type | Description | Use Case |
-|------|-------------|----------|
-| `NORMAL` | Standard press/release | Fire buttons, gear switches |
-| `MOMENTARY` | Quick pulse on press | Toggle commands, mode switches |
-| `ENC_A/ENC_B` | Encoder channels (paired) | Rotary controls, scroll wheels |
+| Type | Description |
+|------|-------------|
+| `NORMAL` | Standard press/release | 
+| `MOMENTARY` | Quick pulse on press | 
+| `ENC_A/ENC_B` | Encoder channels (paired) |
 
 ### 🔄 **Encoder Setup & Advanced Tips**
 
@@ -258,7 +255,7 @@ pio run --target upload
 <tr>
 <td width="33%">
 
-### 🍓 **Raspberry Pi Pico**
+#### 🍓 **Raspberry Pi Pico**
 - GPIO0-28 available
 - Built-in LED on GPIO25
 - USB-C connector
@@ -267,7 +264,7 @@ pio run --target upload
 </td>
 <td width="33%">
 
-### 🦅 **Adafruit Feather RP2040**  
+#### 🦅 **Adafruit Feather RP2040**  
 - GPIO0-29 available
 - NeoPixel + user button
 - USB-C + JST battery
@@ -276,7 +273,7 @@ pio run --target upload
 </td>
 <td width="33%">
 
-### ⚡ **SparkFun Pro Micro RP2040**
+#### ⚡ **SparkFun Pro Micro RP2040**
 - Arduino Pro Micro footprint
 - GPIO0-29 available  
 - USB-C connector
@@ -297,21 +294,7 @@ pio run --target upload
 | **Flash** | 32KB | 1MB | **2MB** |
 | **Response** | ~10ms | <1ms | **<2ms** |
 | **Cost** | $8-12 | $20-25 | **$4-8** |
-| **USB** | Unstable | Excellent | **Excellent** |
-
----
-
-## 📚 **Dependencies**
-
-```ini
-[env:rp2040]
-platform = raspberrypi
-framework = arduino
-board_build.core = earlephilhower
-
-lib_deps = 
-    adafruit/Adafruit ADS1X15@^2.5.0  # 16-bit ADC support
-```
+| **USB** | Standard | Excellent | **Excellent** |
 
 ---
 
@@ -336,42 +319,7 @@ lib_deps =
 
 ## 🌟 **Credits**
 
-<div align="center">
-
-<table>
-<tr>
-<td align="center" width="25%">
-<img src="https://github.com/raspberrypi.png" width="60"><br>
-<b>Raspberry Pi Foundation</b><br>
-<sub>RP2040 MCU</sub>
-</td>
-<td align="center" width="25%">
-<img src="https://github.com/earlephilhower.png" width="60"><br>
-<b>Earle Philhower</b><br>
-<sub>Arduino-Pico Core</sub>
-</td>
-<td align="center" width="25%">
-<img src="https://github.com/hathach.png" width="60"><br>
-<b>Ha Thach</b><br>
-<sub>TinyUSB Stack</sub>
-</td>
-<td align="center" width="25%">
-<img src="https://github.com/adafruit.png" width="60"><br>
-<b>Adafruit</b><br>
-<sub>ADS1X15 Library</sub>
-</td>
-</tr>
-</table>
-
-</div>
-
----
-
-<div align="center">
-
-**⭐ Star this repo if it powers your awesome controller builds! ⭐**
-
-[![GitHub Stars](https://img.shields.io/github/stars/yourusername/JoyCore-FW?style=social)](../../stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/yourusername/JoyCore-FW?style=social)](../../network/members)
-
-</div>
+- **[Raspberry Pi Foundation](https://github.com/raspberrypi)** - RP2040 MCU
+- **[Arduino-Pico](https://github.com/earlephilhower/arduino-pico)** - Arduino-compatible RP2040 core by Earle Philhower
+- **[TinyUSB](https://github.com/hathach/tinyusb)** - USB stack by Ha Thach
+- **[Adafruit ADS1X15](https://github.com/adafruit/Adafruit_ADS1X15)** - 16-bit ADC library
