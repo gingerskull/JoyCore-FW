@@ -3,10 +3,10 @@
 
 <div align="center">
 
-![RP2040 Badge](https://img.shields.io/badge/RP2040-Native-brightgreen?style=for-the-badge&logo=raspberrypi)
-![PlatformIO](https://img.shields.io/badge/PlatformIO-Compatible-orange?style=for-the-badge&logo=platformio)
-![TinyUSB](https://img.shields.io/badge/TinyUSB-HID-blue?style=for-the-badge)
-![License](https://img.shields.io/badge/License-GPL--3.0-red?style=for-the-badge)
+![RP2040 Badge](https://img.shields.io/badge/RP2040-Native-brightgreen?style=flat&logo=raspberrypi)
+![PlatformIO](https://img.shields.io/badge/PlatformIO-Compatible-orange?style=flat&logo=platformio)
+![TinyUSB](https://img.shields.io/badge/TinyUSB-HID-blue?style=flat&logo=adafruit)
+![License](https://img.shields.io/badge/License-GPL--3.0-red?style=flat)
 
 **⚠️ RP2040 Native Branch - For Arduino Pro Micro see [`main`](../../tree/main) | For Teensy 4.0 see [`teensy40`](../../tree/teensy40)**
 
