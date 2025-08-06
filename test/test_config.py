@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """
 JoyCore Configuration Test Script
-Tests the USB HID configuration protocol with the RP2040 board
+Tests the USB HID configuration protocol with the board's storage-based configuration system
 """
 
 import hid
 import struct
 import time
 import sys
-import re
-import os
 
 # USB HID constants from src/config/core/ConfigMode.h
 CONFIG_USB_FEATURE_REPORT_ID = 0x02
@@ -45,7 +43,7 @@ def find_joycore_device():
     
     # First try our custom VID:PID
     for device in devices:
-        if device['vendor_id'] == 0x1235 and device['product_id'] == 0x0050:
+        if device['vendor_id'] == 0x2E8A and device['product_id'] == 0xA02F:
             print(f"Found JoyCore device (custom): {device['product_string']}")
             print(f"  Manufacturer: {device['manufacturer_string']}")
             print(f"  Path: {device['path']}")
@@ -205,26 +203,26 @@ def parse_latch_mode(latch_mode):
     return modes.get(latch_mode, f"UNKNOWN({latch_mode})")
 
 def parse_config_data(config_data):
-    """Parse configuration data and extract button settings"""
+    """Parse configuration data using the new StoredConfig structure"""
     print("\n=== Parsing Configuration Data ===")
     
-    if not config_data or len(config_data) < 8:
+    if not config_data or len(config_data) < 20:  # ConfigHeader is 20 bytes
         print("Insufficient configuration data")
         return
         
     try:
-        # Configuration data structure (based on src/config/core/ConfigStructs.h):
-        # struct Config {
-        #     uint32_t magic;           // Magic number to validate config
-        #     uint16_t version;         // Config version
-        #     uint16_t size;            // Total config size
-        #     DigitalConfig digital;    // Digital input configuration
-        #     AnalogConfig analog;      // Analog axis configuration
+        # StoredConfig structure (based on src/config/core/ConfigStructs.h):
+        # struct ConfigHeader {
+        #     uint32_t magic;          // Magic number for validation (0x4A4F5943 = "JOYC")
+        #     uint16_t version;        // Configuration format version
+        #     uint16_t size;           // Total size of configuration data
+        #     uint32_t checksum;       // CRC32 checksum for data integrity
+        #     uint8_t reserved[4];     // Reserved for future use
         # }
         
         offset = 0
         
-        # Parse main config header
+        # Parse config header
         magic = struct.unpack('<I', config_data[offset:offset+4])[0]
         offset += 4
         
@@ -234,87 +232,110 @@ def parse_config_data(config_data):
         size = struct.unpack('<H', config_data[offset:offset+2])[0]
         offset += 2
         
-        print(f"Config Magic: 0x{magic:08X}")
+        checksum = struct.unpack('<I', config_data[offset:offset+4])[0]
+        offset += 4
+        
+        # Skip reserved bytes
+        offset += 4
+        
+        print(f"Config Magic: 0x{magic:08X} ({'JOYC' if magic == 0x4A4F5943 else 'INVALID'})")
         print(f"Config Version: {version}")
         print(f"Config Size: {size} bytes")
+        print(f"Config Checksum: 0x{checksum:08X}")
         
         if len(config_data) < size:
             print(f"Warning: Received {len(config_data)} bytes but config size is {size}")
         
-        # Parse digital configuration
+        # Parse main structure data
         if offset + 4 <= len(config_data):
-            digital_input_count = struct.unpack('<H', config_data[offset:offset+2])[0]
-            offset += 2
+            pin_map_count = config_data[offset]
+            offset += 1
             
-            shiftreg_count = struct.unpack('<H', config_data[offset:offset+2])[0]
-            offset += 2
+            logical_input_count = config_data[offset]
+            offset += 1
             
-            print(f"\nDigital Configuration:")
-            print(f"  Input count: {digital_input_count}")
-            print(f"  Shift register count: {shiftreg_count}")
+            shift_reg_count = config_data[offset]
+            offset += 1
+            
+            # Skip reserved byte
+            offset += 1
+            
+            print(f"\nConfiguration Summary:")
+            print(f"  Pin map entries: {pin_map_count}")
+            print(f"  Logical inputs: {logical_input_count}")
+            print(f"  Shift registers: {shift_reg_count}")
+            
+            # Parse 8 analog axes (each is 16 bytes)
+            print(f"\n=== Analog Axes Configuration ===")
+            for axis_id in range(8):
+                if offset + 16 > len(config_data):
+                    break
+                    
+                enabled = config_data[offset]
+                pin = config_data[offset + 1]
+                min_value = struct.unpack('<H', config_data[offset + 2:offset + 4])[0]
+                max_value = struct.unpack('<H', config_data[offset + 4:offset + 6])[0]
+                filter_level = config_data[offset + 6]
+                ewma_alpha = struct.unpack('<H', config_data[offset + 7:offset + 9])[0]
+                deadband = struct.unpack('<H', config_data[offset + 9:offset + 11])[0]
+                curve = config_data[offset + 11]
+                
+                axis_names = ["X", "Y", "Z", "RX", "RY", "RZ", "S1", "S2"]
+                if enabled:
+                    print(f"  Axis {axis_names[axis_id]}: Pin {pin}, Range {min_value}-{max_value}, Filter {filter_level}, Curve {curve}")
+                
+                offset += 16
+                
+            # Parse variable-length pin map entries
+            print(f"\n=== Hardware Pin Map ===")
+            for i in range(pin_map_count):
+                if offset + 10 > len(config_data):
+                    break
+                    
+                # StoredPinMapEntry: name[8], type, reserved
+                name = config_data[offset:offset+8].decode('ascii', errors='ignore').rstrip('\x00')
+                pin_type = config_data[offset + 8]
+                
+                print(f"  Pin {name}: Type {pin_type}")
+                offset += 10
             
             # Parse logical inputs
             print(f"\n=== Button Configuration ===")
-            for i in range(min(digital_input_count, 50)):  # Limit to prevent overflow
-                if offset + 12 > len(config_data):  # LogicalInput is ~12 bytes
+            for i in range(logical_input_count):
+                if offset + 16 > len(config_data):
                     break
                     
+                # StoredLogicalInput structure (16 bytes)
                 input_type = config_data[offset]
-                offset += 1
-                
-                # Parse input data union (8 bytes)
-                input_data = config_data[offset:offset+8]
-                offset += 8
-                
-                # Parse latch mode (4 bytes, but only 1 byte used)
-                latch_mode = config_data[offset]
-                offset += 4  # Skip padding
+                behavior = config_data[offset + 1]
+                joy_button_id = config_data[offset + 2]
+                reverse = config_data[offset + 3]
+                encoder_latch_mode = config_data[offset + 4]
+                # Skip reserved bytes
                 
                 print(f"  Input {i+1}:")
                 print(f"    Type: {parse_input_type(input_type)}")
-                print(f"    Latch Mode: {parse_latch_mode(latch_mode)}")
+                print(f"    Button ID: {joy_button_id}")
+                print(f"    Behavior: {parse_button_behavior(behavior)}")
+                print(f"    Reversed: {bool(reverse)}")
+                print(f"    Latch Mode: {parse_latch_mode(encoder_latch_mode)}")
                 
-                # Parse specific input data based on type
+                # Parse the union data (starts at offset + 8)
                 if input_type == 0:  # INPUT_PIN
-                    pin = input_data[0]
-                    button_id = input_data[1]
-                    behavior = input_data[2]
-                    reversed_pin = input_data[3]
+                    pin = config_data[offset + 8]
                     print(f"    Pin: {pin}")
-                    print(f"    Button ID: {button_id}")
-                    print(f"    Behavior: {parse_button_behavior(behavior)}")
-                    print(f"    Reversed: {bool(reversed_pin)}")
-                    
                 elif input_type == 1:  # INPUT_MATRIX
-                    row = input_data[0]
-                    col = input_data[1]
-                    button_id = input_data[2]
-                    behavior = input_data[3]
-                    reversed_pin = input_data[4]
+                    row = config_data[offset + 8]
+                    col = config_data[offset + 9]
                     print(f"    Matrix Position: Row {row}, Col {col}")
-                    print(f"    Button ID: {button_id}")
-                    print(f"    Behavior: {parse_button_behavior(behavior)}")
-                    print(f"    Reversed: {bool(reversed_pin)}")
-                    
                 elif input_type == 2:  # INPUT_SHIFTREG
-                    register = input_data[0]
-                    bit = input_data[1]
-                    button_id = input_data[2]
-                    behavior = input_data[3]
-                    reversed_pin = input_data[4]
-                    print(f"    Shift Register: {register}, Bit: {bit}")
-                    print(f"    Button ID: {button_id}")
-                    print(f"    Behavior: {parse_button_behavior(behavior)}")
-                    print(f"    Reversed: {bool(reversed_pin)}")
+                    reg_index = config_data[offset + 8]
+                    bit_index = config_data[offset + 9]
+                    print(f"    Shift Register: {reg_index}, Bit: {bit_index}")
                 
                 print()
+                offset += 16
                 
-        # Try to parse analog config if there's more data
-        if offset < len(config_data):
-            print(f"\n=== Analog Configuration ===")
-            print(f"Remaining data: {len(config_data) - offset} bytes")
-            print(f"Analog config data: {config_data[offset:offset+16].hex()}...")
-            
     except Exception as e:
         print(f"Error parsing config data: {e}")
         print(f"Raw data: {config_data[:64].hex()}...")
@@ -363,11 +384,11 @@ def test_get_config(device):
         return False
 
 def create_button_summary(device):
-    """Create a summary table of all configured buttons"""
+    """Create a summary table of all configured buttons from board storage"""
     print("\n=== Button Configuration Summary ===")
     
     try:
-        # Get configuration from device
+        # Get configuration from device storage
         message = create_config_message(ConfigMessageType.GET_CONFIG)
         device.send_feature_report(message)
         time.sleep(0.1)
@@ -375,55 +396,72 @@ def create_button_summary(device):
         parsed = parse_config_response(response)
         
         if not parsed or parsed['data_length'] <= 0:
-            print("Could not retrieve configuration from device")
+            print("Could not retrieve configuration from device storage")
             return
         
-        # Parse the config to extract button mappings
+        # Parse the config to extract button mappings using new StoredConfig format
         config_data = parsed['data']
         buttons = {}  # button_id -> details
         
-        # Quick parse to extract button info
-        offset = 8  # Skip header
-        if offset + 4 <= len(config_data):
-            digital_input_count = struct.unpack('<H', config_data[offset:offset+2])[0]
-            offset += 4  # Skip shiftreg count too
+        # Parse header and main structure
+        if len(config_data) < 20:
+            print("Invalid configuration data received")
+            return
             
-            for i in range(min(digital_input_count, 50)):
-                if offset + 12 > len(config_data):
+        offset = 20  # Skip ConfigHeader (20 bytes)
+        
+        # Parse main structure counts
+        if offset + 4 <= len(config_data):
+            pin_map_count = config_data[offset]
+            logical_input_count = config_data[offset + 1] 
+            shift_reg_count = config_data[offset + 2]
+            offset += 4  # Skip reserved byte
+            
+            # Skip analog axes (8 * 16 bytes = 128 bytes)
+            offset += 128
+            
+            # Skip pin map entries (pin_map_count * 10 bytes each)
+            offset += pin_map_count * 10
+            
+            # Parse logical inputs (16 bytes each)
+            for i in range(logical_input_count):
+                if offset + 16 > len(config_data):
                     break
                     
                 input_type = config_data[offset]
-                offset += 1
-                input_data = config_data[offset:offset+8]
-                offset += 8
-                latch_mode = config_data[offset]
-                offset += 4
+                behavior = config_data[offset + 1]
+                joy_button_id = config_data[offset + 2]
+                reverse = config_data[offset + 3]
+                encoder_latch_mode = config_data[offset + 4]
+                
+                # Parse union data (starts at offset + 8)
+                source = ""
+                input_type_name = ""
                 
                 if input_type == 0:  # INPUT_PIN
-                    pin, button_id, behavior, reversed_pin = input_data[:4]
-                    buttons[button_id] = {
-                        'source': f'Pin {pin}',
-                        'behavior': parse_button_behavior(behavior),
-                        'type': 'Direct Pin',
-                        'reversed': bool(reversed_pin)
-                    }
+                    pin = config_data[offset + 8]
+                    source = f'Pin {pin}'
+                    input_type_name = 'Direct Pin'
                 elif input_type == 1:  # INPUT_MATRIX
-                    row, col, button_id, behavior, reversed_pin = input_data[:5]
-                    buttons[button_id] = {
-                        'source': f'Matrix[{row},{col}]',
-                        'behavior': parse_button_behavior(behavior),
-                        'type': 'Button Matrix',
-                        'reversed': bool(reversed_pin)
-                    }
+                    row = config_data[offset + 8]
+                    col = config_data[offset + 9]
+                    source = f'Matrix[{row},{col}]'
+                    input_type_name = 'Button Matrix'
                 elif input_type == 2:  # INPUT_SHIFTREG
-                    register, bit, button_id, behavior, reversed_pin = input_data[:5]
-                    buttons[button_id] = {
-                        'source': f'ShiftReg[{register}:{bit}]',
-                        'behavior': parse_button_behavior(behavior),
-                        'type': 'Shift Register',
-                        'reversed': bool(reversed_pin),
-                        'latch': parse_latch_mode(latch_mode)
-                    }
+                    reg_index = config_data[offset + 8]
+                    bit_index = config_data[offset + 9]
+                    source = f'ShiftReg[{reg_index}:{bit_index}]'
+                    input_type_name = 'Shift Register'
+                
+                buttons[joy_button_id] = {
+                    'source': source,
+                    'behavior': parse_button_behavior(behavior),
+                    'type': input_type_name,
+                    'reversed': bool(reverse),
+                    'latch': parse_latch_mode(encoder_latch_mode)
+                }
+                
+                offset += 16
         
         # Create summary table
         print(f"{'Button':<8} {'Type':<15} {'Source':<15} {'Behavior':<10} {'Options':<15}")
@@ -434,7 +472,7 @@ def create_button_summary(device):
             options = []
             if details.get('reversed'):
                 options.append('Reversed')
-            if details.get('latch'):
+            if details.get('latch') and details['latch'] != 'UNKNOWN(0)':
                 options.append(details['latch'])
             
             print(f"{button_id:<8} {details['type']:<15} {details['source']:<15} {details['behavior']:<10} {', '.join(options):<15}")
@@ -454,87 +492,11 @@ def create_button_summary(device):
     except Exception as e:
         print(f"Error creating button summary: {e}")
 
-def read_config_digital_h():
-    """Read and parse the ConfigDigital.h file to show expected configuration"""
-    print("\n=== Expected Configuration from ConfigDigital.h ===")
-    
-    config_file = "src/config/ConfigDigital.h"
-    if not os.path.exists(config_file):
-        print(f"Config file {config_file} not found")
-        return
-    
-    try:
-        with open(config_file, 'r') as f:
-            content = f.read()
-        
-        print("Hardware Pin Map:")
-        # Parse hardwarePinMap array
-        pin_map_match = re.search(r'static const PinMapEntry hardwarePinMap\[\] = \{(.*?)\};', content, re.DOTALL)
-        if pin_map_match:
-            pin_entries = pin_map_match.group(1)
-            for line in pin_entries.split('\n'):
-                line = line.strip()
-                if line and not line.startswith('//') and '{' in line:
-                    # Extract pin and type from lines like: {"4", BTN},   // Button 9 (MOMENTARY)
-                    match = re.search(r'\{"(\d+)",\s*(\w+)\}.*?//\s*(.*)', line)
-                    if match:
-                        pin, pin_type, comment = match.groups()
-                        print(f"  Pin {pin}: {pin_type} - {comment}")
-        
-        print("\nShift Register Configuration:")
-        # Parse SHIFTREG_COUNT
-        shiftreg_match = re.search(r'#define\s+SHIFTREG_COUNT\s+(\d+)', content)
-        if shiftreg_match:
-            shiftreg_count = shiftreg_match.group(1)
-            print(f"  Shift register count: {shiftreg_count}")
-        
-        print("\nLogical Inputs Configuration:")
-        # Parse logicalInputs array
-        logical_match = re.search(r'constexpr LogicalInput logicalInputs\[\] = \{(.*?)\};', content, re.DOTALL)
-        if logical_match:
-            logical_entries = logical_match.group(1)
-            input_num = 1
-            for line in logical_entries.split('\n'):
-                line = line.strip()
-                if line and not line.startswith('//') and '{' in line:
-                    # Parse different input types
-                    if 'INPUT_PIN' in line:
-                        # Parse: { INPUT_PIN, { .pin = {4, 9, MOMENTARY, 0} } },    // Pin 4 -> Button 9 (MOMENTARY)
-                        match = re.search(r'INPUT_PIN.*?\.pin\s*=\s*\{(\d+),\s*(\d+),\s*(\w+),\s*(\d+)\}.*?//\s*(.*)', line)
-                        if match:
-                            pin, button_id, behavior, reversed_pin, comment = match.groups()
-                            print(f"  Input {input_num}: INPUT_PIN - Pin {pin} -> Button {button_id} ({behavior}) - {comment}")
-                            input_num += 1
-                    elif 'INPUT_MATRIX' in line:
-                        # Parse: { INPUT_MATRIX, { .matrix = {0, 0, 3, NORMAL, 0} } },
-                        match = re.search(r'INPUT_MATRIX.*?\.matrix\s*=\s*\{(\d+),\s*(\d+),\s*(\d+),\s*(\w+),\s*(\d+)\}.*?//\s*(.*)', line)
-                        if match:
-                            row, col, button_id, behavior, reversed_pin, comment = match.groups()
-                            print(f"  Input {input_num}: INPUT_MATRIX - Row {row}, Col {col} -> Button {button_id} ({behavior}) - {comment}")
-                            input_num += 1
-                    elif 'INPUT_SHIFTREG' in line:
-                        # Parse: { INPUT_SHIFTREG, { .shiftreg = {0, 0, 11, NORMAL, 0} } },     // Reg 0, bit 0 -> Button 11
-                        match = re.search(r'INPUT_SHIFTREG.*?\.shiftreg\s*=\s*\{(\d+),\s*(\d+),\s*(\d+),\s*(\w+),\s*(\d+)\}.*?//\s*(.*)', line)
-                        if match:
-                            reg, bit, button_id, behavior, reversed_pin, comment = match.groups()
-                            latch_mode = "FOUR3"  # default
-                            # Check if latch mode is specified
-                            latch_match = re.search(r'(\w+)\s*\}', line)
-                            if latch_match and latch_match.group(1) in ["FOUR0", "FOUR1", "FOUR2", "FOUR3"]:
-                                latch_mode = latch_match.group(1)
-                            print(f"  Input {input_num}: INPUT_SHIFTREG - Reg {reg}, Bit {bit} -> Button {button_id} ({behavior}, {latch_mode}) - {comment}")
-                            input_num += 1
-        
-    except Exception as e:
-        print(f"Error reading ConfigDigital.h: {e}")
-
 def main():
     """Main test function"""
     print("JoyCore Configuration Test Script")
     print("=" * 40)
-    
-    # Show expected configuration from source
-    read_config_digital_h()
+    print("Reading configuration from board storage only")
     
     # Find device
     device_path = find_joycore_device()
