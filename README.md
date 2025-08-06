@@ -16,42 +16,31 @@
 
 ---
 
-## ✨ **Why RP2040?**
+## 🚀 **Key Advantages & Features**
 
-<table width="100%">
-<tr>
-<td width="50%">
+### **💰 Unbeatable Value**
+- **~$4-8** cost vs $20+ alternatives (Teensy 4.0)
+- **Wide board support** - Raspberry Pi Pico, Adafruit Feather RP2040, SparkFun Pro Micro RP2040
+- **Native USB-C** on most modern boards
 
-### 🚀 **Performance**
-- **Dual ARM Cortex-M0+** @ 133MHz
-- **264KB SRAM** + 2MB Flash  
-- **Hardware PIO** for accelerated I/O
-- **<2ms button response** time
+### **⚡ Superior Performance**  
+- **Dual ARM Cortex-M0+** processors @ 133MHz
+- **264KB SRAM** + 2MB Flash memory
+- **Hardware PIO** for accelerated I/O operations
+- **<2ms button response** time with excellent USB reliability
 
-</td>
-<td width="50%">
+### **🎮 Comprehensive Input Support**
+- **🎯 Direct Pins**: Up to ~26 individual button/encoder connections
+- **🔘 Matrix Scanning**: 8×8 row/column multiplexing (64 buttons max)
+- **⚡ Shift Registers**: 74HC165 expansion for 128+ inputs
+- **📊 Analog Axes**: Built-in 12-bit ADC + 16-bit ADS1115 external ADC (8 axes total)
+- **🔄 Rotary Encoders**: Supported on all input types with configurable latch modes
 
-### 💰 **Economics** 
-- **~$4-8** vs $20+ alternatives
-- **Wide board support** (Pico, Feather, etc.)
-- **Native USB-C** on most boards
-- **Professional reliability**
-
-</td>
-</tr>
-</table>
-
----
-
-## 🛠 **Features at a Glance**
-
-| Input Type | Description | Max Count |
-|------------|-------------|-----------|
-| 🎯 **Direct Pins** | Individual button/encoder pins | ~26 pins |  
-| 🔘 **Matrix Scanning** | Row/column multiplexing | 64 buttons (8×8) |
-| ⚡ **Shift Registers** | 74HC165 expansion | 128+ inputs |
-| 📊 **Analog Axes** | Built-in ADC + ADS1115 | 8 axes |
-| 🔄 **Encoders** | All input types supported | Unlimited |
+### **🧠 Advanced Signal Processing**
+- **EWMA filtering** with configurable responsiveness
+- **Intelligent deadband** with statistical movement analysis  
+- **Custom response curves** with up to 11 interpolation points
+- **Multi-stage processing** pipeline for professional-grade controls
 
 ---
 
@@ -171,7 +160,7 @@ Configure analog inputs in `src/config/ConfigAxis.h`:
     #define AXIS_X_FILTER_LEVEL     AXIS_FILTER_EWMA // Smart filtering
     #define AXIS_X_EWMA_ALPHA       200             // Responsiveness (0-1000)
     #define AXIS_X_DEADBAND         250             // Anti-jitter
-    #define AXIS_X_CURVE            CURVE_LINEAR    // Response curve
+    #define AXIS_X_CURVE            CURVE_CUSTOM    // Response curve
 #endif
 
 // 📊 Y-Axis (High-Resolution with ADS1115)
@@ -182,7 +171,7 @@ Configure analog inputs in `src/config/ConfigAxis.h`:
     #define AXIS_Y_MAX              32767
     #define AXIS_Y_FILTER_LEVEL     AXIS_FILTER_EWMA
     #define AXIS_Y_EWMA_ALPHA       150
-    #define AXIS_Y_CURVE            CURVE_S_CURVE   // Smooth center response
+    #define AXIS_Y_CURVE            CURVE_CUSTOM    // Custom response curve
 #endif
 ```
 
@@ -209,10 +198,9 @@ Configure analog inputs in `src/config/ConfigAxis.h`:
 - `300-500` - Light smoothing (fast, responsive)
 
 **Response Curves:**
-- `CURVE_LINEAR` - Direct 1:1 response
-- `CURVE_S_CURVE` - Gentle center, steep edges (flight sticks)
-- `CURVE_EXPONENTIAL` - Progressive response (throttles)
-- `CURVE_CUSTOM` - Define your own lookup table
+- `CURVE_CUSTOM` - Define your own custom lookup table with up to 11 points
+
+The default custom curve is linear (1:1 response). You can define your own curves by modifying the lookup table in the configuration system. Custom curves support smooth interpolation between points for any desired response characteristic.
 
 **Intelligent Deadband:**
 - Dynamic around current position (not fixed center)
