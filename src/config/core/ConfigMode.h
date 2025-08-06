@@ -15,7 +15,7 @@
 // Current configuration mode - change this to switch between modes
 // Start with STATIC for backwards compatibility, change to HYBRID when storage system is ready
 #ifndef CONFIG_MODE
-    #define CONFIG_MODE CONFIG_MODE_STATIC
+    #define CONFIG_MODE CONFIG_MODE_STORAGE
 #endif
 
 // Feature flags for configuration capabilities

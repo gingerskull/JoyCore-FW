@@ -6,7 +6,8 @@
       "Bash(rmdir:*)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(pio run:*)"
+      "Bash(pio run:*)",
+      "Bash(git restore:*)"
     ],
     "deny": []
   }
