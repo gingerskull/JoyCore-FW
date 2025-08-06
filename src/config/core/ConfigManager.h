@@ -5,7 +5,7 @@
 
 #if CONFIG_FEATURE_STORAGE_ENABLED
     #include "../../StorageInterface.h"
-    #include "../../rp2040/storage/RP2040Storage.h"
+    #include "../../rp2040/storage/RP2040EEPROMStorage.h"
 #endif
 
 #include <stdint.h>
@@ -95,7 +95,7 @@ private:
     bool m_usingDefaults;
     
 #if CONFIG_FEATURE_STORAGE_ENABLED
-    RP2040Storage m_storage;
+    RP2040EEPROMStorage m_storage;
     
     // Storage-based configuration methods
     bool loadFromStorage();

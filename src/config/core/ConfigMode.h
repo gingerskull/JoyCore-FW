@@ -24,7 +24,7 @@
 #define CONFIG_FEATURE_VALIDATION_ENABLED   1  // Enable configuration validation
 
 // Storage configuration
-#define CONFIG_STORAGE_USE_LITTLEFS         1  // Use LittleFS (only option for mbed framework)
+#define CONFIG_STORAGE_USE_LITTLEFS         0  // Use EEPROM instead of LittleFS
 #define CONFIG_STORAGE_FILENAME            "/config.bin"
 #define CONFIG_STORAGE_BACKUP_FILENAME     "/config_backup.bin"
 #define CONFIG_STORAGE_FIRMWARE_VERSION    "/fw_version.txt"  // Firmware version tracking file
@@ -36,4 +36,4 @@
 
 // Firmware version tracking
 // Increment this value when making changes that should trigger config save on upload
-#define FIRMWARE_VERSION                   9     // Increment on each build that needs fresh config
+#define FIRMWARE_VERSION                   12     // Increment on each build that needs fresh config

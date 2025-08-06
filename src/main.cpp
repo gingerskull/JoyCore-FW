@@ -32,7 +32,10 @@
 #include "inputs/shift_register/ShiftRegister165.h"
 #include "config/ConfigAxis.h"
 #include "config/core/ConfigManager.h"
-#include "rp2040/storage/RP2040Storage.h"
+
+#if CONFIG_FEATURE_STORAGE_ENABLED
+    #include "rp2040/storage/RP2040EEPROMStorage.h"
+#endif
 
 #if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
     #include "rp2040/hid/ConfigProtocol.h"
@@ -179,7 +182,7 @@ void loop() {
             #if CONFIG_FEATURE_STORAGE_ENABLED
                 Serial.println("Attempting to initialize storage...");
                 // Try to initialize storage directly
-                RP2040Storage storage;
+                RP2040EEPROMStorage storage;
                 StorageResult result = storage.initialize();
                 Serial.print("Storage init result: ");
                 Serial.println((int)result);
@@ -201,7 +204,7 @@ void loop() {
             // Format the storage filesystem
             #if CONFIG_FEATURE_STORAGE_ENABLED
                 Serial.println("Formatting storage filesystem...");
-                RP2040Storage storage;
+                RP2040EEPROMStorage storage;
                 StorageResult result = storage.format();
                 Serial.print("Format result: ");
                 Serial.println((int)result);
@@ -228,6 +231,15 @@ void loop() {
             const char* testData = "Hello World!";
             g_configManager.writeFile("/test.txt", (const uint8_t*)testData, strlen(testData));
             Serial.println("Test write completed");
+        }
+        else if (command == "FORCE_DEFAULT_CONFIG") {
+            // Force create default configuration (simulates firmware version change)
+            Serial.println("Forcing default configuration creation...");
+            
+            // Force the manager to create defaults and save
+            g_configManager.resetToDefaults();
+            
+            Serial.println("Default configuration created and saved");
         }
         else if (command == "SAVE_CONFIG") {
             // Force save current configuration to storage
