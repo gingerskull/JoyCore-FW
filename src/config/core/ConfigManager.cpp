@@ -18,6 +18,7 @@ ConfigManager::ConfigManager()
     memset(m_currentPinMap, 0, sizeof(m_currentPinMap));
     memset(m_currentLogicalInputs, 0, sizeof(m_currentLogicalInputs));
     memset(m_currentAxisConfigs, 0, sizeof(m_currentAxisConfigs));
+    memset(&m_currentUSBDescriptor, 0, sizeof(m_currentUSBDescriptor));
 }
 
 ConfigManager::~ConfigManager() {
@@ -91,6 +92,17 @@ bool ConfigManager::loadStaticConfiguration() {
     // Load axis configurations from ConfigAxis.h
     generateDefaultAxisConfigs();
     
+    // Load USB descriptor from static configuration
+    m_currentUSBDescriptor.vendorID = staticUSBDescriptor.vendorID;
+    m_currentUSBDescriptor.productID = staticUSBDescriptor.productID;
+    strncpy(m_currentUSBDescriptor.manufacturer, staticUSBDescriptor.manufacturer, 
+            sizeof(m_currentUSBDescriptor.manufacturer) - 1);
+    m_currentUSBDescriptor.manufacturer[sizeof(m_currentUSBDescriptor.manufacturer) - 1] = '\0';
+    strncpy(m_currentUSBDescriptor.product, staticUSBDescriptor.product,
+            sizeof(m_currentUSBDescriptor.product) - 1);
+    m_currentUSBDescriptor.product[sizeof(m_currentUSBDescriptor.product) - 1] = '\0';
+    memset(m_currentUSBDescriptor.reserved, 0, sizeof(m_currentUSBDescriptor.reserved));
+    
     m_configLoaded = true;
     m_usingDefaults = false;
     return true;
@@ -109,6 +121,7 @@ bool ConfigManager::loadFromStorage() {
         generateDefaultPinMap();
         generateDefaultLogicalInputs(); 
         generateDefaultAxisConfigs();
+        generateDefaultUSBDescriptor();
         m_configLoaded = true;
         m_usingDefaults = true;
         return true;
@@ -303,6 +316,9 @@ bool ConfigManager::convertStoredToRuntime(const StoredConfig* config, const uin
     // Copy axis configurations
     memcpy(m_currentAxisConfigs, config->axes, sizeof(config->axes));
     
+    // Copy USB descriptor
+    memcpy(&m_currentUSBDescriptor, &config->usbDescriptor, sizeof(config->usbDescriptor));
+    
     m_currentShiftRegCount = config->shiftRegCount;
     m_configLoaded = true;
     m_usingDefaults = false;
@@ -327,6 +343,9 @@ bool ConfigManager::convertRuntimeToStored(StoredConfig* config, uint8_t* variab
     
     // Copy axis configurations
     memcpy(config->axes, m_currentAxisConfigs, sizeof(config->axes));
+    
+    // Copy USB descriptor
+    memcpy(&config->usbDescriptor, &m_currentUSBDescriptor, sizeof(config->usbDescriptor));
     
     // Pack variable data
     size_t offset = 0;
@@ -400,4 +419,20 @@ void ConfigManager::generateDefaultAxisConfigs() {
     
     m_currentAxisConfigs[1].enabled = 1; // Y axis  
     m_currentAxisConfigs[1].pin = A2;
+}
+
+void ConfigManager::generateDefaultUSBDescriptor() {
+    // Set default USB descriptor values
+    m_currentUSBDescriptor.vendorID = 0x2E8A;  // Raspberry Pi Foundation VID
+    m_currentUSBDescriptor.productID = 0x333F; // Custom PID for JoyCore
+    
+    // Set default strings
+    strncpy(m_currentUSBDescriptor.manufacturer, "Gingerskull", sizeof(m_currentUSBDescriptor.manufacturer) - 1);
+    m_currentUSBDescriptor.manufacturer[sizeof(m_currentUSBDescriptor.manufacturer) - 1] = '\0';
+    
+    strncpy(m_currentUSBDescriptor.product, "Joycore Firmware", sizeof(m_currentUSBDescriptor.product) - 1);
+    m_currentUSBDescriptor.product[sizeof(m_currentUSBDescriptor.product) - 1] = '\0';
+    
+    // Clear reserved bytes
+    memset(m_currentUSBDescriptor.reserved, 0, sizeof(m_currentUSBDescriptor.reserved));
 }

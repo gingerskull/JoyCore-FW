@@ -48,6 +48,9 @@ public:
     const StoredAxisConfig* getAxisConfig(uint8_t axisIndex) const;
     bool isAxisEnabled(uint8_t axisIndex) const;
     
+    // USB descriptor configuration access
+    const StoredUSBDescriptor* getUSBDescriptor() const { return &m_currentUSBDescriptor; }
+    
     // Hot-reload configuration (for runtime updates via USB)
     bool applyConfiguration(const StoredConfig* config, const uint8_t* variableData, size_t variableSize);
     
@@ -59,6 +62,7 @@ private:
     PinMapEntry m_currentPinMap[MAX_PIN_MAP_ENTRIES];
     LogicalInput m_currentLogicalInputs[MAX_LOGICAL_INPUTS];
     StoredAxisConfig m_currentAxisConfigs[8];
+    StoredUSBDescriptor m_currentUSBDescriptor;
     
     uint8_t m_currentPinMapCount;
     uint8_t m_currentLogicalInputCount;
@@ -95,6 +99,7 @@ private:
     void generateDefaultPinMap();
     void generateDefaultLogicalInputs();
     void generateDefaultAxisConfigs();
+    void generateDefaultUSBDescriptor();
     
     // Utility methods
     bool isValidPin(const char* pinName) const;
