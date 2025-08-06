@@ -251,8 +251,8 @@ pio run --target upload
 
 ## 🔧 **Hardware Compatibility**
 
-<table>
-<tr>
+<table width="100%">
+<tr width="100%">
 <td width="33%">
 
 #### 🍓 **Raspberry Pi Pico**
