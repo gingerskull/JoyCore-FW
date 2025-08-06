@@ -71,6 +71,19 @@ TinyUSBGamepad::~TinyUSBGamepad() {
     end();
 }
 
+void TinyUSBGamepad::setUSBDescriptor(uint16_t vid, uint16_t pid, const char* manufacturer, const char* product) {
+    // Set VID/PID
+    TinyUSBDevice.setID(vid, pid);
+    
+    // Set strings if provided
+    if (manufacturer) {
+        TinyUSBDevice.setManufacturerDescriptor(manufacturer);
+    }
+    if (product) {
+        TinyUSBDevice.setProductDescriptor(product);
+    }
+}
+
 bool TinyUSBGamepad::begin(bool auto_send) {
     _auto_send = auto_send;
     

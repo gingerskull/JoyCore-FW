@@ -50,6 +50,13 @@ void setup() {
     // Initialize configuration manager
     g_configManager.initialize();
     
+    // Set default USB descriptor first  
+    //MyJoystick.setUSBDescriptor(0x2E8A, 0x000A, "Gingerskull", "JoyCore Controller");
+    
+    // Optionally override with custom USB VID/PID and device strings
+    // Uncomment the line below to use custom identifiers instead of defaults
+    MyJoystick.setUSBDescriptor(0x2E8A, 0x333F, "Gingerskull", "Joycore Firmware");
+    
     // Initialize USB joystick interface EARLY for HID functionality
     MyJoystick.begin();
  
