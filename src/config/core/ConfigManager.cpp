@@ -38,7 +38,10 @@ bool ConfigManager::initialize() {
     }
     
     // Check firmware version and handle fresh uploads
-    checkAndUpdateFirmwareVersion();
+    Serial.println("DEBUG: About to call checkAndUpdateFirmwareVersion...");
+    bool versionResult = checkAndUpdateFirmwareVersion();
+    Serial.print("DEBUG: checkAndUpdateFirmwareVersion returned: ");
+    Serial.println(versionResult ? "true" : "false");
 #endif
     
     m_initialized = true;
@@ -473,8 +476,14 @@ bool ConfigManager::checkAndUpdateFirmwareVersion() {
     uint32_t storedVersion = readStoredFirmwareVersion();
     uint32_t currentVersion = FIRMWARE_VERSION;
     
+    Serial.print("DEBUG: checkAndUpdateFirmwareVersion - stored: ");
+    Serial.print(storedVersion);
+    Serial.print(", current: ");
+    Serial.println(currentVersion);
+    
     // If firmware version has changed, this is a fresh upload
     if (storedVersion != currentVersion) {
+        Serial.println("DEBUG: Firmware version changed, creating default config");
         // For ALL modes in STORAGE mode, generate minimal defaults on fresh upload
         #if CONFIG_MODE == CONFIG_MODE_STORAGE
             // Generate minimal defaults
@@ -486,10 +495,16 @@ bool ConfigManager::checkAndUpdateFirmwareVersion() {
             m_usingDefaults = true;
             
             // Save the minimal defaults to storage
-            saveToStorage();
+            Serial.println("DEBUG: Saving default config to storage...");
+            bool saveResult = saveToStorage();
+            Serial.print("DEBUG: Save result: ");
+            Serial.println(saveResult ? "SUCCESS" : "FAILED");
             
             // Update the stored firmware version
-            writeStoredFirmwareVersion(currentVersion);
+            Serial.println("DEBUG: Updating stored firmware version...");
+            bool versionResult = writeStoredFirmwareVersion(currentVersion);
+            Serial.print("DEBUG: Version update result: ");
+            Serial.println(versionResult ? "SUCCESS" : "FAILED");
             
             return true;
         #endif
@@ -497,6 +512,8 @@ bool ConfigManager::checkAndUpdateFirmwareVersion() {
         // For STATIC and HYBRID modes, just update the version
         // They will load configuration normally through loadConfiguration()
         writeStoredFirmwareVersion(currentVersion);
+    } else {
+        Serial.println("DEBUG: Firmware version unchanged, no action needed");
     }
     
     return true; // Version unchanged or non-storage mode, proceed normally
