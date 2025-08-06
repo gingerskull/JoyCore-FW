@@ -37,7 +37,7 @@
 - **EWMA filtering** with configurable responsiveness
 - **Intelligent deadband** with statistical movement analysis  
 - **Custom response curves** with up to 11 interpolation points
-- **Multi-stage processing** pipeline for professional-grade controls
+- **Multi-stage processing** pipeline for robust controls
 
 ---
 
