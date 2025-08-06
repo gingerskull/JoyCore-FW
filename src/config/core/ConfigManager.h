@@ -57,6 +57,28 @@ public:
     // Get configuration in serialized format (for USB transmission)
     bool getSerializedConfig(uint8_t* buffer, size_t bufferSize, size_t* actualSize) const;
     
+    // Direct file access methods for external tools
+    #if CONFIG_FEATURE_STORAGE_ENABLED
+    StorageResult readFile(const char* filename, uint8_t* buffer, size_t bufferSize, size_t* bytesRead) {
+        return m_storage.read(filename, buffer, bufferSize, bytesRead);
+    }
+    StorageResult writeFile(const char* filename, const uint8_t* data, size_t dataSize) {
+        return m_storage.write(filename, data, dataSize);
+    }
+    bool fileExists(const char* filename) {
+        return m_storage.exists(filename);
+    }
+    size_t getStorageUsed() const {
+        return m_storage.getUsedSpace();
+    }
+    size_t getStorageAvailable() const {
+        return m_storage.getAvailableSpace();
+    }
+    bool isStorageInitialized() const {
+        return m_storage.isInitialized();
+    }
+    #endif
+    
 private:
     // Current active configuration
     PinMapEntry m_currentPinMap[MAX_PIN_MAP_ENTRIES];
@@ -100,6 +122,11 @@ private:
     void generateDefaultLogicalInputs();
     void generateDefaultAxisConfigs();
     void generateDefaultUSBDescriptor();
+    
+    // Firmware version management
+    bool checkAndUpdateFirmwareVersion();
+    uint32_t readStoredFirmwareVersion();
+    bool writeStoredFirmwareVersion(uint32_t version);
     
     // Utility methods
     bool isValidPin(const char* pinName) const;
