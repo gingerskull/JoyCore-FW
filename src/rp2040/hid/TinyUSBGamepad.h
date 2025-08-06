@@ -87,6 +87,9 @@ public:
     // Reset all inputs
     void reset();
     
+    // USB device descriptor configuration
+    static void setUSBDescriptor(uint16_t vid, uint16_t pid, const char* manufacturer = nullptr, const char* product = nullptr);
+    
     // Feature report support for configuration protocol
     static void setFeatureReportCallback(uint16_t (*get_callback)(uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen), 
                                         void (*set_callback)(uint8_t report_id, hid_report_type_t report_type, const uint8_t* buffer, uint16_t bufsize));
