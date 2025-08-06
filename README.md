@@ -10,13 +10,15 @@
 
 **⚠️ RP2040 Native Branch - For Arduino Pro Micro see [`main`](../../tree/main) | For Teensy 4.0 see [`teensy40`](../../tree/teensy40)**
 
+![RP2040 Pico Pinout](images/rp2040-pico-pinout.png)
+
 </div>
 
 ---
 
 ## ✨ **Why RP2040?**
 
-<table>
+<table width="100%">
 <tr>
 <td width="50%">
 
@@ -43,17 +45,6 @@
 
 ## 🛠 **Features at a Glance**
 
-```mermaid
-graph LR
-    A[🎯 Direct Pins] --> D[🎮 USB HID]
-    B[🔘 Matrix 8x8] --> D
-    C[⚡ Shift Register] --> D
-    E[📊 Analog Axes] --> D
-    F[🔄 Rotary Encoders] --> D
-    
-    style D fill:#ff6b6b,stroke:#fff,stroke-width:3px,color:#fff
-```
-
 | Input Type | Description | Max Count |
 |------------|-------------|-----------|
 | 🎯 **Direct Pins** | Individual button/encoder pins | ~26 pins |  
@@ -64,9 +55,9 @@ graph LR
 
 ---
 
-## 🚀 **Quick Start**
+## ⚙️ **Digital Input Configuration**
 
-### ⚡ **1. Hardware Setup**
+### ⚡ **Hardware Pin Mapping**
 
 > **⚠️ CRITICAL:** RP2040 pins are **3.3V only** - use level shifters for 5V devices!
 
@@ -96,12 +87,9 @@ static const PinMapEntry hardwarePinMap[] = {
 };
 ```
 
-### 🎮 **2. Configure Inputs**
+### 🎮 **Logical Input Configuration**
 
 Map your hardware to joystick buttons in the same file:
-
-<details>
-<summary><b>📂 Complete Input Configuration</b></summary>
 
 ```cpp
 constexpr LogicalInput logicalInputs[] = {
@@ -132,22 +120,6 @@ constexpr LogicalInput logicalInputs[] = {
   { INPUT_SHIFTREG, { .shiftreg = {0, 3, 14, ENC_B, 0} }, FOUR0 }  // Reg 0, bit 3 → Encoder B
 };
 ```
-
-</details>
-
-### 🔧 **3. Build & Flash**
-
-```bash
-# 🏗️ Build firmware
-pio run
-
-# 📱 Flash to RP2040 (hold BOOTSEL button while plugging USB)
-pio run --target upload
-```
-
----
-
-## ⚙️ **Digital Input Configuration**
 
 ### 🎛️ **Button Behaviors**
 
@@ -280,6 +252,18 @@ static const struct {
 
 ---
 
+## 🔧 **Build & Flash**
+
+```bash
+# 🏗️ Build firmware
+pio run
+
+# 📱 Flash to RP2040 (hold BOOTSEL button while plugging USB)
+pio run --target upload
+```
+
+---
+
 ## 🔧 **Hardware Compatibility**
 
 <table>
@@ -345,9 +329,6 @@ lib_deps =
 
 ## 🆘 **Troubleshooting**
 
-<details>
-<summary><b>🔧 Common Issues & Solutions</b></summary>
-
 ### **Upload Issues**
 - Hold **BOOTSEL** button while connecting USB
 - Check cable supports data (not just power)
@@ -363,11 +344,11 @@ lib_deps =
 - Matrix dimensions must match row/col pin counts
 - Shift register count must match chained 74HC165 chips
 
-</details>
-
 ---
 
 ## 🌟 **Credits**
+
+<div align="center">
 
 <table>
 <tr>
@@ -393,6 +374,8 @@ lib_deps =
 </td>
 </tr>
 </table>
+
+</div>
 
 ---
 
