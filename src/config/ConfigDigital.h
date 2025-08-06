@@ -117,3 +117,22 @@ constexpr LogicalInput logicalInputs[] = {
   
   // ...add more as needed...
 };
+
+// ===========================
+// USB DESCRIPTOR CONFIGURATION
+// ===========================
+
+// Static USB descriptor configuration (used when CONFIG_MODE_STATIC or as fallback)
+// These values will be used directly in CONFIG_MODE_STATIC
+// In CONFIG_MODE_STORAGE/HYBRID, they serve as defaults when no stored config exists
+static const struct {
+    uint16_t vendorID;
+    uint16_t productID;
+    const char* manufacturer;
+    const char* product;
+} staticUSBDescriptor = {
+    .vendorID = 0x2E8A,          // Raspberry Pi Foundation VID
+    .productID = 0xA02F,         // Custom PID for JoyCore
+    .manufacturer = "Gingerskull",
+    .product = "Joycore Controller"
+};

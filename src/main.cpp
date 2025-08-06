@@ -40,7 +40,7 @@
 
  // USB joystick configuration: exposes full capabilities via TinyUSB
  // TinyUSBGamepad supports 128 buttons, 16 axes (hat switches temporarily disabled)
-Joystick_ MyJoystick(0x03, 0x04, 128, 0, true, true, true, true, true, true, true, true);
+Joystick_ MyJoystick(0x03, 0x04, 128, 0, true, true, false, false, false, false, false, false);
 
 // External shift register components
 extern ShiftRegister165* shiftReg;
@@ -49,13 +49,11 @@ extern uint8_t* shiftRegBuffer;
 void setup() {
     // Initialize configuration manager
     g_configManager.initialize();
-    
-    // Set default USB descriptor first  
-    //MyJoystick.setUSBDescriptor(0x2E8A, 0x000A, "Gingerskull", "JoyCore Controller");
-    
-    // Optionally override with custom USB VID/PID and device strings
-    // Uncomment the line below to use custom identifiers instead of defaults
-    MyJoystick.setUSBDescriptor(0x2E8A, 0x333F, "Gingerskull", "Joycore Firmware");
+   
+    // Set USB descriptor from configuration
+    const StoredUSBDescriptor* usbDesc = g_configManager.getUSBDescriptor();
+    MyJoystick.setUSBDescriptor(usbDesc->vendorID, usbDesc->productID, 
+                               usbDesc->manufacturer, usbDesc->product);
     
     // Initialize USB joystick interface EARLY for HID functionality
     MyJoystick.begin();

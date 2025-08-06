@@ -65,9 +65,21 @@ struct StoredAxisConfig {
     uint8_t reserved[3];     // Padding for alignment
 } __attribute__((packed));
 
+// USB descriptor configuration for storage
+struct StoredUSBDescriptor {
+    uint16_t vendorID;       // USB Vendor ID (VID)
+    uint16_t productID;      // USB Product ID (PID)
+    char manufacturer[32];   // Manufacturer string
+    char product[32];        // Product string
+    uint8_t reserved[8];     // Padding for future expansion
+} __attribute__((packed));
+
 // Main configuration structure
 struct StoredConfig {
     ConfigHeader header;
+    
+    // USB descriptor configuration
+    StoredUSBDescriptor usbDescriptor;
     
     // Digital configuration
     uint8_t pinMapCount;
