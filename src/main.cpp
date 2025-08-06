@@ -20,6 +20,9 @@
  */
 
 #include <Arduino.h>
+#ifdef USE_TINYUSB
+#include "Adafruit_TinyUSB.h"
+#endif
 #include "Config.h"
 #define DEFINE_MYJOYSTICK
 #include "rp2040/JoystickWrapper.h"
@@ -35,9 +38,9 @@
 #endif
 
 
- // USB joystick configuration: exposes 32 buttons, 1 hat switch, and 8 axes to the wrapper.
- // rp2040-HID under the hood supports up to 128 buttons and 16 axes; unused fields remain untouched.
-Joystick_ MyJoystick(0x03, 0x04, 32, 0, true, true, false, false, false, false, false, false);
+ // USB joystick configuration: exposes full capabilities via TinyUSB
+ // TinyUSBGamepad supports 128 buttons, 16 axes (hat switches temporarily disabled)
+Joystick_ MyJoystick(0x03, 0x04, 128, 0, true, true, false, false, false, false, false, false);
 
 // External shift register components
 extern ShiftRegister165* shiftReg;
@@ -46,12 +49,20 @@ extern uint8_t* shiftRegBuffer;
 void setup() {
     // Initialize configuration manager
     g_configManager.initialize();
+   
+    // Set USB descriptor from configuration
+    const StoredUSBDescriptor* usbDesc = g_configManager.getUSBDescriptor();
+    MyJoystick.setUSBDescriptor(usbDesc->vendorID, usbDesc->productID, 
+                               usbDesc->manufacturer, usbDesc->product);
     
     // Initialize USB joystick interface EARLY for HID functionality
     MyJoystick.begin();
  
-    // Explicitly set hat switch to neutral position
+    // Disable all hat switches to prevent phantom inputs
     MyJoystick.setHatSwitch(0, -1);
+    MyJoystick.setHatSwitch(1, -1);
+    MyJoystick.setHatSwitch(2, -1);
+    MyJoystick.setHatSwitch(3, -1);
     
     // Initialize configuration protocol
 #if CONFIG_FEATURE_USB_PROTOCOL_ENABLED

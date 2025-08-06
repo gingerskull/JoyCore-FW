@@ -4,11 +4,12 @@
 #include <stdio.h>
 
 #if CONFIG_FEATURE_STORAGE_ENABLED && CONFIG_STORAGE_USE_LITTLEFS
-    #include "LittleFS_Mbed_RP2040.h"
+    #include <LittleFS.h>
+    #include <VFS.h>
 #endif
 
 // RP2040-specific storage implementation
-// Uses LittleFS for superior wear leveling with mbed framework
+// Uses built-in LittleFS for superior wear leveling with arduino-pico framework
 class RP2040Storage : public StorageInterface {
 public:
     RP2040Storage();
