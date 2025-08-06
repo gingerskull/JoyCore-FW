@@ -56,18 +56,32 @@ StorageResult RP2040Storage::read(const char* filename, uint8_t* buffer, size_t 
     
     FILE* file = this->openFile(filename, "r");
     if (!file) {
+        Serial.print("DEBUG: RP2040Storage::read - failed to open file: ");
+        Serial.println(filename);
         return StorageResult::ERROR_FILE_NOT_FOUND;
     }
+    
+    Serial.print("DEBUG: RP2040Storage::read - reading from ");
+    Serial.println(filename);
     
     // Get file size
     fseek(file, 0, SEEK_END);
     size_t fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
     
+    Serial.print("DEBUG: RP2040Storage::read - file size: ");
+    Serial.println(fileSize);
+    
     size_t readSize = (bufferSize < fileSize) ? bufferSize : fileSize;
+    
+    Serial.print("DEBUG: RP2040Storage::read - read size: ");
+    Serial.println(readSize);
     
     size_t actualBytesRead = fread(buffer, 1, readSize, file);
     fclose(file);
+    
+    Serial.print("DEBUG: RP2040Storage::read - actual bytes read: ");
+    Serial.println(actualBytesRead);
     
     if (bytesRead) {
         *bytesRead = actualBytesRead;
@@ -92,11 +106,35 @@ StorageResult RP2040Storage::write(const char* filename, const uint8_t* data, si
     
     FILE* file = this->openFile(filename, "w");
     if (!file) {
+        Serial.print("DEBUG: RP2040Storage::write - failed to open file: ");
+        Serial.println(filename);
         return StorageResult::ERROR_WRITE_FAILED;
     }
     
+    Serial.print("DEBUG: RP2040Storage::write - writing ");
+    Serial.print(dataSize);
+    Serial.print(" bytes to ");
+    Serial.println(filename);
+    
     size_t bytesWritten = fwrite(data, 1, dataSize, file);
+    
+    Serial.print("DEBUG: RP2040Storage::write - fwrite returned ");
+    Serial.println(bytesWritten);
+    
+    fflush(file);  // Explicit flush
     fclose(file);
+    
+    // Force filesystem sync
+    #if CONFIG_FEATURE_STORAGE_ENABLED && CONFIG_STORAGE_USE_LITTLEFS
+        LittleFS.end();
+        if (!LittleFS.begin()) {
+            Serial.println("DEBUG: RP2040Storage::write - filesystem restart failed");
+        }
+        VFS.root(LittleFS);
+    #endif
+    
+    Serial.print("DEBUG: RP2040Storage::write - file closed, result: ");
+    Serial.println((bytesWritten == dataSize) ? "SUCCESS" : "FAILED");
     
     return (bytesWritten == dataSize) ? StorageResult::SUCCESS : StorageResult::ERROR_WRITE_FAILED;
 }

@@ -3,6 +3,7 @@
 #include "../ConfigDigital.h"
 #include "../ConfigAxis.h"
 #include <string.h>
+#include <stdio.h>
 
 // Global instance
 ConfigManager g_configManager;
@@ -35,6 +36,9 @@ bool ConfigManager::initialize() {
         // Storage initialization failed, fall back to static mode
         return loadStaticConfiguration();
     }
+    
+    // Check firmware version and handle fresh uploads
+    checkAndUpdateFirmwareVersion();
 #endif
     
     m_initialized = true;
@@ -150,6 +154,7 @@ bool ConfigManager::loadFromStorage() {
 
 bool ConfigManager::saveToStorage() {
     if (!m_initialized || !m_configLoaded) {
+        Serial.println("DEBUG: saveToStorage - not initialized or config not loaded");
         return false;
     }
     
@@ -157,13 +162,21 @@ bool ConfigManager::saveToStorage() {
     size_t totalSize = 0;
     
     if (!getSerializedConfig(buffer, sizeof(buffer), &totalSize)) {
+        Serial.println("DEBUG: saveToStorage - getSerializedConfig failed");
         return false;
     }
+    
+    Serial.print("DEBUG: saveToStorage - about to write ");
+    Serial.print(totalSize);
+    Serial.println(" bytes");
     
     // Create backup before saving
     createBackup();
     
     StorageResult result = m_storage.write(CONFIG_STORAGE_FILENAME, buffer, totalSize);
+    Serial.print("DEBUG: saveToStorage - write result: ");
+    Serial.println((int)result);
+    
     return result == StorageResult::SUCCESS;
 }
 
@@ -278,17 +291,32 @@ bool ConfigManager::applyConfiguration(const StoredConfig* config, const uint8_t
 
 bool ConfigManager::getSerializedConfig(uint8_t* buffer, size_t bufferSize, size_t* actualSize) const {
     if (!buffer || bufferSize < sizeof(StoredConfig)) {
+        Serial.println("DEBUG: getSerializedConfig - buffer too small");
         return false;
     }
+    
+    Serial.print("DEBUG: getSerializedConfig - buffer size: ");
+    Serial.println(bufferSize);
+    Serial.print("DEBUG: StoredConfig size: ");
+    Serial.println(sizeof(StoredConfig));
     
     StoredConfig* config = reinterpret_cast<StoredConfig*>(buffer);
     uint8_t* variableData = buffer + sizeof(StoredConfig);
     size_t maxVariableSize = bufferSize - sizeof(StoredConfig);
     size_t variableSize;
     
+    Serial.print("DEBUG: Max variable size: ");
+    Serial.println(maxVariableSize);
+    
     if (!convertRuntimeToStored(config, variableData, &variableSize, maxVariableSize)) {
+        Serial.println("DEBUG: convertRuntimeToStored failed");
         return false;
     }
+    
+    Serial.print("DEBUG: Variable size: ");
+    Serial.println(variableSize);
+    Serial.print("DEBUG: Total size: ");
+    Serial.println(sizeof(StoredConfig) + variableSize);
     
     if (actualSize) {
         *actualSize = sizeof(StoredConfig) + variableSize;
@@ -422,17 +450,91 @@ void ConfigManager::generateDefaultAxisConfigs() {
 }
 
 void ConfigManager::generateDefaultUSBDescriptor() {
-    // Set default USB descriptor values
-    m_currentUSBDescriptor.vendorID = 0x2E8A;  // Raspberry Pi Foundation VID
-    m_currentUSBDescriptor.productID = 0x333F; // Custom PID for JoyCore
+    // Use the USB descriptor from static configuration (ConfigDigital.h)
+    // This ensures consistent USB identity regardless of config mode
+    m_currentUSBDescriptor.vendorID = staticUSBDescriptor.vendorID;
+    m_currentUSBDescriptor.productID = staticUSBDescriptor.productID;
     
-    // Set default strings
-    strncpy(m_currentUSBDescriptor.manufacturer, "Gingerskull", sizeof(m_currentUSBDescriptor.manufacturer) - 1);
+    strncpy(m_currentUSBDescriptor.manufacturer, staticUSBDescriptor.manufacturer, 
+            sizeof(m_currentUSBDescriptor.manufacturer) - 1);
     m_currentUSBDescriptor.manufacturer[sizeof(m_currentUSBDescriptor.manufacturer) - 1] = '\0';
     
-    strncpy(m_currentUSBDescriptor.product, "Joycore Firmware", sizeof(m_currentUSBDescriptor.product) - 1);
+    strncpy(m_currentUSBDescriptor.product, staticUSBDescriptor.product,
+            sizeof(m_currentUSBDescriptor.product) - 1);
     m_currentUSBDescriptor.product[sizeof(m_currentUSBDescriptor.product) - 1] = '\0';
     
     // Clear reserved bytes
     memset(m_currentUSBDescriptor.reserved, 0, sizeof(m_currentUSBDescriptor.reserved));
 }
+
+#if CONFIG_FEATURE_STORAGE_ENABLED
+
+bool ConfigManager::checkAndUpdateFirmwareVersion() {
+    uint32_t storedVersion = readStoredFirmwareVersion();
+    uint32_t currentVersion = FIRMWARE_VERSION;
+    
+    // If firmware version has changed, this is a fresh upload
+    if (storedVersion != currentVersion) {
+        // For ALL modes in STORAGE mode, generate minimal defaults on fresh upload
+        #if CONFIG_MODE == CONFIG_MODE_STORAGE
+            // Generate minimal defaults
+            generateDefaultPinMap();
+            generateDefaultLogicalInputs();
+            generateDefaultAxisConfigs();
+            generateDefaultUSBDescriptor();
+            m_configLoaded = true;
+            m_usingDefaults = true;
+            
+            // Save the minimal defaults to storage
+            saveToStorage();
+            
+            // Update the stored firmware version
+            writeStoredFirmwareVersion(currentVersion);
+            
+            return true;
+        #endif
+        
+        // For STATIC and HYBRID modes, just update the version
+        // They will load configuration normally through loadConfiguration()
+        writeStoredFirmwareVersion(currentVersion);
+    }
+    
+    return true; // Version unchanged or non-storage mode, proceed normally
+}
+
+uint32_t ConfigManager::readStoredFirmwareVersion() {
+    uint8_t buffer[16];
+    size_t bytesRead;
+    
+    StorageResult result = m_storage.read(CONFIG_STORAGE_FIRMWARE_VERSION, buffer, sizeof(buffer), &bytesRead);
+    
+    if (result == StorageResult::SUCCESS && bytesRead >= 4) {
+        // Parse version number from file
+        uint32_t version = 0;
+        for (size_t i = 0; i < bytesRead && i < 10; i++) {
+            if (buffer[i] >= '0' && buffer[i] <= '9') {
+                version = version * 10 + (buffer[i] - '0');
+            } else {
+                break;
+            }
+        }
+        return version;
+    }
+    
+    return 0; // No version file or read failed
+}
+
+bool ConfigManager::writeStoredFirmwareVersion(uint32_t version) {
+    char buffer[16];
+    int len = snprintf(buffer, sizeof(buffer), "%lu", (unsigned long)version);
+    
+    if (len > 0 && len < sizeof(buffer)) {
+        StorageResult result = m_storage.write(CONFIG_STORAGE_FIRMWARE_VERSION, 
+                                              (const uint8_t*)buffer, len);
+        return result == StorageResult::SUCCESS;
+    }
+    
+    return false;
+}
+
+#endif // CONFIG_FEATURE_STORAGE_ENABLED
