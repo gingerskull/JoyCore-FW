@@ -19,7 +19,7 @@
 #endif
 
 // Feature flags for configuration capabilities
-#define CONFIG_FEATURE_USB_PROTOCOL_ENABLED 1  // Enable USB configuration protocol
+#define CONFIG_FEATURE_USB_PROTOCOL_ENABLED 0  // USB HID protocol disabled (using serial instead)
 #define CONFIG_FEATURE_STORAGE_ENABLED      1  // Enable storage system
 #define CONFIG_FEATURE_VALIDATION_ENABLED   1  // Enable configuration validation
 
@@ -30,9 +30,9 @@
 #define CONFIG_STORAGE_FIRMWARE_VERSION    "/fw_version.txt"  // Firmware version tracking file
 #define CONFIG_VERSION                     1   // Configuration format version
 
-// USB protocol configuration
-#define CONFIG_USB_FEATURE_REPORT_ID       0x02  // Feature report ID for configuration
-#define CONFIG_USB_MAX_PACKET_SIZE         64    // Maximum size for config data packets
+// USB protocol configuration (deprecated - using serial instead)
+// #define CONFIG_USB_FEATURE_REPORT_ID       0x02  // Feature report ID for configuration
+// #define CONFIG_USB_MAX_PACKET_SIZE         64    // Maximum size for config data packets
 
 // Firmware version tracking
 // Increment this value when making changes that should trigger config save on upload
