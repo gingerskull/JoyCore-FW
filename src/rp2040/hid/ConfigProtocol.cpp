@@ -128,8 +128,27 @@ bool ConfigProtocol::generateFeatureReport(uint8_t reportID, uint8_t* data, uint
     }
     
     // Only handle configuration feature reports
-    if (reportID != CONFIG_USB_FEATURE_REPORT_ID || !m_pendingResponse) {
+    if (reportID != CONFIG_USB_FEATURE_REPORT_ID) {
         return false;
+    }
+    
+    // If no pending response, generate a default status response
+    if (!m_pendingResponse) {
+        // Generate a basic status response for GET requests
+        ConfigMessage statusMessage;
+        memset(&statusMessage, 0, sizeof(statusMessage));
+        statusMessage.reportID = reportID;
+        statusMessage.type = ConfigMessageType::GET_CONFIG_STATUS;
+        statusMessage.sequence = 0;
+        statusMessage.totalPackets = 1;
+        statusMessage.dataLength = sizeof(ConfigStatus);
+        statusMessage.status = 0; // Success
+        
+        // Add config status data
+        ConfigStatus status = g_configManager.getStatus();
+        memcpy(statusMessage.data, &status, sizeof(status));
+        
+        memcpy(&m_responseMessage, &statusMessage, sizeof(statusMessage));
     }
     
     // Copy response message
