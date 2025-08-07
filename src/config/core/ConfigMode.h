@@ -15,7 +15,7 @@
 // Current configuration mode - change this to switch between modes
 // Start with STATIC for backwards compatibility, change to HYBRID when storage system is ready
 #ifndef CONFIG_MODE
-    #define CONFIG_MODE CONFIG_MODE_STATIC
+    #define CONFIG_MODE CONFIG_MODE_STORAGE
 #endif
 
 // Feature flags for configuration capabilities
@@ -24,11 +24,16 @@
 #define CONFIG_FEATURE_VALIDATION_ENABLED   1  // Enable configuration validation
 
 // Storage configuration
-#define CONFIG_STORAGE_USE_LITTLEFS         1  // Use LittleFS (only option for mbed framework)
+#define CONFIG_STORAGE_USE_LITTLEFS         0  // Use EEPROM instead of LittleFS
 #define CONFIG_STORAGE_FILENAME            "/config.bin"
 #define CONFIG_STORAGE_BACKUP_FILENAME     "/config_backup.bin"
+#define CONFIG_STORAGE_FIRMWARE_VERSION    "/fw_version.txt"  // Firmware version tracking file
 #define CONFIG_VERSION                     1   // Configuration format version
 
 // USB protocol configuration
 #define CONFIG_USB_FEATURE_REPORT_ID       0x02  // Feature report ID for configuration
 #define CONFIG_USB_MAX_PACKET_SIZE         64    // Maximum size for config data packets
+
+// Firmware version tracking
+// Increment this value when making changes that should trigger config save on upload
+#define FIRMWARE_VERSION                   12     // Increment on each build that needs fresh config

@@ -33,6 +33,10 @@
 #include "config/ConfigAxis.h"
 #include "config/core/ConfigManager.h"
 
+#if CONFIG_FEATURE_STORAGE_ENABLED
+    #include "rp2040/storage/RP2040EEPROMStorage.h"
+#endif
+
 #if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
     #include "rp2040/hid/ConfigProtocol.h"
 #endif
@@ -69,10 +73,13 @@ void setup() {
     g_configProtocol.initialize();
 #endif
     
-    // Initialize all input subsystems
-    initButtonsFromLogical(logicalInputs, logicalInputCount);
-    initEncodersFromLogical(logicalInputs, logicalInputCount);
-    initMatrixFromLogical(logicalInputs, logicalInputCount);
+    // Initialize all input subsystems using configuration from ConfigManager
+    const LogicalInput* configInputs = g_configManager.getLogicalInputs();
+    uint8_t configInputCount = g_configManager.getLogicalInputCount();
+    
+    initButtonsFromLogical(configInputs, configInputCount);
+    initEncodersFromLogical(configInputs, configInputCount);
+    initMatrixFromLogical(configInputs, configInputCount);
 
     // Initialize axis system
     setupUserAxes(MyJoystick);
@@ -83,6 +90,15 @@ void setup() {
     // Debug: Enable serial communication for testing
     Serial.begin(115200);
     Serial.println("JoyCore Configuration System Ready");
+    
+    // Debug: Print configuration status
+    ConfigStatus status = g_configManager.getStatus();
+    Serial.print("Config Mode: ");
+    Serial.print(status.currentMode == 0 ? "STATIC" : status.currentMode == 1 ? "STORAGE" : "HYBRID");
+    Serial.print(", Loaded: ");
+    Serial.print(status.configLoaded ? "YES" : "NO");
+    Serial.print(", Using Defaults: ");
+    Serial.println(status.usingDefaults ? "YES" : "NO");
 }
 
 void loop() {
@@ -101,6 +117,148 @@ void loop() {
             Serial.print(status.currentMode);
             Serial.print(", Version: ");
             Serial.println(status.configVersion);
+        }
+        else if (command.startsWith("READ_FILE ")) {
+            // READ_FILE <filename>
+            String filename = command.substring(10);
+            filename.trim();
+            
+            #if CONFIG_FEATURE_STORAGE_ENABLED
+                uint8_t buffer[1024];
+                size_t bytesRead = 0;
+                StorageResult result = g_configManager.readFile(filename.c_str(), buffer, sizeof(buffer), &bytesRead);
+                
+                if (result == StorageResult::SUCCESS) {
+                    Serial.print("FILE_DATA:");
+                    Serial.print(filename);
+                    Serial.print(":");
+                    Serial.print(bytesRead);
+                    Serial.print(":");
+                    
+                    // Send as base64 to handle binary data safely
+                    for (size_t i = 0; i < bytesRead; i++) {
+                        if (buffer[i] < 0x10) Serial.print("0");
+                        Serial.print(buffer[i], HEX);
+                    }
+                    Serial.println();
+                } else if (result == StorageResult::ERROR_FILE_NOT_FOUND) {
+                    Serial.print("ERROR:FILE_NOT_FOUND:");
+                    Serial.println(filename);
+                } else {
+                    Serial.print("ERROR:READ_FAILED:");
+                    Serial.println(filename);
+                }
+            #else
+                Serial.println("ERROR:STORAGE_NOT_ENABLED");
+            #endif
+        }
+        else if (command == "LIST_FILES") {
+            // List all files in storage
+            #if CONFIG_FEATURE_STORAGE_ENABLED
+                Serial.println("FILES:");
+                Serial.println("/config.bin");
+                Serial.println("/config_backup.bin");
+                Serial.println("/fw_version.txt");
+                Serial.println("END_FILES");
+            #else
+                Serial.println("ERROR:STORAGE_NOT_ENABLED");
+            #endif
+        }
+        else if (command == "STORAGE_INFO") {
+            // Get storage information
+            #if CONFIG_FEATURE_STORAGE_ENABLED
+                Serial.print("STORAGE_USED:");
+                Serial.println(g_configManager.getStorageUsed());
+                Serial.print("STORAGE_AVAILABLE:");
+                Serial.println(g_configManager.getStorageAvailable());
+                Serial.print("STORAGE_INITIALIZED:");
+                Serial.println(g_configManager.isStorageInitialized() ? "YES" : "NO");
+            #else
+                Serial.println("ERROR:STORAGE_NOT_ENABLED");
+            #endif
+        }
+        else if (command == "INIT_STORAGE") {
+            // Force storage initialization
+            #if CONFIG_FEATURE_STORAGE_ENABLED
+                Serial.println("Attempting to initialize storage...");
+                // Try to initialize storage directly
+                RP2040EEPROMStorage storage;
+                StorageResult result = storage.initialize();
+                Serial.print("Storage init result: ");
+                Serial.println((int)result);
+                
+                if (result == StorageResult::SUCCESS) {
+                    Serial.println("Storage initialized successfully");
+                    Serial.print("Used space: ");
+                    Serial.println(storage.getUsedSpace());
+                    Serial.print("Available space: ");
+                    Serial.println(storage.getAvailableSpace());
+                } else {
+                    Serial.println("Storage initialization failed");
+                }
+            #else
+                Serial.println("ERROR:STORAGE_NOT_ENABLED");
+            #endif
+        }
+        else if (command == "FORMAT_STORAGE") {
+            // Format the storage filesystem
+            #if CONFIG_FEATURE_STORAGE_ENABLED
+                Serial.println("Formatting storage filesystem...");
+                RP2040EEPROMStorage storage;
+                StorageResult result = storage.format();
+                Serial.print("Format result: ");
+                Serial.println((int)result);
+                
+                if (result == StorageResult::SUCCESS) {
+                    Serial.println("Storage formatted successfully");
+                    // Try to initialize after format
+                    result = storage.initialize();
+                    if (result == StorageResult::SUCCESS) {
+                        Serial.println("Storage re-initialized successfully");
+                        Serial.print("Available space: ");
+                        Serial.println(storage.getAvailableSpace());
+                    }
+                } else {
+                    Serial.println("Storage format failed");
+                }
+            #else
+                Serial.println("ERROR:STORAGE_NOT_ENABLED");
+            #endif
+        }
+        else if (command == "TEST_WRITE") {
+            // Simple test write
+            Serial.println("Testing simple file write...");
+            const char* testData = "Hello World!";
+            g_configManager.writeFile("/test.txt", (const uint8_t*)testData, strlen(testData));
+            Serial.println("Test write completed");
+        }
+        else if (command == "FORCE_DEFAULT_CONFIG") {
+            // Force create default configuration (simulates firmware version change)
+            Serial.println("Forcing default configuration creation...");
+            
+            // Force the manager to create defaults and save
+            g_configManager.resetToDefaults();
+            
+            Serial.println("Default configuration created and saved");
+        }
+        else if (command == "SAVE_CONFIG") {
+            // Force save current configuration to storage
+            Serial.println("Saving current configuration to storage...");
+            
+            // Debug: Print current configuration counts
+            Serial.print("Debug - Pin map count: ");
+            Serial.println(g_configManager.getPinMapCount());
+            Serial.print("Debug - Logical input count: ");
+            Serial.println(g_configManager.getLogicalInputCount());
+            Serial.print("Debug - Shift reg count: ");
+            Serial.println(g_configManager.getShiftRegisterCount());
+            
+            bool result = g_configManager.saveConfiguration();
+            if (result) {
+                Serial.println("Configuration saved successfully");
+            } else {
+                Serial.println("Configuration save failed");
+            }
         }
     }
     static uint32_t lastShiftRegRead = 0;

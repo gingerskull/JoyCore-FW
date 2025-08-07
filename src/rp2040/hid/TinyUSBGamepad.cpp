@@ -4,7 +4,20 @@
 
 // Custom HID descriptor for 128 buttons, 16 axes, 4 hat switches
 const uint8_t TinyUSBGamepad::_hid_descriptor[] = {
-    // Header
+    // Configuration Protocol Collection - FIRST to ensure proper parsing
+    0x06, 0x00, 0xFF,              // USAGE_PAGE (Vendor Defined)
+    0x09, 0x01,                    // USAGE (Vendor Usage 1)
+    0xa1, 0x01,                    // COLLECTION (Application)
+    0x85, 0x02,                    //   REPORT_ID (2) - Feature report
+    0x09, 0x00,                    //   USAGE (Undefined)
+    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+    0x26, 0xFF, 0x00,              //   LOGICAL_MAXIMUM (255)
+    0x75, 0x08,                    //   REPORT_SIZE (8)
+    0x95, 0x40,                    //   REPORT_COUNT (64)
+    0xB1, 0x02,                    //   FEATURE (Data,Var,Abs)
+    0xc0,                          // END_COLLECTION
+    
+    // Gamepad Collection - SECOND
     0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
     0x09, 0x05,                    // USAGE (Game Pad)
     0xa1, 0x01,                    // COLLECTION (Application)
@@ -44,10 +57,13 @@ const uint8_t TinyUSBGamepad::_hid_descriptor[] = {
     0x75, 0x10,                    // REPORT_SIZE (16)
     0x81, 0x02,                    // INPUT (Data,Var,Abs)
     
+    // Explicit padding to ensure byte alignment (0 bits padding)
+    // Total so far: 128 bits (buttons) + 256 bits (axes) = 384 bits = 48 bytes - already aligned
+    
     // Hat switches temporarily removed due to phantom input issues
     // TODO: Re-enable when hat switch phantom issues are resolved
     
-    0xc0                           // END_COLLECTION
+    0xc0                           // END_COLLECTION (Game Pad)
 };
 
 const uint16_t TinyUSBGamepad::_hid_descriptor_len = sizeof(_hid_descriptor);
