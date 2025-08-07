@@ -37,9 +37,10 @@
     #include "rp2040/storage/RP2040EEPROMStorage.h"
 #endif
 
-#if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
-    #include "rp2040/hid/ConfigProtocol.h"
-#endif
+// HID configuration protocol removed - using serial communication instead
+// #if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
+//     #include "rp2040/hid/ConfigProtocol.h"
+// #endif
 
 
  // USB joystick configuration: exposes full capabilities via TinyUSB
