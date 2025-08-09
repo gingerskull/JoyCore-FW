@@ -53,7 +53,7 @@ extern ShiftRegister165* shiftReg;
 extern uint8_t* shiftRegBuffer;
 
 void setup() {
-    // Initialize configuration manager
+    // Initialize configuration manager (debug output will be lost but USB works)
     g_configManager.initialize();
    
     // Set USB descriptor from configuration
@@ -86,10 +86,10 @@ void setup() {
     // Initialize axis system
     setupUserAxes(MyJoystick);
     
-    // Delay for USB enumeration
+    // Delay for USB enumeration BEFORE enabling Serial
     delay(500);
     
-    // Debug: Enable serial communication for testing
+    // Initialize serial for debugging after USB is established
     Serial.begin(115200);
     Serial.println("JoyCore Configuration System Ready");
     
