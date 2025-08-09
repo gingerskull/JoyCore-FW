@@ -32,14 +32,16 @@
 #include "inputs/shift_register/ShiftRegister165.h"
 #include "config/ConfigAxis.h"
 #include "config/core/ConfigManager.h"
+#include "config/core/DeviceIdentifier.h"
 
 #if CONFIG_FEATURE_STORAGE_ENABLED
     #include "rp2040/storage/RP2040EEPROMStorage.h"
 #endif
 
-#if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
-    #include "rp2040/hid/ConfigProtocol.h"
-#endif
+// HID configuration protocol removed - using serial communication instead
+// #if CONFIG_FEATURE_USB_PROTOCOL_ENABLED
+//     #include "rp2040/hid/ConfigProtocol.h"
+// #endif
 
 
  // USB joystick configuration: exposes full capabilities via TinyUSB
@@ -51,7 +53,7 @@ extern ShiftRegister165* shiftReg;
 extern uint8_t* shiftRegBuffer;
 
 void setup() {
-    // Initialize configuration manager
+    // Initialize configuration manager (debug output will be lost but USB works)
     g_configManager.initialize();
    
     // Set USB descriptor from configuration
@@ -84,10 +86,10 @@ void setup() {
     // Initialize axis system
     setupUserAxes(MyJoystick);
     
-    // Delay for USB enumeration
+    // Delay for USB enumeration BEFORE enabling Serial
     delay(500);
     
-    // Debug: Enable serial communication for testing
+    // Initialize serial for debugging after USB is established
     Serial.begin(115200);
     Serial.println("JoyCore Configuration System Ready");
     
@@ -107,7 +109,14 @@ void loop() {
         String command = Serial.readStringUntil('\n');
         command.trim();
         
-        if (command == "STATUS") {
+        // Handle IDENTIFY command for device discovery
+        if (command == "IDENTIFY" || command == JoyCore::IDENTIFY_COMMAND) {
+            // Send fixed device identifier response
+            char response[128];
+            JoyCore::formatIdentifyResponse(response, sizeof(response));
+            Serial.println(response);
+        }
+        else if (command == "STATUS") {
             ConfigStatus status = g_configManager.getStatus();
             Serial.print("Config Status - Storage: ");
             Serial.print(status.storageInitialized ? "OK" : "FAIL");
@@ -155,10 +164,13 @@ void loop() {
         else if (command == "LIST_FILES") {
             // List all files in storage
             #if CONFIG_FEATURE_STORAGE_ENABLED
+                char fileNames[8][32];
+                uint8_t fileCount = g_configManager.listStorageFiles(fileNames, 8);
+                
                 Serial.println("FILES:");
-                Serial.println("/config.bin");
-                Serial.println("/config_backup.bin");
-                Serial.println("/fw_version.txt");
+                for (uint8_t i = 0; i < fileCount; i++) {
+                    Serial.println(fileNames[i]);
+                }
                 Serial.println("END_FILES");
             #else
                 Serial.println("ERROR:STORAGE_NOT_ENABLED");
@@ -259,6 +271,38 @@ void loop() {
             } else {
                 Serial.println("Configuration save failed");
             }
+        }
+        else if (command == "DEBUG_STORAGE") {
+            // Debug storage system
+            #if CONFIG_FEATURE_STORAGE_ENABLED
+                Serial.println("Debugging storage system...");
+                g_configManager.debugStorage();
+            #else
+                Serial.println("ERROR:STORAGE_NOT_ENABLED");
+            #endif
+        }
+        else if (command == "CREATE_TEST_FILES") {
+            // Create test files to populate storage
+            #if CONFIG_FEATURE_STORAGE_ENABLED
+                Serial.println("Creating test files...");
+                
+                // Test firmware version file
+                const char* versionData = "13";
+                StorageResult result = g_configManager.writeFile("/fw_version.txt", (const uint8_t*)versionData, strlen(versionData));
+                Serial.print("Writing /fw_version.txt: ");
+                Serial.println(result == StorageResult::SUCCESS ? "SUCCESS" : "FAILED");
+                
+                // Force save current configuration
+                Serial.println("Saving current configuration...");
+                bool saveResult = g_configManager.saveConfiguration();
+                Serial.print("Save configuration result: ");
+                Serial.println(saveResult ? "SUCCESS" : "FAILED");
+                
+                // Debug storage after writes
+                g_configManager.debugStorage();
+            #else
+                Serial.println("ERROR:STORAGE_NOT_ENABLED");
+            #endif
         }
     }
     static uint32_t lastShiftRegRead = 0;

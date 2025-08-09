@@ -53,6 +53,8 @@ struct StoredLogicalInput {
 } __attribute__((packed));
 
 // Analog axis configuration for storage
+// WARNING: Despite __attribute__((packed)), this struct is 16 bytes in practice
+// due to compiler alignment. The actual size must be verified.
 struct StoredAxisConfig {
     uint8_t enabled;         // Axis enabled flag
     uint8_t pin;             // Analog pin number (or ADS1115 channel)
@@ -64,6 +66,9 @@ struct StoredAxisConfig {
     uint8_t curve;           // Response curve type
     uint8_t reserved[3];     // Padding for alignment
 } __attribute__((packed));
+
+// Verify size at compile time - should be exactly 15 bytes with packed attribute
+static_assert(sizeof(StoredAxisConfig) == 15, "StoredAxisConfig must be exactly 15 bytes");
 
 // USB descriptor configuration for storage
 struct StoredUSBDescriptor {
@@ -95,28 +100,28 @@ struct StoredConfig {
     // StoredLogicalInput logicalInputs[logicalInputCount];
 } __attribute__((packed));
 
-// USB protocol message types
-enum class ConfigMessageType : uint8_t {
-    GET_CONFIG = 0x01,       // Request current configuration
-    SET_CONFIG = 0x02,       // Update configuration
-    RESET_CONFIG = 0x03,     // Reset to factory defaults
-    VALIDATE_CONFIG = 0x04,  // Validate configuration without applying
-    GET_CONFIG_STATUS = 0x05, // Get configuration system status
-    SAVE_CONFIG = 0x06,      // Save current config to storage
-    LOAD_CONFIG = 0x07       // Load config from storage
-};
+// USB protocol message types (deprecated - using serial protocol instead)
+// enum class ConfigMessageType : uint8_t {
+//     GET_CONFIG = 0x01,       // Request current configuration
+//     SET_CONFIG = 0x02,       // Update configuration
+//     RESET_CONFIG = 0x03,     // Reset to factory defaults
+//     VALIDATE_CONFIG = 0x04,  // Validate configuration without applying
+//     GET_CONFIG_STATUS = 0x05, // Get configuration system status
+//     SAVE_CONFIG = 0x06,      // Save current config to storage
+//     LOAD_CONFIG = 0x07       // Load config from storage
+// };
 
-// USB protocol message header
-struct ConfigMessage {
-    uint8_t reportID;        // HID Report ID (CONFIG_USB_FEATURE_REPORT_ID)
-    ConfigMessageType type;  // Message type
-    uint8_t sequence;        // Sequence number for multi-packet transfers
-    uint8_t totalPackets;    // Total number of packets in transfer
-    uint16_t dataLength;     // Length of data in this packet
-    uint8_t status;          // Status/error code
-    uint8_t reserved;        // Padding
-    uint8_t data[CONFIG_USB_MAX_PACKET_SIZE - 8]; // Payload data
-} __attribute__((packed));
+// USB protocol message header (deprecated - using serial protocol instead)
+// struct ConfigMessage {
+//     uint8_t reportID;        // HID Report ID (CONFIG_USB_FEATURE_REPORT_ID)
+//     ConfigMessageType type;  // Message type
+//     uint8_t sequence;        // Sequence number for multi-packet transfers
+//     uint8_t totalPackets;    // Total number of packets in transfer
+//     uint16_t dataLength;     // Length of data in this packet
+//     uint8_t status;          // Status/error code
+//     uint8_t reserved;        // Padding
+//     uint8_t data[CONFIG_USB_MAX_PACKET_SIZE - 8]; // Payload data
+// } __attribute__((packed));
 
 // Configuration validation result
 struct ConfigValidationResult {
