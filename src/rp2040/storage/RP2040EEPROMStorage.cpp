@@ -2,6 +2,7 @@
 #include "../../config/core/ConfigMode.h"
 #include <string.h>
 #include <stdio.h>
+#include <Arduino.h>
 
 #if CONFIG_FEATURE_STORAGE_ENABLED
     #include <EEPROM.h>
@@ -385,4 +386,112 @@ void RP2040EEPROMStorage::filenameToKey(const char* filename, char* key) {
             strncpy(key, filename, len);
         }
     }
+}
+
+uint8_t RP2040EEPROMStorage::listFiles(char fileNames[][32], uint8_t maxFiles) {
+    if (!m_initialized || !fileNames || maxFiles == 0) {
+        return 0;
+    }
+    
+    if (!m_tableLoaded) {
+        loadFileTable();
+    }
+    
+    uint8_t count = 0;
+    
+    // Iterate through file table and build list of actual filenames
+    for (uint8_t i = 0; i < MAX_FILES && count < maxFiles; i++) {
+        if (m_fileTable[i].name[0] != 0 && m_fileTable[i].name[0] != 0xFF) {
+            // Convert the 3-character key back to filename
+            if (memcmp(m_fileTable[i].name, "CFG", 3) == 0) {
+                strncpy(fileNames[count], CONFIG_STORAGE_FILENAME, 31);
+                fileNames[count][31] = '\0';
+                count++;
+            } else if (memcmp(m_fileTable[i].name, "BAK", 3) == 0) {
+                strncpy(fileNames[count], CONFIG_STORAGE_BACKUP_FILENAME, 31);
+                fileNames[count][31] = '\0';
+                count++;
+            } else if (memcmp(m_fileTable[i].name, "VER", 3) == 0) {
+                strncpy(fileNames[count], CONFIG_STORAGE_FIRMWARE_VERSION, 31);
+                fileNames[count][31] = '\0';
+                count++;
+            } else {
+                // Generic filename (use the key as the name)
+                snprintf(fileNames[count], 32, "/%c%c%c%c",
+                         m_fileTable[i].name[0],
+                         m_fileTable[i].name[1],
+                         m_fileTable[i].name[2],
+                         m_fileTable[i].name[3]);
+                count++;
+            }
+        }
+    }
+    
+    return count;
+}
+
+void RP2040EEPROMStorage::debugDumpFileTable() {
+#if CONFIG_FEATURE_STORAGE_ENABLED
+    Serial.println("\n=== FILE TABLE DEBUG DUMP ===");
+    Serial.print("Table loaded: ");
+    Serial.println(m_tableLoaded ? "YES" : "NO");
+    Serial.print("File count: ");
+    Serial.println(m_fileCount);
+    Serial.print("Initialized: ");
+    Serial.println(m_initialized ? "YES" : "NO");
+    
+    if (!m_tableLoaded) {
+        loadFileTable();
+    }
+    
+    Serial.println("\nFile Table Entries:");
+    for (uint8_t i = 0; i < MAX_FILES; i++) {
+        Serial.print("  [");
+        Serial.print(i);
+        Serial.print("] ");
+        
+        if (m_fileTable[i].name[0] == 0 || m_fileTable[i].name[0] == 0xFF) {
+            Serial.println("(empty)");
+        } else {
+            Serial.print("Key: '");
+            for (int j = 0; j < 4; j++) {
+                if (m_fileTable[i].name[j] >= 32 && m_fileTable[i].name[j] <= 126) {
+                    Serial.print((char)m_fileTable[i].name[j]);
+                } else {
+                    Serial.print("?");
+                }
+            }
+            Serial.print("' (");
+            for (int j = 0; j < 4; j++) {
+                if (m_fileTable[i].name[j] < 0x10) Serial.print("0");
+                Serial.print(m_fileTable[i].name[j], HEX);
+                if (j < 3) Serial.print(" ");
+            }
+            Serial.print(") -> ");
+            
+            // Show which filename this maps to
+            if (memcmp(m_fileTable[i].name, "CFG", 3) == 0) {
+                Serial.print(CONFIG_STORAGE_FILENAME);
+            } else if (memcmp(m_fileTable[i].name, "BAK", 3) == 0) {
+                Serial.print(CONFIG_STORAGE_BACKUP_FILENAME);
+            } else if (memcmp(m_fileTable[i].name, "VER", 3) == 0) {
+                Serial.print(CONFIG_STORAGE_FIRMWARE_VERSION);
+            } else {
+                Serial.print("(unknown)");
+            }
+            
+            Serial.print(", Offset: ");
+            Serial.print(m_fileTable[i].offset);
+            Serial.print(", Size: ");
+            Serial.println(m_fileTable[i].size);
+        }
+    }
+    
+    Serial.print("\nTotal used space: ");
+    Serial.print(getUsedSpace());
+    Serial.print(" / ");
+    Serial.print(DATA_SIZE);
+    Serial.println(" bytes");
+    Serial.println("=== END FILE TABLE DEBUG ===\n");
+#endif
 }
