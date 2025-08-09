@@ -10,9 +10,14 @@ bool packPinMap(const PinMapEntry* runtimeMap, uint8_t count, StoredPinMapEntry*
     }
     
     for (uint8_t i = 0; i < count; i++) {
-        // Truncate pin name to fit storage format
-        strncpy(storedMap[i].name, runtimeMap[i].name, sizeof(storedMap[i].name) - 1);
-        storedMap[i].name[sizeof(storedMap[i].name) - 1] = '\0';
+        // Clear the name field first
+        memset(storedMap[i].name, 0, sizeof(storedMap[i].name));
+        
+        // Copy pin name if it exists (runtimeMap[i].name is a const char* pointer)
+        if (runtimeMap[i].name) {
+            strncpy(storedMap[i].name, runtimeMap[i].name, sizeof(storedMap[i].name) - 1);
+            storedMap[i].name[sizeof(storedMap[i].name) - 1] = '\0';
+        }
         
         storedMap[i].type = (uint8_t)runtimeMap[i].type;
         storedMap[i].reserved = 0;

@@ -30,12 +30,24 @@ bool ConfigManager::initialize() {
         return true;
     }
     
+    Serial.println("DEBUG: ConfigManager::initialize() called");
+    
 #if CONFIG_FEATURE_STORAGE_ENABLED
     // Initialize storage system if enabled
-    if (m_storage.initialize() != StorageResult::SUCCESS) {
+    Serial.println("DEBUG: Initializing storage system...");
+    StorageResult storageResult = m_storage.initialize();
+    Serial.print("DEBUG: Storage initialization result: ");
+    Serial.println((int)storageResult);
+    
+    if (storageResult != StorageResult::SUCCESS) {
+        Serial.println("DEBUG: Storage initialization failed, falling back to static mode");
         // Storage initialization failed, fall back to static mode
         return loadStaticConfiguration();
     }
+    
+    // Debug dump storage state after initialization
+    Serial.println("DEBUG: Storage initialized, dumping file table:");
+    m_storage.debugDumpFileTable();
     
     // Check firmware version and handle fresh uploads
     Serial.println("DEBUG: About to call checkAndUpdateFirmwareVersion...");
@@ -45,6 +57,13 @@ bool ConfigManager::initialize() {
 #endif
     
     m_initialized = true;
+    
+    // If config was already loaded during firmware version check, don't load again
+    if (m_configLoaded) {
+        Serial.println("DEBUG: Config already loaded during version check, skipping loadConfiguration");
+        return true;
+    }
+    
     return loadConfiguration();
 }
 
@@ -121,20 +140,40 @@ bool ConfigManager::loadFromStorage() {
     uint8_t buffer[2048]; // Buffer for configuration data
     size_t bytesRead;
     
+    Serial.println("DEBUG: loadFromStorage() called");
+    
     StorageResult result = m_storage.read(CONFIG_STORAGE_FILENAME, buffer, sizeof(buffer), &bytesRead);
+    Serial.print("DEBUG: Read result for ");
+    Serial.print(CONFIG_STORAGE_FILENAME);
+    Serial.print(": ");
+    Serial.println((int)result);
     
     if (result == StorageResult::ERROR_FILE_NOT_FOUND) {
+        Serial.println("DEBUG: Config file not found, generating defaults and saving...");
         // No configuration file exists, generate defaults
         generateDefaultPinMap();
-        generateDefaultLogicalInputs(); 
+        generateDefaultLogicalInputs();
         generateDefaultAxisConfigs();
         generateDefaultUSBDescriptor();
         m_configLoaded = true;
         m_usingDefaults = true;
+        
+        // Save the defaults to storage so they exist for next time
+        Serial.println("DEBUG: Saving generated defaults to storage...");
+        bool saveResult = saveToStorage();
+        Serial.print("DEBUG: Save defaults result: ");
+        Serial.println(saveResult ? "SUCCESS" : "FAILED");
+        
+        // Also create firmware version file
+        Serial.println("DEBUG: Writing firmware version file...");
+        writeStoredFirmwareVersion(FIRMWARE_VERSION);
+        
         return true;
     }
     
     if (result != StorageResult::SUCCESS) {
+        Serial.print("DEBUG: Failed to read config, error: ");
+        Serial.println((int)result);
         return false;
     }
     
@@ -410,7 +449,10 @@ void ConfigManager::generateDefaultPinMap() {
     
     // Add some basic pin mappings for testing
     if (m_currentPinMapCount < MAX_PIN_MAP_ENTRIES) {
-        strncpy((char*)m_currentPinMap[m_currentPinMapCount].name, "6", sizeof(m_currentPinMap[0].name));
+        // PinMapEntry.name is a const char* pointer, not an array
+        // We need to point it to a persistent static string
+        static const char pinName6[] = "6";  // Static array instead of pointer
+        m_currentPinMap[m_currentPinMapCount].name = pinName6;
         m_currentPinMap[m_currentPinMapCount].type = BTN;
         m_currentPinMapCount++;
     }
@@ -424,7 +466,7 @@ void ConfigManager::generateDefaultLogicalInputs() {
     if (m_currentLogicalInputCount < MAX_LOGICAL_INPUTS) {
         m_currentLogicalInputs[m_currentLogicalInputCount].type = INPUT_PIN;
         m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.pin = 6;
-        m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.joyButtonID = 1;
+        m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.joyButtonID = 2;
         m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.behavior = NORMAL;
         m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.reverse = 0;
         m_currentLogicalInputCount++;

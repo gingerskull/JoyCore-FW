@@ -53,6 +53,8 @@ struct StoredLogicalInput {
 } __attribute__((packed));
 
 // Analog axis configuration for storage
+// WARNING: Despite __attribute__((packed)), this struct is 16 bytes in practice
+// due to compiler alignment. The actual size must be verified.
 struct StoredAxisConfig {
     uint8_t enabled;         // Axis enabled flag
     uint8_t pin;             // Analog pin number (or ADS1115 channel)
@@ -64,6 +66,9 @@ struct StoredAxisConfig {
     uint8_t curve;           // Response curve type
     uint8_t reserved[3];     // Padding for alignment
 } __attribute__((packed));
+
+// Verify size at compile time - should be exactly 15 bytes with packed attribute
+static_assert(sizeof(StoredAxisConfig) == 15, "StoredAxisConfig must be exactly 15 bytes");
 
 // USB descriptor configuration for storage
 struct StoredUSBDescriptor {
