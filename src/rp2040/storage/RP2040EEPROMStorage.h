@@ -31,6 +31,12 @@ public:
     StorageResult format() override;
     StorageResult maintenance() override;
     
+    // List files in storage
+    uint8_t listFiles(char fileNames[][32], uint8_t maxFiles) override;
+    
+    // Debug method to dump file table
+    void debugDumpFileTable();
+    
 private:
     // EEPROM Memory Layout
     static constexpr uint16_t EEPROM_SIZE = 4096;  // 4KB EEPROM
