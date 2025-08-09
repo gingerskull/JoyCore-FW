@@ -43,7 +43,7 @@ public:
     // Get available storage space (in bytes)
     virtual size_t getAvailableSpace() const = 0;
     
-    // Get used storage space (in bytes) 
+    // Get used storage space (in bytes)
     virtual size_t getUsedSpace() const = 0;
     
     // Format/clear storage (use with caution)
@@ -51,6 +51,10 @@ public:
     
     // Perform maintenance operations (e.g., wear leveling, garbage collection)
     virtual StorageResult maintenance() = 0;
+    
+    // List files in storage (returns number of files found)
+    // fileNames should be an array of char* pointers, each pointing to a buffer of at least 32 chars
+    virtual uint8_t listFiles(char fileNames[][32], uint8_t maxFiles) = 0;
     
 protected:
     bool m_initialized = false;

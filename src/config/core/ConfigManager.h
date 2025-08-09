@@ -77,6 +77,16 @@ public:
     bool isStorageInitialized() const {
         return m_storage.isInitialized();
     }
+    
+    // List files in storage
+    uint8_t listStorageFiles(char fileNames[][32], uint8_t maxFiles) {
+        return m_storage.listFiles(fileNames, maxFiles);
+    }
+    
+    // Debug storage state
+    void debugStorage() {
+        m_storage.debugDumpFileTable();
+    }
     #endif
     
 private:
