@@ -28,7 +28,7 @@
 #define CONFIG_STORAGE_FILENAME            "/config.bin"
 #define CONFIG_STORAGE_BACKUP_FILENAME     "/config_backup.bin"
 #define CONFIG_STORAGE_FIRMWARE_VERSION    "/fw_version.txt"  // Firmware version tracking file
-#define CONFIG_VERSION                     3   // Configuration format version
+#define CONFIG_VERSION                     7   // Configuration format version
 
 // USB protocol configuration (deprecated - using serial instead)
 // #define CONFIG_USB_FEATURE_REPORT_ID       0x02  // Feature report ID for configuration
@@ -36,4 +36,4 @@
 
 // Firmware version tracking
 // Increment this value when making changes that should trigger config save on upload
-#define FIRMWARE_VERSION                   26     // Increment on each build that needs fresh config
+#define FIRMWARE_VERSION                   45     // Increment on each build that needs fresh config
