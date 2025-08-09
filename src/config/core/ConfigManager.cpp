@@ -27,10 +27,11 @@ ConfigManager::~ConfigManager() {
 
 bool ConfigManager::initialize() {
     if (m_initialized) {
+        Serial.println("DEBUG: ConfigManager already initialized, returning true");
         return true;
     }
     
-    Serial.println("DEBUG: ConfigManager::initialize() called");
+    Serial.println("DEBUG: ConfigManager::initialize() called - ENTRY POINT");
     
 #if CONFIG_FEATURE_STORAGE_ENABLED
     // Initialize storage system if enabled
@@ -49,14 +50,15 @@ bool ConfigManager::initialize() {
     Serial.println("DEBUG: Storage initialized, dumping file table:");
     m_storage.debugDumpFileTable();
     
+    // Set initialized flag before version check so saveToStorage works
+    m_initialized = true;
+    
     // Check firmware version and handle fresh uploads
     Serial.println("DEBUG: About to call checkAndUpdateFirmwareVersion...");
     bool versionResult = checkAndUpdateFirmwareVersion();
     Serial.print("DEBUG: checkAndUpdateFirmwareVersion returned: ");
     Serial.println(versionResult ? "true" : "false");
 #endif
-    
-    m_initialized = true;
     
     // If config was already loaded during firmware version check, don't load again
     if (m_configLoaded) {
@@ -465,8 +467,8 @@ void ConfigManager::generateDefaultLogicalInputs() {
     // Add a basic button input for testing
     if (m_currentLogicalInputCount < MAX_LOGICAL_INPUTS) {
         m_currentLogicalInputs[m_currentLogicalInputCount].type = INPUT_PIN;
-        m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.pin = 6;
-        m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.joyButtonID = 2;
+        m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.pin = 5;
+        m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.joyButtonID = 5;
         m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.behavior = NORMAL;
         m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.reverse = 0;
         m_currentLogicalInputCount++;
@@ -515,6 +517,8 @@ void ConfigManager::generateDefaultUSBDescriptor() {
 #if CONFIG_FEATURE_STORAGE_ENABLED
 
 bool ConfigManager::checkAndUpdateFirmwareVersion() {
+    Serial.println("DEBUG: checkAndUpdateFirmwareVersion() - ENTRY");
+    
     uint32_t storedVersion = readStoredFirmwareVersion();
     uint32_t currentVersion = FIRMWARE_VERSION;
     
@@ -526,29 +530,55 @@ bool ConfigManager::checkAndUpdateFirmwareVersion() {
     // If firmware version has changed, this is a fresh upload
     if (storedVersion != currentVersion) {
         Serial.println("DEBUG: Firmware version changed, creating default config");
+        Serial.print("DEBUG: CONFIG_MODE = ");
+        Serial.println(CONFIG_MODE);
+        Serial.print("DEBUG: CONFIG_MODE_STORAGE = ");
+        Serial.println(CONFIG_MODE_STORAGE);
+        
         // For ALL modes in STORAGE mode, generate minimal defaults on fresh upload
         #if CONFIG_MODE == CONFIG_MODE_STORAGE
+            Serial.println("DEBUG: In CONFIG_MODE_STORAGE block");
+            
             // Generate minimal defaults
+            Serial.println("DEBUG: Generating default pin map...");
             generateDefaultPinMap();
+            Serial.println("DEBUG: Generating default logical inputs...");
             generateDefaultLogicalInputs();
+            Serial.println("DEBUG: Generating default axis configs...");
             generateDefaultAxisConfigs();
+            Serial.println("DEBUG: Generating default USB descriptor...");
             generateDefaultUSBDescriptor();
+            
             m_configLoaded = true;
             m_usingDefaults = true;
+            Serial.println("DEBUG: Default config generated, flags set");
             
             // Save the minimal defaults to storage
-            Serial.println("DEBUG: Saving default config to storage...");
-            bool saveResult = saveToStorage();
-            Serial.print("DEBUG: Save result: ");
+            Serial.println("DEBUG: About to call saveConfiguration()...");
+            bool saveResult = saveConfiguration();
+            Serial.print("DEBUG: saveConfiguration() returned: ");
             Serial.println(saveResult ? "SUCCESS" : "FAILED");
             
-            // Update the stored firmware version
-            Serial.println("DEBUG: Updating stored firmware version...");
-            bool versionResult = writeStoredFirmwareVersion(currentVersion);
-            Serial.print("DEBUG: Version update result: ");
-            Serial.println(versionResult ? "SUCCESS" : "FAILED");
+            // Only update firmware version if config save was successful
+            if (saveResult) {
+                Serial.println("DEBUG: Config save succeeded, updating firmware version...");
+                bool versionResult = writeStoredFirmwareVersion(currentVersion);
+                Serial.print("DEBUG: writeStoredFirmwareVersion() returned: ");
+                Serial.println(versionResult ? "SUCCESS" : "FAILED");
+                
+                if (!versionResult) {
+                    Serial.println("ERROR: Failed to update firmware version file");
+                    return false;
+                }
+            } else {
+                Serial.println("ERROR: Config save failed, not updating firmware version");
+                return false;
+            }
             
+            Serial.println("DEBUG: checkAndUpdateFirmwareVersion() - SUCCESS EXIT");
             return true;
+        #else
+            Serial.println("DEBUG: Not in CONFIG_MODE_STORAGE block");
         #endif
         
         // For STATIC and HYBRID modes, just update the version
