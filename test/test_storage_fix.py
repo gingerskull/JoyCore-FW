@@ -216,9 +216,17 @@ def decode_config_data(hex_data):
                     'nameHex': name_bytes.hex(),
                     'type': entry_data[8]
                 }
-                # Decode pin type
-                pin_types = {0: "UNUSED", 1: "BTN", 2: "BTN_GND", 3: "BTN_ROW", 4: "BTN_COL",
-                            5: "ENC_A", 6: "ENC_B", 7: "ANALOG"}
+                # Decode pin type (must match firmware enum PinType in Config.h)
+                # enum PinType : uint8_t { PIN_UNUSED=0, BTN=1, BTN_ROW=2, BTN_COL=3, SHIFTREG_PL=4, SHIFTREG_CLK=5, SHIFTREG_QH=6 };
+                pin_types = {
+                    0: "PIN_UNUSED",
+                    1: "BTN",
+                    2: "BTN_ROW",
+                    3: "BTN_COL",
+                    4: "SHIFTREG_PL",
+                    5: "SHIFTREG_CLK",
+                    6: "SHIFTREG_QH"
+                }
                 pin_entry['typeName'] = pin_types.get(pin_entry['type'], f"UNKNOWN({pin_entry['type']})")
                 result['pinMap'].append(pin_entry)
                 variable_offset += 10
@@ -392,22 +400,22 @@ def main():
         
         # Test basic communication
         print("2. Testing basic communication...")
-        response = send_command(ser, "STATUS")
-        print(f"   STATUS response: {response[0] if response else 'No response'}")
-        
+        status_response = send_command(ser, "STATUS")
+        print(f"   STATUS response: {status_response[0] if status_response else 'No response'}")
+
         # Debug storage state
         print("\n3. Debugging storage state...")
         response = send_command(ser, "DEBUG_STORAGE", wait_time=0.5)
         print("   Storage debug output:")
         for line in response:
             print(f"     {line}")
-        
+
         # Get storage info
         print("\n4. Getting storage information...")
-        response = send_command(ser, "STORAGE_INFO")
-        for line in response:
+        storage_info_response = send_command(ser, "STORAGE_INFO")
+        for line in storage_info_response:
             print(f"   {line}")
-        
+
         # List files (now should query actual storage)
         print("\n5. Listing files (from actual storage)...")
         response = send_command(ser, "LIST_FILES")
@@ -422,16 +430,16 @@ def main():
             elif in_file_list:
                 files.append(line)
                 print(f"     - {line}")
-        
+
         if not files:
             print("   No files found in storage!")
-            
+
             # Try to create test files
             print("\n6. Creating test files...")
             response = send_command(ser, "CREATE_TEST_FILES", wait_time=1.0)
             for line in response:
                 print(f"   {line}")
-            
+
             # List files again
             print("\n7. Listing files after creation...")
             response = send_command(ser, "LIST_FILES")
@@ -446,14 +454,14 @@ def main():
                 elif in_file_list:
                     files.append(line)
                     print(f"     - {line}")
-        
+
         # Try to read each file
         if files:
             print("\n8. Reading files...")
             for filename in files:
                 print(f"\n   Reading {filename}:")
                 response = send_command(ser, f"READ_FILE {filename}")
-                
+
                 for line in response:
                     if line.startswith("FILE_DATA:"):
                         parts = line.split(':', 3)
@@ -470,7 +478,7 @@ def main():
                                         data = bytes.fromhex(hex_data)
                                         version = data.decode('utf-8', errors='ignore')
                                         print(f"     Content: '{version}'")
-                                    except:
+                                    except Exception:
                                         print(f"     Raw hex: {hex_data[:64]}...")
                                 elif filename == "/config.bin":
                                     # Decode and display configuration
@@ -481,10 +489,12 @@ def main():
                     elif line.startswith("ERROR:"):
                         print(f"     {line}")
                         break
-        
+
         print("\n9. Test complete!")
         print("\nSUMMARY:")
-        print(f"  - Storage initialized: {'YES' if 'STORAGE_INITIALIZED:YES' in str(response) else 'UNKNOWN'}")
+        # Determine storage initialized state from STORAGE_INFO response (unified storage-only system)
+        storage_initialized = any('STORAGE_INITIALIZED:YES' in line for line in storage_info_response)
+        print(f"  - Storage initialized: {'YES' if storage_initialized else 'NO'}")
         print(f"  - Files found: {len(files)}")
         print(f"  - Files readable: {'YES' if files and not any('ERROR:' in str(r) for r in response) else 'NO'}")
         
