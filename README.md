@@ -205,47 +205,6 @@ The default custom curve is linear (1:1 response). You can define your own curve
 - Statistical analysis avoids interfering with slow movements
 - Typical values: 0 (off), 250-500 (light), 500-1000 (medium)
 
-### 🧱 Unified Axis Descriptor Model (RP2040 Branch)
-
-Axes are defined once via a compile‑time descriptor list in `src/config/ConfigAxis.h`:
-
-```cpp
-struct AxisDescriptor {
-    uint8_t idx;          // Internal axis enum (X,Y,Z,RX,RY,RZ,S1,S2)
-    int     pin;          // A0/A1/A2 or ADS1115_CH0..CH3
-    int     minv, maxv;   // Logical range
-    AxisFilterLevel filter; 
-    uint32_t alpha;       // EWMA alpha (0..1000)
-    int     deadband;     // Deadband size
-    ResponseCurveType curve; // Response curve id
-};
-
-static const AxisDescriptor axisDescriptors[] = {
-#ifdef USE_AXIS_X
-    { AnalogAxisManager::AXIS_X, AXIS_X_PIN, AXIS_X_MIN, AXIS_X_MAX, AXIS_X_FILTER_LEVEL, AXIS_X_EWMA_ALPHA, AXIS_X_DEADBAND, AXIS_X_CURVE },
-#endif
-  // ...additional conditional entries
-};
-```
-
-Lifecycle:
-1. `setupUserAxes()` scans descriptors: if any `pin` is an ADS1115 channel (`isAdsPin()` helper) it initializes the external ADC.
-2. First call to `readUserAxes()` applies each descriptor (pin/range/filter/alpha/deadband/curve/enable).
-3. Subsequent calls just read all axes and publish them (`joystick.setAxis`).
-
-Advantages:
-- Single source of truth (no duplicated #ifdef blocks)
-- Adding an axis: define `USE_AXIS_*` block + one descriptor entry
-- Unused axes fully compiled out
-- Easy to extend (e.g. add invert flag later)
-
-Removed Legacy: Older macro patterns (`AXIS_CFG`, `AXIS_CONFIG_LIST`) were eliminated to avoid preprocessor complexity.
-
-Potential Extensions:
-- Optional `invert` boolean in descriptor
-- Storage overlay to override static defaults at runtime
-- Small LUT index for response curves instead of enum
-
 ---
 
 ## 🧮 Deterministic Digital Input Memory Model
@@ -267,17 +226,6 @@ MAX_ENCODERS
 
 If configuration exceeds a limit, extra logical inputs are ignored (clamped). During development you can add
 `static_assert`s or debug prints to catch this early.
-
-### ShiftRegisterManager
-Centralizes timed reads of chained 74HC165 parts (1 ms single, 5 ms multi). All consumers read the shared
-buffer instead of hitting hardware directly.
-
-### InputManager
-Provides `g_inputManager.update()` which sequences: shift → buttons → matrix → encoders → axes → HID send.
-
-### Matrix Refactor
-`ButtonMatrix` internal arrays are now static (size = `MAX_MATRIX_ROWS * MAX_MATRIX_COLS`); destructor removed;
-constructed with placement new after matrix size discovery.
 
 ### Tuning
 Lower limits to save RAM; raise to support bigger control panels. Cost is linear static BSS; no runtime penalty.
