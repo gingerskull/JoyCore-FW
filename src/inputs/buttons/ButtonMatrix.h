@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <Arduino.h>
+#include "../PoolConfig.h"
 
 // Button matrix scanner - replacement for external Keypad library
 // Provides simple matrix button scanning with state change detection
@@ -13,7 +14,8 @@
 // - State change detection
 // - Compatible key structure format
 
-#define MATRIX_MAX_KEYS 32  // Maximum number of keys that can be tracked
+#undef MATRIX_MAX_KEYS
+#define MATRIX_MAX_KEYS (MAX_MATRIX_ROWS * MAX_MATRIX_COLS)  // Maximum keys tracked derives from pool config
 
 enum MatrixKeyState : uint8_t {
     MATRIX_IDLE = 0,
@@ -36,11 +38,11 @@ private:
     uint8_t numRows;      // Number of rows
     uint8_t numCols;      // Number of columns
     
-    bool* currentStates;  // Current button states
-    bool* lastStates;     // Previous button states
+    bool currentStates[MATRIX_MAX_KEYS];  // Current button states
+    bool lastStates[MATRIX_MAX_KEYS];     // Previous button states
     
     uint8_t debounceTime; // Debounce delay in milliseconds
-    unsigned long* lastChangeTime; // Last change time for each key
+    unsigned long lastChangeTime[MATRIX_MAX_KEYS]; // Last change time for each key
     
     void scanMatrix();    // Internal matrix scanning function
     
@@ -50,8 +52,8 @@ public:
     // Constructor
     ButtonMatrix(char* keymap, byte* rowPins, byte* colPins, uint8_t numRows, uint8_t numCols);
     
-    // Destructor
-    ~ButtonMatrix();
+    // Destructor (no dynamic resources)
+    ~ButtonMatrix() = default;
     
     // Scan the matrix and update key states
     // Returns true if any key state changed

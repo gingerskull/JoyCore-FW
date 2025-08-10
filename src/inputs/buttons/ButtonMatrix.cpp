@@ -3,13 +3,14 @@
 
 ButtonMatrix::ButtonMatrix(char* keymap, byte* rowPins, byte* colPins, uint8_t numRows, uint8_t numCols)
     : keymap(keymap), rowPins(rowPins), colPins(colPins), numRows(numRows), numCols(numCols), debounceTime(20) {
-    
+
     uint8_t totalKeys = numRows * numCols;
-    
-    // Allocate memory for state tracking
-    currentStates = new bool[totalKeys]();
-    lastStates = new bool[totalKeys]();
-    lastChangeTime = new unsigned long[totalKeys]();
+    if (totalKeys > MATRIX_MAX_KEYS) totalKeys = MATRIX_MAX_KEYS;
+    for (uint8_t i = 0; i < totalKeys; ++i) {
+        currentStates[i] = false;
+        lastStates[i] = false;
+        lastChangeTime[i] = 0;
+    }
     
     // Initialize key array
     for (uint8_t i = 0; i < MATRIX_MAX_KEYS; i++) {
@@ -33,11 +34,7 @@ ButtonMatrix::ButtonMatrix(char* keymap, byte* rowPins, byte* colPins, uint8_t n
     }
 }
 
-ButtonMatrix::~ButtonMatrix() {
-    delete[] currentStates;
-    delete[] lastStates;
-    delete[] lastChangeTime;
-}
+// No-op destructor (all storage static)
 
 void ButtonMatrix::scanMatrix() {
     unsigned long currentTime = millis();

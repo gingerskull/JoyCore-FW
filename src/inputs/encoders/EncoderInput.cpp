@@ -5,6 +5,7 @@
 #include "../../Config.h"
 #include "RotaryEncoder.h"
 #include "../shift_register/ShiftRegister165.h"
+#include "../PoolConfig.h"
 
 // External variable for matrix pin states
 extern bool g_encoderMatrixPinStates[20];
@@ -49,60 +50,33 @@ static int encoderReadPin(uint8_t pin) {
 
 
 
-// Unified encoder system: RotaryEncoder for all encoders
-static RotaryEncoder** encoders = nullptr;
-static EncoderButtons* encoderBtnMap = nullptr;
-static int* lastPositions = nullptr;
+// Unified encoder system with static pools
+static RotaryEncoder* encoders[MAX_ENCODERS];
+static EncoderButtons encoderBtnMap[MAX_ENCODERS];
+static int lastPositions[MAX_ENCODERS];
 static uint8_t encoderTotal = 0;
 
 void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_t count) {
-  encoderTotal = count;
-
-  // Initialize encoder buffer system
-  initEncoderBuffers();
-
-  encoders = new RotaryEncoder*[count];
-  encoderBtnMap = new EncoderButtons[count];
-  lastPositions = new int[count];
-
-  for (uint8_t i = 0; i < count; i++) {
-    // Use the latch mode specified in the encoder configuration
-    RotaryEncoder::LatchMode latchMode;
-    
-    // Convert simplified LatchMode to RotaryEncoder::LatchMode
-    switch (pins[i].latchMode) {
-        case FOUR3:
-            latchMode = RotaryEncoder::LatchMode::FOUR3;
-            break;
-        case FOUR0:
-            latchMode = RotaryEncoder::LatchMode::FOUR0;
-            break;
-        case TWO03:
-            latchMode = RotaryEncoder::LatchMode::TWO03;
-            break;
-        default:
-            latchMode = RotaryEncoder::LatchMode::FOUR3;
-            break;
+    if (count > MAX_ENCODERS) count = MAX_ENCODERS;
+    encoderTotal = count;
+    initEncoderBuffers();
+    for (uint8_t i = 0; i < count; i++) {
+        RotaryEncoder::LatchMode latchMode;
+        switch (pins[i].latchMode) {
+            case FOUR3: latchMode = RotaryEncoder::LatchMode::FOUR3; break;
+            case FOUR0: latchMode = RotaryEncoder::LatchMode::FOUR0; break;
+            case TWO03: latchMode = RotaryEncoder::LatchMode::TWO03; break;
+            default: latchMode = RotaryEncoder::LatchMode::FOUR3; break;
+        }
+        encoders[i] = new RotaryEncoder(pins[i].pinA, pins[i].pinB, latchMode, encoderReadPin);
+        if (pins[i].pinA < 100 && pins[i].pinB < 100) {
+            pinMode(pins[i].pinA, INPUT_PULLUP);
+            pinMode(pins[i].pinB, INPUT_PULLUP);
+        }
+        encoderBtnMap[i] = buttons[i];
+        lastPositions[i] = encoders[i]->getPosition();
+        createEncoderBufferEntry(buttons[i].cw, buttons[i].ccw);
     }
-    
-    encoders[i] = new RotaryEncoder(
-      pins[i].pinA, pins[i].pinB, latchMode, encoderReadPin
-    );
-    
-
-    
-    // Set pinMode for direct pins only (shift register pins are handled by encoderReadPin)
-    if (pins[i].pinA < 100 && pins[i].pinB < 100) {
-        pinMode(pins[i].pinA, INPUT_PULLUP);
-        pinMode(pins[i].pinB, INPUT_PULLUP);
-    }
-    
-    encoderBtnMap[i] = buttons[i];
-    lastPositions[i] = encoders[i]->getPosition();
-    
-    // Set up buffer entry for this encoder pair - one buffer per encoder
-    createEncoderBufferEntry(buttons[i].cw, buttons[i].ccw);
-  }
 }
 
 
@@ -143,9 +117,7 @@ void updateEncoders() {
 }
 
 void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
-    // Count all encoder pairs
     uint8_t encoderCount = 0;
-    
     for (uint8_t i = 0; i < logicalCount - 1; ++i) {
         // Check for any encoder pairs (direct pin, matrix, or shift register)
         if (((logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) ||
@@ -157,14 +129,12 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
             encoderCount++;
         }
     }
-    
-    // Initialize all encoders with RotaryEncoder library
+    if (encoderCount > MAX_ENCODERS) encoderCount = MAX_ENCODERS;
     if (encoderCount > 0) {
-        EncoderPins* pins = new EncoderPins[encoderCount];
-        EncoderButtons* buttons = new EncoderButtons[encoderCount];
+        EncoderPins pinsLocal[MAX_ENCODERS];
+        EncoderButtons buttonsLocal[MAX_ENCODERS];
         uint8_t idx = 0;
-        
-        for (uint8_t i = 0; i < logicalCount - 1; ++i) {
+        for (uint8_t i = 0; i < logicalCount - 1 && idx < encoderCount; ++i) {
             // Check for any encoder pairs
             if (((logicals[i].type == INPUT_PIN && logicals[i].u.pin.behavior == ENC_A) ||
                  (logicals[i].type == INPUT_MATRIX && logicals[i].u.matrix.behavior == ENC_A) ||
@@ -231,29 +201,16 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                 }
                 
                 if (isEncA && isEncB) {
-                    pins[idx].pinA = pinA;
-                    pins[idx].pinB = pinB;
-                    
-                    // Get latch mode from ENC_A configuration (both should be the same)
-                    LatchMode latchMode = FOUR3; // Default
-                    if (logicals[i].type == INPUT_PIN) {
-                        latchMode = logicals[i].encoderLatchMode;
-                    } else if (logicals[i].type == INPUT_MATRIX) {
-                        latchMode = logicals[i].encoderLatchMode;
-                    } else if (logicals[i].type == INPUT_SHIFTREG) {
-                        latchMode = logicals[i].encoderLatchMode;
-                    }
-                    pins[idx].latchMode = latchMode;
-                    
-                    buttons[idx].cw = joyA;
-                    buttons[idx].ccw = joyB;
+                    pinsLocal[idx].pinA = pinA;
+                    pinsLocal[idx].pinB = pinB;
+                    LatchMode latchMode = logicals[i].encoderLatchMode;
+                    pinsLocal[idx].latchMode = latchMode;
+                    buttonsLocal[idx].cw = joyA;
+                    buttonsLocal[idx].ccw = joyB;
                     idx++;
                 }
             }
         }
-        
-        initEncoders(pins, buttons, encoderCount);
-        delete[] pins;
-        delete[] buttons;
+        initEncoders(pinsLocal, buttonsLocal, encoderCount);
     }
 }

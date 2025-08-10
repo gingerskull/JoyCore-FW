@@ -92,6 +92,8 @@ public:
 private:
     // Current active configuration
     PinMapEntry m_currentPinMap[MAX_PIN_MAP_ENTRIES];
+    // Stable storage for pin names to avoid dangling pointers when loading from storage
+    char m_pinNamePool[MAX_PIN_MAP_ENTRIES][8];
     LogicalInput m_currentLogicalInputs[MAX_LOGICAL_INPUTS];
     StoredAxisConfig m_currentAxisConfigs[8];
     StoredUSBDescriptor m_currentUSBDescriptor;

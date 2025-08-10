@@ -4,6 +4,7 @@
 #include "../ConfigAxis.h"
 #include <string.h>
 #include <stdio.h>
+#include "../../utils/Debug.h"
 
 // Global instance
 ConfigManager g_configManager;
@@ -17,6 +18,7 @@ ConfigManager::ConfigManager()
     , m_usingDefaults(false)
 {
     memset(m_currentPinMap, 0, sizeof(m_currentPinMap));
+    memset(m_pinNamePool, 0, sizeof(m_pinNamePool));
     memset(m_currentLogicalInputs, 0, sizeof(m_currentLogicalInputs));
     memset(m_currentAxisConfigs, 0, sizeof(m_currentAxisConfigs));
     memset(&m_currentUSBDescriptor, 0, sizeof(m_currentUSBDescriptor));
@@ -27,42 +29,39 @@ ConfigManager::~ConfigManager() {
 
 bool ConfigManager::initialize() {
     if (m_initialized) {
-        Serial.println("DEBUG: ConfigManager already initialized, returning true");
+        DEBUG_PRINTLN("DEBUG: ConfigManager already initialized, returning true");
         return true;
     }
-    
-    Serial.println("DEBUG: ConfigManager::initialize() called - ENTRY POINT");
+    DEBUG_PRINTLN("DEBUG: ConfigManager::initialize() called - ENTRY POINT");
     
 #if CONFIG_FEATURE_STORAGE_ENABLED
     // Initialize storage system if enabled
-    Serial.println("DEBUG: Initializing storage system...");
+    DEBUG_PRINTLN("DEBUG: Initializing storage system...");
     StorageResult storageResult = m_storage.initialize();
-    Serial.print("DEBUG: Storage initialization result: ");
-    Serial.println((int)storageResult);
+    DEBUG_PRINT("DEBUG: Storage initialization result: "); DEBUG_PRINTLN((int)storageResult);
     
     if (storageResult != StorageResult::SUCCESS) {
-        Serial.println("DEBUG: Storage initialization failed, falling back to static mode");
+    DEBUG_PRINTLN("DEBUG: Storage initialization failed, falling back to static mode");
         // Storage initialization failed, fall back to static mode
         return loadStaticConfiguration();
     }
     
     // Debug dump storage state after initialization
-    Serial.println("DEBUG: Storage initialized, dumping file table:");
+    DEBUG_PRINTLN("DEBUG: Storage initialized, dumping file table:");
     m_storage.debugDumpFileTable();
     
     // Set initialized flag before version check so saveToStorage works
     m_initialized = true;
     
     // Check firmware version and handle fresh uploads
-    Serial.println("DEBUG: About to call checkAndUpdateFirmwareVersion...");
+    DEBUG_PRINTLN("DEBUG: About to call checkAndUpdateFirmwareVersion...");
     bool versionResult = checkAndUpdateFirmwareVersion();
-    Serial.print("DEBUG: checkAndUpdateFirmwareVersion returned: ");
-    Serial.println(versionResult ? "true" : "false");
+    DEBUG_PRINT("DEBUG: checkAndUpdateFirmwareVersion returned: "); DEBUG_PRINTLN(versionResult ? "true" : "false");
 #endif
     
     // If config was already loaded during firmware version check, don't load again
     if (m_configLoaded) {
-        Serial.println("DEBUG: Config already loaded during version check, skipping loadConfiguration");
+    DEBUG_PRINTLN("DEBUG: Config already loaded during version check, skipping loadConfiguration");
         return true;
     }
     
@@ -79,7 +78,23 @@ bool ConfigManager::loadConfiguration() {
     
 #elif CONFIG_MODE == CONFIG_MODE_STORAGE
     #if CONFIG_FEATURE_STORAGE_ENABLED
-        return loadFromStorage();
+        if(loadFromStorage()) {
+            return true;
+        }
+        Serial.println("WARN: Primary config load failed, attempting backup restore");
+        if(restoreFromBackup()) {
+            Serial.println("INFO: Backup restored, re-attempting load");
+            if(loadFromStorage()) return true;
+        }
+        Serial.println("WARN: Backup restore failed or invalid, generating defaults");
+        generateDefaultPinMap();
+        generateDefaultLogicalInputs();
+        generateDefaultAxisConfigs();
+        generateDefaultUSBDescriptor();
+        m_configLoaded = true;
+        m_usingDefaults = true;
+        saveToStorage();
+        return true;
     #else
         // Storage not available, fall back to static
         return loadStaticConfiguration();
@@ -91,6 +106,9 @@ bool ConfigManager::loadConfiguration() {
         if (loadFromStorage()) {
             return true;
         }
+        Serial.println("WARN: Hybrid mode primary storage load failed, trying backup");
+        if(restoreFromBackup() && loadFromStorage()) return true;
+        Serial.println("INFO: Falling back to static configuration in hybrid mode");
     #endif
     return loadStaticConfiguration();
     
@@ -142,16 +160,13 @@ bool ConfigManager::loadFromStorage() {
     uint8_t buffer[2048]; // Buffer for configuration data
     size_t bytesRead;
     
-    Serial.println("DEBUG: loadFromStorage() called");
+    DEBUG_PRINTLN("DEBUG: loadFromStorage() called");
     
     StorageResult result = m_storage.read(CONFIG_STORAGE_FILENAME, buffer, sizeof(buffer), &bytesRead);
-    Serial.print("DEBUG: Read result for ");
-    Serial.print(CONFIG_STORAGE_FILENAME);
-    Serial.print(": ");
-    Serial.println((int)result);
+    DEBUG_PRINT("DEBUG: Read result for "); DEBUG_PRINT(CONFIG_STORAGE_FILENAME); DEBUG_PRINT(": "); DEBUG_PRINTLN((int)result);
     
     if (result == StorageResult::ERROR_FILE_NOT_FOUND) {
-        Serial.println("DEBUG: Config file not found, generating defaults and saving...");
+    DEBUG_PRINTLN("DEBUG: Config file not found, generating defaults and saving...");
         // No configuration file exists, generate defaults
         generateDefaultPinMap();
         generateDefaultLogicalInputs();
@@ -161,22 +176,20 @@ bool ConfigManager::loadFromStorage() {
         m_usingDefaults = true;
         
         // Save the defaults to storage so they exist for next time
-        Serial.println("DEBUG: Saving generated defaults to storage...");
+    DEBUG_PRINTLN("DEBUG: Saving generated defaults to storage...");
         bool saveResult = saveToStorage();
-        Serial.print("DEBUG: Save defaults result: ");
-        Serial.println(saveResult ? "SUCCESS" : "FAILED");
+    DEBUG_PRINT("DEBUG: Save defaults result: "); DEBUG_PRINTLN(saveResult ? "SUCCESS" : "FAILED");
         
         // Also create firmware version file
-        Serial.println("DEBUG: Writing firmware version file...");
+    DEBUG_PRINTLN("DEBUG: Writing firmware version file...");
         writeStoredFirmwareVersion(FIRMWARE_VERSION);
         
         return true;
     }
     
     if (result != StorageResult::SUCCESS) {
-        Serial.print("DEBUG: Failed to read config, error: ");
-        Serial.println((int)result);
-        return false;
+    DEBUG_PRINT("DEBUG: Failed to read config, error: "); DEBUG_PRINTLN((int)result);
+        return false; // Higher-level will attempt fallback chain
     }
     
     // Validate and parse stored configuration
@@ -189,16 +202,20 @@ bool ConfigManager::loadFromStorage() {
     size_t variableSize = bytesRead - sizeof(StoredConfig);
     
     if (!ConfigConversion::validateStoredConfig(storedConfig, bytesRead)) {
-        return false;
+    DEBUG_PRINTLN("DEBUG: Stored config failed validation (possibly corrupt)");
+        return false; // Trigger fallback chain
     }
-    
-    // Convert stored format to runtime format
-    return convertStoredToRuntime(storedConfig, variableData, variableSize);
+
+    bool ok = convertStoredToRuntime(storedConfig, variableData, variableSize);
+    if(!ok) {
+    DEBUG_PRINTLN("DEBUG: convertStoredToRuntime failed");
+    }
+    return ok;
 }
 
 bool ConfigManager::saveToStorage() {
     if (!m_initialized || !m_configLoaded) {
-        Serial.println("DEBUG: saveToStorage - not initialized or config not loaded");
+        DEBUG_PRINTLN("DEBUG: saveToStorage - not initialized or config not loaded");
         return false;
     }
     
@@ -210,16 +227,13 @@ bool ConfigManager::saveToStorage() {
         return false;
     }
     
-    Serial.print("DEBUG: saveToStorage - about to write ");
-    Serial.print(totalSize);
-    Serial.println(" bytes");
+    DEBUG_PRINT("DEBUG: saveToStorage - about to write "); DEBUG_PRINT(totalSize); DEBUG_PRINTLN(" bytes");
     
     // Create backup before saving
     createBackup();
     
     StorageResult result = m_storage.write(CONFIG_STORAGE_FILENAME, buffer, totalSize);
-    Serial.print("DEBUG: saveToStorage - write result: ");
-    Serial.println((int)result);
+    DEBUG_PRINT("DEBUG: saveToStorage - write result: "); DEBUG_PRINTLN((int)result);
     
     return result == StorageResult::SUCCESS;
 }
@@ -335,32 +349,27 @@ bool ConfigManager::applyConfiguration(const StoredConfig* config, const uint8_t
 
 bool ConfigManager::getSerializedConfig(uint8_t* buffer, size_t bufferSize, size_t* actualSize) const {
     if (!buffer || bufferSize < sizeof(StoredConfig)) {
-        Serial.println("DEBUG: getSerializedConfig - buffer too small");
+        DEBUG_PRINTLN("DEBUG: getSerializedConfig - buffer too small");
         return false;
     }
     
-    Serial.print("DEBUG: getSerializedConfig - buffer size: ");
-    Serial.println(bufferSize);
-    Serial.print("DEBUG: StoredConfig size: ");
-    Serial.println(sizeof(StoredConfig));
+    DEBUG_PRINT("DEBUG: getSerializedConfig - buffer size: "); DEBUG_PRINTLN(bufferSize);
+    DEBUG_PRINT("DEBUG: StoredConfig size: "); DEBUG_PRINTLN(sizeof(StoredConfig));
     
     StoredConfig* config = reinterpret_cast<StoredConfig*>(buffer);
     uint8_t* variableData = buffer + sizeof(StoredConfig);
     size_t maxVariableSize = bufferSize - sizeof(StoredConfig);
     size_t variableSize;
     
-    Serial.print("DEBUG: Max variable size: ");
-    Serial.println(maxVariableSize);
+    DEBUG_PRINT("DEBUG: Max variable size: "); DEBUG_PRINTLN(maxVariableSize);
     
     if (!convertRuntimeToStored(config, variableData, &variableSize, maxVariableSize)) {
-        Serial.println("DEBUG: convertRuntimeToStored failed");
+    DEBUG_PRINTLN("DEBUG: convertRuntimeToStored failed");
         return false;
     }
     
-    Serial.print("DEBUG: Variable size: ");
-    Serial.println(variableSize);
-    Serial.print("DEBUG: Total size: ");
-    Serial.println(sizeof(StoredConfig) + variableSize);
+    DEBUG_PRINT("DEBUG: Variable size: "); DEBUG_PRINTLN(variableSize);
+    DEBUG_PRINT("DEBUG: Total size: "); DEBUG_PRINTLN(sizeof(StoredConfig) + variableSize);
     
     if (actualSize) {
         *actualSize = sizeof(StoredConfig) + variableSize;
@@ -372,10 +381,14 @@ bool ConfigManager::getSerializedConfig(uint8_t* buffer, size_t bufferSize, size
 bool ConfigManager::convertStoredToRuntime(const StoredConfig* config, const uint8_t* variableData, size_t variableSize) {
     // Extract pin map
     const StoredPinMapEntry* storedPinMap = reinterpret_cast<const StoredPinMapEntry*>(variableData);
-    if (!ConfigConversion::unpackPinMap(storedPinMap, config->pinMapCount, m_currentPinMap)) {
-        return false;
+    m_currentPinMapCount = min(config->pinMapCount, (uint8_t)MAX_PIN_MAP_ENTRIES);
+    for(uint8_t i=0;i<m_currentPinMapCount;i++) {
+        // Copy name into stable pool then point runtime entry to it
+        strncpy(m_pinNamePool[i], storedPinMap[i].name, sizeof(m_pinNamePool[i]) - 1);
+        m_pinNamePool[i][sizeof(m_pinNamePool[i]) - 1] = '\0';
+        m_currentPinMap[i].name = m_pinNamePool[i];
+        m_currentPinMap[i].type = (PinType)storedPinMap[i].type;
     }
-    m_currentPinMapCount = config->pinMapCount;
     
     // Extract logical inputs
     const StoredLogicalInput* storedInputs = reinterpret_cast<const StoredLogicalInput*>(
@@ -448,14 +461,13 @@ bool ConfigManager::convertRuntimeToStored(StoredConfig* config, uint8_t* variab
 void ConfigManager::generateDefaultPinMap() {
     // Generate basic default pin map - this would typically match ConfigDigital.h defaults
     m_currentPinMapCount = 0;
-    
-    // Add some basic pin mappings for testing
-    if (m_currentPinMapCount < MAX_PIN_MAP_ENTRIES) {
-        // PinMapEntry.name is a const char* pointer, not an array
-        // We need to point it to a persistent static string
-        static const char pinName6[] = "6";  // Static array instead of pointer
-        m_currentPinMap[m_currentPinMapCount].name = pinName6;
-        m_currentPinMap[m_currentPinMapCount].type = BTN;
+    // Minimal sane defaults: copy any static hardwarePinMap entries up to limits
+    uint8_t copyCount = min((uint8_t)hardwarePinMapCount, (uint8_t)MAX_PIN_MAP_ENTRIES);
+    for(uint8_t i=0;i<copyCount;i++) {
+        strncpy(m_pinNamePool[i], hardwarePinMap[i].name, sizeof(m_pinNamePool[i]) - 1);
+        m_pinNamePool[i][sizeof(m_pinNamePool[i]) - 1] = '\0';
+        m_currentPinMap[i].name = m_pinNamePool[i];
+        m_currentPinMap[i].type = hardwarePinMap[i].type;
         m_currentPinMapCount++;
     }
 }
@@ -517,19 +529,16 @@ void ConfigManager::generateDefaultUSBDescriptor() {
 #if CONFIG_FEATURE_STORAGE_ENABLED
 
 bool ConfigManager::checkAndUpdateFirmwareVersion() {
-    Serial.println("DEBUG: checkAndUpdateFirmwareVersion() - ENTRY");
+    DEBUG_PRINTLN("DEBUG: checkAndUpdateFirmwareVersion() - ENTRY");
     
     uint32_t storedVersion = readStoredFirmwareVersion();
     uint32_t currentVersion = FIRMWARE_VERSION;
     
-    Serial.print("DEBUG: checkAndUpdateFirmwareVersion - stored: ");
-    Serial.print(storedVersion);
-    Serial.print(", current: ");
-    Serial.println(currentVersion);
+    DEBUG_PRINT("DEBUG: checkAndUpdateFirmwareVersion - stored: "); DEBUG_PRINT(storedVersion); DEBUG_PRINT(", current: "); DEBUG_PRINTLN(currentVersion);
     
     // If firmware version has changed, this is a fresh upload
     if (storedVersion != currentVersion) {
-        Serial.println("DEBUG: Firmware version changed, creating default config");
+    DEBUG_PRINTLN("DEBUG: Firmware version changed, creating default config");
         Serial.print("DEBUG: CONFIG_MODE = ");
         Serial.println(CONFIG_MODE);
         Serial.print("DEBUG: CONFIG_MODE_STORAGE = ");
@@ -537,55 +546,53 @@ bool ConfigManager::checkAndUpdateFirmwareVersion() {
         
         // For ALL modes in STORAGE mode, generate minimal defaults on fresh upload
         #if CONFIG_MODE == CONFIG_MODE_STORAGE
-            Serial.println("DEBUG: In CONFIG_MODE_STORAGE block");
+            DEBUG_PRINTLN("DEBUG: In CONFIG_MODE_STORAGE block");
             
             // Generate minimal defaults
-            Serial.println("DEBUG: Generating default pin map...");
+            DEBUG_PRINTLN("DEBUG: Generating default pin map...");
             generateDefaultPinMap();
-            Serial.println("DEBUG: Generating default logical inputs...");
+            DEBUG_PRINTLN("DEBUG: Generating default logical inputs...");
             generateDefaultLogicalInputs();
-            Serial.println("DEBUG: Generating default axis configs...");
+            DEBUG_PRINTLN("DEBUG: Generating default axis configs...");
             generateDefaultAxisConfigs();
-            Serial.println("DEBUG: Generating default USB descriptor...");
+            DEBUG_PRINTLN("DEBUG: Generating default USB descriptor...");
             generateDefaultUSBDescriptor();
             
             m_configLoaded = true;
             m_usingDefaults = true;
-            Serial.println("DEBUG: Default config generated, flags set");
+            DEBUG_PRINTLN("DEBUG: Default config generated, flags set");
             
             // Save the minimal defaults to storage
-            Serial.println("DEBUG: About to call saveConfiguration()...");
+            DEBUG_PRINTLN("DEBUG: About to call saveConfiguration()...");
             bool saveResult = saveConfiguration();
-            Serial.print("DEBUG: saveConfiguration() returned: ");
-            Serial.println(saveResult ? "SUCCESS" : "FAILED");
+            DEBUG_PRINT("DEBUG: saveConfiguration() returned: "); DEBUG_PRINTLN(saveResult ? "SUCCESS" : "FAILED");
             
             // Only update firmware version if config save was successful
             if (saveResult) {
-                Serial.println("DEBUG: Config save succeeded, updating firmware version...");
+                DEBUG_PRINTLN("DEBUG: Config save succeeded, updating firmware version...");
                 bool versionResult = writeStoredFirmwareVersion(currentVersion);
-                Serial.print("DEBUG: writeStoredFirmwareVersion() returned: ");
-                Serial.println(versionResult ? "SUCCESS" : "FAILED");
+                DEBUG_PRINT("DEBUG: writeStoredFirmwareVersion() returned: "); DEBUG_PRINTLN(versionResult ? "SUCCESS" : "FAILED");
                 
                 if (!versionResult) {
-                    Serial.println("ERROR: Failed to update firmware version file");
+                    DEBUG_PRINTLN("ERROR: Failed to update firmware version file");
                     return false;
                 }
             } else {
-                Serial.println("ERROR: Config save failed, not updating firmware version");
+                DEBUG_PRINTLN("ERROR: Config save failed, not updating firmware version");
                 return false;
             }
             
-            Serial.println("DEBUG: checkAndUpdateFirmwareVersion() - SUCCESS EXIT");
+            DEBUG_PRINTLN("DEBUG: checkAndUpdateFirmwareVersion() - SUCCESS EXIT");
             return true;
         #else
-            Serial.println("DEBUG: Not in CONFIG_MODE_STORAGE block");
+            DEBUG_PRINTLN("DEBUG: Not in CONFIG_MODE_STORAGE block");
         #endif
         
         // For STATIC and HYBRID modes, just update the version
         // They will load configuration normally through loadConfiguration()
         writeStoredFirmwareVersion(currentVersion);
     } else {
-        Serial.println("DEBUG: Firmware version unchanged, no action needed");
+    DEBUG_PRINTLN("DEBUG: Firmware version unchanged, no action needed");
     }
     
     return true; // Version unchanged or non-storage mode, proceed normally

@@ -137,188 +137,86 @@
 #endif
 
 // =============================================================================
-// DYNAMIC AXIS MAPPING FUNCTION
+// DYNAMIC AXIS MAPPING FUNCTION (managed below)
 // =============================================================================
 
+// Unified axis descriptor consolidating setup & publish data
+struct AxisDescriptor {
+    uint8_t idx;
+    int pin;
+    int minv;
+    int maxv;
+    AxisFilterLevel filter;
+    uint32_t alpha;
+    int deadband;
+    ResponseCurveType curve;
+};
 
+static const AxisDescriptor axisDescriptors[] = {
+#ifdef USE_AXIS_X
+    { AnalogAxisManager::AXIS_X, AXIS_X_PIN, AXIS_X_MIN, AXIS_X_MAX, AXIS_X_FILTER_LEVEL, AXIS_X_EWMA_ALPHA, AXIS_X_DEADBAND, AXIS_X_CURVE },
+#endif
+#ifdef USE_AXIS_Y
+    { AnalogAxisManager::AXIS_Y, AXIS_Y_PIN, AXIS_Y_MIN, AXIS_Y_MAX, AXIS_Y_FILTER_LEVEL, AXIS_Y_EWMA_ALPHA, AXIS_Y_DEADBAND, AXIS_Y_CURVE },
+#endif
+#ifdef USE_AXIS_Z
+    { AnalogAxisManager::AXIS_Z, AXIS_Z_PIN, AXIS_Z_MIN, AXIS_Z_MAX, AXIS_Z_FILTER_LEVEL, AXIS_Z_EWMA_ALPHA, AXIS_Z_DEADBAND, AXIS_Z_CURVE },
+#endif
+#ifdef USE_AXIS_RX
+    { AnalogAxisManager::AXIS_RX, AXIS_RX_PIN, AXIS_RX_MIN, AXIS_RX_MAX, AXIS_RX_FILTER_LEVEL, AXIS_RX_EWMA_ALPHA, AXIS_RX_DEADBAND, AXIS_RX_CURVE },
+#endif
+#ifdef USE_AXIS_RY
+    { AnalogAxisManager::AXIS_RY, AXIS_RY_PIN, AXIS_RY_MIN, AXIS_RY_MAX, AXIS_RY_FILTER_LEVEL, AXIS_RY_EWMA_ALPHA, AXIS_RY_DEADBAND, AXIS_RY_CURVE },
+#endif
+#ifdef USE_AXIS_RZ
+    { AnalogAxisManager::AXIS_RZ, AXIS_RZ_PIN, AXIS_RZ_MIN, AXIS_RZ_MAX, AXIS_RZ_FILTER_LEVEL, AXIS_RZ_EWMA_ALPHA, AXIS_RZ_DEADBAND, AXIS_RZ_CURVE },
+#endif
+#ifdef USE_AXIS_S1
+    { AnalogAxisManager::AXIS_S1, AXIS_S1_PIN, AXIS_S1_MIN, AXIS_S1_MAX, AXIS_S1_FILTER_LEVEL, AXIS_S1_EWMA_ALPHA, AXIS_S1_DEADBAND, AXIS_S1_CURVE },
+#endif
+#ifdef USE_AXIS_S2
+    { AnalogAxisManager::AXIS_S2, AXIS_S2_PIN, AXIS_S2_MIN, AXIS_S2_MAX, AXIS_S2_FILTER_LEVEL, AXIS_S2_EWMA_ALPHA, AXIS_S2_DEADBAND, AXIS_S2_CURVE },
+#endif
+};
 
- // =============================================================================
+inline bool isAdsPin(int p){ return p >= 100 && p <= 103; }
+
+// =============================================================================
  // SETUP FUNCTION - DO NOT MODIFY
  // Initializes ADS1115 only if any axis uses ADS1115_CH*.
  // Axis parameters are applied in readUserAxes() during first run.
  // =============================================================================
 
+// Axis setup now uses data-driven descriptors (see axisDescriptors above); no macros required.
+
 inline void setupUserAxes(Joystick_& joystick) {
-    // Check if any axis uses ADS1115 channels and initialize if needed
+    (void)joystick; // currently unused
     bool needsADS1115 = false;
-    #ifdef USE_AXIS_X
-        if (AXIS_X_PIN >= 100 && AXIS_X_PIN <= 103) needsADS1115 = true;
-    #endif
-    #ifdef USE_AXIS_Y
-        if (AXIS_Y_PIN >= 100 && AXIS_Y_PIN <= 103) needsADS1115 = true;
-    #endif
-    #ifdef USE_AXIS_Z
-        if (AXIS_Z_PIN >= 100 && AXIS_Z_PIN <= 103) needsADS1115 = true;
-    #endif
-    #ifdef USE_AXIS_RX
-        if (AXIS_RX_PIN >= 100 && AXIS_RX_PIN <= 103) needsADS1115 = true;
-    #endif
-    #ifdef USE_AXIS_RY
-        if (AXIS_RY_PIN >= 100 && AXIS_RY_PIN <= 103) needsADS1115 = true;
-    #endif
-    #ifdef USE_AXIS_RZ
-        if (AXIS_RZ_PIN >= 100 && AXIS_RZ_PIN <= 103) needsADS1115 = true;
-    #endif
-    #ifdef USE_AXIS_S1
-        if (AXIS_S1_PIN >= 100 && AXIS_S1_PIN <= 103) needsADS1115 = true;
-    #endif
-    #ifdef USE_AXIS_S2
-        if (AXIS_S2_PIN >= 100 && AXIS_S2_PIN <= 103) needsADS1115 = true;
-    #endif
-    
-    // Initialize ADS1115 if any axis needs it
-    if (needsADS1115) {
-        initializeADS1115IfNeeded();
+    for (auto &d : axisDescriptors) {
+        if (isAdsPin(d.pin)) { needsADS1115 = true; break; }
     }
-    
-    // Note: Axis configuration is now handled directly in readUserAxes()
-    // using AnalogAxisManager instead of going through joystick wrapper
+    if (needsADS1115) initializeADS1115IfNeeded();
 }
 
 inline void readUserAxes(Joystick_& joystick) {
-    // Configure once, then read/process all enabled axes each loop.
-    // AnalogAxisManager enforces ~5 ms read cadence and uses cached ADS1115 values (round-robin).
     static AnalogAxisManager axisManager;
     static bool configured = false;
-    
-    // Configure axis manager on first run (per-axis pin, range, filter, EWMA alpha, deadband, curve)
     if (!configured) {
-        #ifdef USE_AXIS_X
-            axisManager.setAxisPin(AnalogAxisManager::AXIS_X, AXIS_X_PIN);
-            axisManager.setAxisRange(AnalogAxisManager::AXIS_X, AXIS_X_MIN, AXIS_X_MAX);
-            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_X, AXIS_X_FILTER_LEVEL);
-            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_X, AXIS_X_EWMA_ALPHA);
-            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_X, AXIS_X_DEADBAND);
-            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_X, AXIS_X_CURVE);
-            axisManager.enableAxis(AnalogAxisManager::AXIS_X, true);
-        #endif
-        
-        #ifdef USE_AXIS_Y
-            axisManager.setAxisPin(AnalogAxisManager::AXIS_Y, AXIS_Y_PIN);
-            axisManager.setAxisRange(AnalogAxisManager::AXIS_Y, AXIS_Y_MIN, AXIS_Y_MAX);
-            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_Y, AXIS_Y_FILTER_LEVEL);
-            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_Y, AXIS_Y_EWMA_ALPHA);
-            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_Y, AXIS_Y_DEADBAND);
-            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_Y, AXIS_Y_CURVE);
-            axisManager.enableAxis(AnalogAxisManager::AXIS_Y, true);
-        #endif
-        
-        #ifdef USE_AXIS_Z
-            axisManager.setAxisPin(AnalogAxisManager::AXIS_Z, AXIS_Z_PIN);
-            axisManager.setAxisRange(AnalogAxisManager::AXIS_Z, AXIS_Z_MIN, AXIS_Z_MAX);
-            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_Z, AXIS_Z_FILTER_LEVEL);
-            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_Z, AXIS_Z_EWMA_ALPHA);
-            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_Z, AXIS_Z_DEADBAND);
-            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_Z, AXIS_Z_CURVE);
-            axisManager.enableAxis(AnalogAxisManager::AXIS_Z, true);
-        #endif
-        
-        #ifdef USE_AXIS_RX
-            axisManager.setAxisPin(AnalogAxisManager::AXIS_RX, AXIS_RX_PIN);
-            axisManager.setAxisRange(AnalogAxisManager::AXIS_RX, AXIS_RX_MIN, AXIS_RX_MAX);
-            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_RX, AXIS_RX_FILTER_LEVEL);
-            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_RX, AXIS_RX_EWMA_ALPHA);
-            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_RX, AXIS_RX_DEADBAND);
-            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_RX, AXIS_RX_CURVE);
-            axisManager.enableAxis(AnalogAxisManager::AXIS_RX, true);
-        #endif
-        
-        #ifdef USE_AXIS_RY
-            axisManager.setAxisPin(AnalogAxisManager::AXIS_RY, AXIS_RY_PIN);
-            axisManager.setAxisRange(AnalogAxisManager::AXIS_RY, AXIS_RY_MIN, AXIS_RY_MAX);
-            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_RY, AXIS_RY_FILTER_LEVEL);
-            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_RY, AXIS_RY_EWMA_ALPHA);
-            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_RY, AXIS_RY_DEADBAND);
-            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_RY, AXIS_RY_CURVE);
-            axisManager.enableAxis(AnalogAxisManager::AXIS_RY, true);
-        #endif
-        
-        #ifdef USE_AXIS_RZ
-            axisManager.setAxisPin(AnalogAxisManager::AXIS_RZ, AXIS_RZ_PIN);
-            axisManager.setAxisRange(AnalogAxisManager::AXIS_RZ, AXIS_RZ_MIN, AXIS_RZ_MAX);
-            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_RZ, AXIS_RZ_FILTER_LEVEL);
-            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_RZ, AXIS_RZ_EWMA_ALPHA);
-            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_RZ, AXIS_RZ_DEADBAND);
-            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_RZ, AXIS_RZ_CURVE);
-            axisManager.enableAxis(AnalogAxisManager::AXIS_RZ, true);
-        #endif
-        
-        #ifdef USE_AXIS_S1
-            axisManager.setAxisPin(AnalogAxisManager::AXIS_S1, AXIS_S1_PIN);
-            axisManager.setAxisRange(AnalogAxisManager::AXIS_S1, AXIS_S1_MIN, AXIS_S1_MAX);
-            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_S1, AXIS_S1_FILTER_LEVEL);
-            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_S1, AXIS_S1_EWMA_ALPHA);
-            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_S1, AXIS_S1_DEADBAND);
-            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_S1, AXIS_S1_CURVE);
-            axisManager.enableAxis(AnalogAxisManager::AXIS_S1, true);
-        #endif
-        
-        #ifdef USE_AXIS_S2
-            axisManager.setAxisPin(AnalogAxisManager::AXIS_S2, AXIS_S2_PIN);
-            axisManager.setAxisRange(AnalogAxisManager::AXIS_S2, AXIS_S2_MIN, AXIS_S2_MAX);
-            axisManager.setAxisFilterLevel(AnalogAxisManager::AXIS_S2, AXIS_S2_FILTER_LEVEL);
-            axisManager.setAxisEwmaAlpha(AnalogAxisManager::AXIS_S2, AXIS_S2_EWMA_ALPHA);
-            axisManager.setAxisDeadbandSize(AnalogAxisManager::AXIS_S2, AXIS_S2_DEADBAND);
-            axisManager.setAxisResponseCurve(AnalogAxisManager::AXIS_S2, AXIS_S2_CURVE);
-            axisManager.enableAxis(AnalogAxisManager::AXIS_S2, true);
-        #endif
-        
+        for (auto &d : axisDescriptors) {
+            axisManager.setAxisPin(d.idx, d.pin);
+            axisManager.setAxisRange(d.idx, d.minv, d.maxv);
+            axisManager.setAxisFilterLevel(d.idx, d.filter);
+            axisManager.setAxisEwmaAlpha(d.idx, d.alpha);
+            axisManager.setAxisDeadbandSize(d.idx, d.deadband);
+            axisManager.setAxisResponseCurve(d.idx, d.curve);
+            axisManager.enableAxis(d.idx, true);
+        }
         configured = true;
     }
-    
-    // Read and process all enabled axes using the AnalogAxisManager
     axisManager.readAllAxes();
-    
-    // Set joystick values for all enabled axes
-    #ifdef USE_AXIS_X
-        int32_t processedXVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_X);
-        joystick.setAxis(AnalogAxisManager::AXIS_X, processedXVal);
-    #endif
-    
-    #ifdef USE_AXIS_Y
-        int32_t processedYVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_Y);
-        joystick.setAxis(AnalogAxisManager::AXIS_Y, processedYVal);
-    #endif
-    
-    #ifdef USE_AXIS_Z
-        int32_t processedZVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_Z);
-        joystick.setAxis(AnalogAxisManager::AXIS_Z, processedZVal);
-    #endif
-    
-    #ifdef USE_AXIS_RX
-        int32_t processedRxVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_RX);
-        joystick.setAxis(AnalogAxisManager::AXIS_RX, processedRxVal);
-    #endif
-    
-    #ifdef USE_AXIS_RY
-        int32_t processedRyVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_RY);
-        joystick.setAxis(AnalogAxisManager::AXIS_RY, processedRyVal);
-    #endif
-    
-    #ifdef USE_AXIS_RZ
-        int32_t processedRzVal = axisManager.getAxisValue(AnalogAxisManager::AXIS_RZ);
-        joystick.setAxis(AnalogAxisManager::AXIS_RZ, processedRzVal);
-    #endif
-    
-    #ifdef USE_AXIS_S1
-        int32_t processedS1Val = axisManager.getAxisValue(AnalogAxisManager::AXIS_S1);
-        joystick.setAxis(AnalogAxisManager::AXIS_S1, processedS1Val);
-    #endif
-    
-    #ifdef USE_AXIS_S2
-        int32_t processedS2Val = axisManager.getAxisValue(AnalogAxisManager::AXIS_S2);
-        joystick.setAxis(AnalogAxisManager::AXIS_S2, processedS2Val);
-    #endif
+    for (auto &d : axisDescriptors) {
+        joystick.setAxis(d.idx, axisManager.getAxisValue(d.idx));
+    }
 }
 
 #endif // USER_CONFIG_H
