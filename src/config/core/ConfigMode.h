@@ -17,8 +17,8 @@
 #define CONFIG_STORAGE_FIRMWARE_VERSION    "/fw_version.txt"  // Firmware version tracking file
 #define CONFIG_VERSION                     7   // Configuration format version
 
-// Firmware version tracking
-// Increment this value when making changes that should trigger config save on upload
-#define FIRMWARE_VERSION                   48     // Increment on each build that needs fresh config (triggers regen of config.bin)
+// Firmware version tracking (semantic versioning MAJOR.MINOR.PATCH)
+// Bump according to semantic versioning rules: MAJOR (breaking), MINOR (features), PATCH (bug fixes)
+#define FIRMWARE_VERSION_STRING            "0.1.0"
 
 // (CONFIG_MODE macros removed; any old references should be deleted. Update external tools accordingly.)

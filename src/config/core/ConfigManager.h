@@ -136,8 +136,7 @@ private:
     
     // Firmware version management
     bool checkAndUpdateFirmwareVersion();
-    uint32_t readStoredFirmwareVersion();
-    bool writeStoredFirmwareVersion(uint32_t version);
+    bool writeStoredFirmwareVersionString(const char* versionStr);
     
     // Utility methods
     bool isValidPin(const char* pinName) const;

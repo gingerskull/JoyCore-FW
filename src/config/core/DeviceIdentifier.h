@@ -31,12 +31,12 @@ namespace JoyCore {
     // Fixed format: "JOYCORE_ID:JOYCORE-FW:4A4F5943:FW_VERSION"
     // The first three parts are FIXED, only firmware version changes
     inline void formatIdentifyResponse(char* buffer, size_t bufferSize) {
-        snprintf(buffer, bufferSize, 
-                "%s:%s:%08X:%u",
+    snprintf(buffer, bufferSize, 
+        "%s:%s:%08X:%s",
                 IDENTIFY_RESPONSE_PREFIX,  // "JOYCORE_ID" - fixed
                 DEVICE_SIGNATURE,          // "JOYCORE-FW" - fixed
                 DEVICE_MAGIC,              // "4A4F5943" - fixed
-                FIRMWARE_VERSION);         // Current firmware version (can change)
+        FIRMWARE_VERSION_STRING);         // Current firmware version (semantic string)
     }
     
     // Check if a command is the IDENTIFY command

@@ -107,8 +107,8 @@ bool ConfigManager::loadFromStorage() {
     DEBUG_PRINT("DEBUG: Save defaults result: "); DEBUG_PRINTLN(saveResult ? "SUCCESS" : "FAILED");
         
         // Also create firmware version file
-    DEBUG_PRINTLN("DEBUG: Writing firmware version file...");
-        writeStoredFirmwareVersion(FIRMWARE_VERSION);
+    DEBUG_PRINTLN("DEBUG: Writing firmware version file (semantic)...");
+        writeStoredFirmwareVersionString(FIRMWARE_VERSION_STRING);
         
         return true;
     }
@@ -451,26 +451,27 @@ void ConfigManager::generateDefaultUSBDescriptor() {
     memset(m_currentUSBDescriptor.reserved, 0, sizeof(m_currentUSBDescriptor.reserved));
 }
 
+// Storage-enabled firmware version management and semantic version helpers
 #if CONFIG_FEATURE_STORAGE_ENABLED
 
 bool ConfigManager::checkAndUpdateFirmwareVersion() {
     DEBUG_PRINTLN("DEBUG: checkAndUpdateFirmwareVersion() - ENTRY");
-    uint32_t storedVersion = readStoredFirmwareVersion();
-    uint32_t currentVersion = FIRMWARE_VERSION;
-    DEBUG_PRINT("DEBUG: checkAndUpdateFirmwareVersion - stored: "); DEBUG_PRINT(storedVersion); DEBUG_PRINT(", current: "); DEBUG_PRINTLN(currentVersion);
-    if (storedVersion != currentVersion) {
-        DEBUG_PRINTLN("DEBUG: Firmware version changed -> regenerating defaults and saving");
+    char storedStr[24] = {0}; size_t bytesRead=0;
+    uint8_t buf[24]; size_t br=0; StorageResult r = m_storage.read(CONFIG_STORAGE_FIRMWARE_VERSION, buf, sizeof(buf)-1, &br);
+    if (r == StorageResult::SUCCESS && br>0) { memcpy(storedStr, buf, br); storedStr[br]='\0'; bytesRead=br; }
+    DEBUG_PRINT("DEBUG: Stored FW version raw: '"); DEBUG_PRINT(storedStr); DEBUG_PRINTLN("'");
+    if (strncmp(storedStr, FIRMWARE_VERSION_STRING, sizeof(storedStr)) != 0) {
+        DEBUG_PRINTLN("DEBUG: Firmware version changed => regenerating defaults");
         generateDefaultPinMap();
         generateDefaultLogicalInputs();
         generateDefaultAxisConfigs();
         generateDefaultUSBDescriptor();
-        m_configLoaded = true;
-        m_usingDefaults = true;
+        m_configLoaded = true; m_usingDefaults = true;
         bool saveResult = saveConfiguration();
-        DEBUG_PRINT("DEBUG: saveConfiguration() returned: "); DEBUG_PRINTLN(saveResult ? "SUCCESS" : "FAILED");
+        DEBUG_PRINT("DEBUG: saveConfiguration() returned: "); DEBUG_PRINTLN(saveResult?"SUCCESS":"FAILED");
         if (saveResult) {
-            if (!writeStoredFirmwareVersion(currentVersion)) {
-                DEBUG_PRINTLN("ERROR: Failed to update firmware version file");
+            if (!writeStoredFirmwareVersionString(FIRMWARE_VERSION_STRING)) {
+                DEBUG_PRINTLN("ERROR: Failed to update firmware version file (semantic)");
                 return false;
             }
         } else {
@@ -483,39 +484,10 @@ bool ConfigManager::checkAndUpdateFirmwareVersion() {
     return true;
 }
 
-uint32_t ConfigManager::readStoredFirmwareVersion() {
-    uint8_t buffer[16];
-    size_t bytesRead;
-    
-    StorageResult result = m_storage.read(CONFIG_STORAGE_FIRMWARE_VERSION, buffer, sizeof(buffer), &bytesRead);
-    
-    if (result == StorageResult::SUCCESS && bytesRead >= 4) {
-        // Parse version number from file
-        uint32_t version = 0;
-        for (size_t i = 0; i < bytesRead && i < 10; i++) {
-            if (buffer[i] >= '0' && buffer[i] <= '9') {
-                version = version * 10 + (buffer[i] - '0');
-            } else {
-                break;
-            }
-        }
-        return version;
-    }
-    
-    return 0; // No version file or read failed
-}
-
-bool ConfigManager::writeStoredFirmwareVersion(uint32_t version) {
-    char buffer[16];
-    int len = snprintf(buffer, sizeof(buffer), "%lu", (unsigned long)version);
-    
-    if (len > 0 && len < sizeof(buffer)) {
-        StorageResult result = m_storage.write(CONFIG_STORAGE_FIRMWARE_VERSION, 
-                                              (const uint8_t*)buffer, len);
-        return result == StorageResult::SUCCESS;
-    }
-    
-    return false;
+bool ConfigManager::writeStoredFirmwareVersionString(const char* versionStr) {
+    if (!versionStr) return false; size_t len = strlen(versionStr); if (len==0 || len>23) return false;
+    StorageResult r = m_storage.write(CONFIG_STORAGE_FIRMWARE_VERSION, (const uint8_t*)versionStr, len);
+    return r == StorageResult::SUCCESS;
 }
 
 #endif // CONFIG_FEATURE_STORAGE_ENABLED

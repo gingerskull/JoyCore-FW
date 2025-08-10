@@ -422,10 +422,22 @@ def main():
             print(initial_data.decode('utf-8', errors='ignore'))
             print("=== END STARTUP DEBUG ===\n")
         
-        # Test basic communication
-        print("2. Testing basic communication...")
+        # Test basic communication & fetch version via IDENTIFY (semantic version string)
+        print("2. Testing basic communication & identifying firmware...")
         status_response = send_command(ser, "STATUS")
         print(f"   STATUS response: {status_response[0] if status_response else 'No response'}")
+        identify_response = send_command(ser, "IDENTIFY")
+        fw_version_identify = None
+        for line in identify_response:
+            if line.startswith("JOYCORE_ID:"):
+                parts = line.strip().split(':')
+                if len(parts) >= 4:
+                    fw_version_identify = parts[-1]
+                    print(f"   IDENTIFY firmware version: {fw_version_identify}")
+        if not fw_version_identify:
+            print("   IDENTIFY firmware version: <not received>")
+        # Store for later summary
+        semantic_version_identify = fw_version_identify
 
         # Debug storage state
         print("\n3. Debugging storage state...")
@@ -480,13 +492,13 @@ def main():
                     print(f"     - {line}")
 
         # Try to read each file
+        firmware_version_file = None
         if files:
             print("\n8. Reading files...")
             for filename in files:
                 print(f"\n   Reading {filename}:")
-                response = send_command(ser, f"READ_FILE {filename}")
-
-                for line in response:
+                file_response = send_command(ser, f"READ_FILE {filename}")
+                for line in file_response:
                     if line.startswith("FILE_DATA:"):
                         parts = line.split(':', 3)
                         if len(parts) >= 3:
@@ -497,11 +509,12 @@ def main():
                             if len(parts) > 3:
                                 hex_data = parts[3]
                                 if filename == "/fw_version.txt":
-                                    # Decode firmware version
+                                    # Decode semantic firmware version string
                                     try:
                                         data = bytes.fromhex(hex_data)
-                                        version = data.decode('utf-8', errors='ignore')
-                                        print(f"     Content: '{version}'")
+                                        version = data.decode('utf-8', errors='ignore').strip('\x00\r\n ')
+                                        firmware_version_file = version
+                                        print(f"     Firmware Version (file): '{version}'")
                                     except Exception:
                                         print(f"     Raw hex: {hex_data[:64]}...")
                                 elif filename == "/config.bin":
@@ -521,6 +534,12 @@ def main():
         print(f"  - Storage initialized: {'YES' if storage_initialized else 'NO'}")
         print(f"  - Files found: {len(files)}")
         print(f"  - Files readable: {'YES' if files and not any('ERROR:' in str(r) for r in response) else 'NO'}")
+        if 'semantic_version_identify' in locals() and semantic_version_identify:
+            print(f"  - Firmware (IDENTIFY): {semantic_version_identify}")
+        if firmware_version_file:
+            print(f"  - Firmware (/fw_version.txt): {firmware_version_file}")
+        if firmware_version_file and 'semantic_version_identify' in locals() and semantic_version_identify and firmware_version_file != semantic_version_identify:
+            print(f"  - NOTE: Version mismatch (IDENTIFY vs file)")
         
     except serial.SerialException as e:
         print(f"Error opening serial port: {e}")
