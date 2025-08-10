@@ -20,7 +20,7 @@ public:
     // Initialize the configuration system
     bool initialize();
     
-    // Load configuration based on current CONFIG_MODE
+    // Load configuration from storage (always storage-based now)
     bool loadConfiguration();
     
     // Save current configuration to storage (if storage mode enabled)
@@ -116,8 +116,7 @@ private:
     bool restoreFromBackup();
 #endif
     
-    // Static configuration methods (compile-time config)
-    bool loadStaticConfiguration();
+    // Static configuration method removed (always uses storage). Defaults generated dynamically.
     
     // Conversion helpers
     bool convertStaticToRuntime();

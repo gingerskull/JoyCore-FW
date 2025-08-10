@@ -34,30 +34,20 @@ bool ConfigManager::initialize() {
     }
     DEBUG_PRINTLN("DEBUG: ConfigManager::initialize() called - ENTRY POINT");
     
-#if CONFIG_FEATURE_STORAGE_ENABLED
-    // Initialize storage system if enabled
+    // Initialize storage system (mandatory)
     DEBUG_PRINTLN("DEBUG: Initializing storage system...");
     StorageResult storageResult = m_storage.initialize();
     DEBUG_PRINT("DEBUG: Storage initialization result: "); DEBUG_PRINTLN((int)storageResult);
-    
     if (storageResult != StorageResult::SUCCESS) {
-    DEBUG_PRINTLN("DEBUG: Storage initialization failed, falling back to static mode");
-        // Storage initialization failed, fall back to static mode
-        return loadStaticConfiguration();
+        DEBUG_PRINTLN("ERROR: Storage initialization failed - cannot proceed (no static fallback)");
+        return false; // Hard failure now that static mode removed
     }
-    
-    // Debug dump storage state after initialization
     DEBUG_PRINTLN("DEBUG: Storage initialized, dumping file table:");
     m_storage.debugDumpFileTable();
-    
-    // Set initialized flag before version check so saveToStorage works
-    m_initialized = true;
-    
-    // Check firmware version and handle fresh uploads
+    m_initialized = true; // set before version check
     DEBUG_PRINTLN("DEBUG: About to call checkAndUpdateFirmwareVersion...");
     bool versionResult = checkAndUpdateFirmwareVersion();
     DEBUG_PRINT("DEBUG: checkAndUpdateFirmwareVersion returned: "); DEBUG_PRINTLN(versionResult ? "true" : "false");
-#endif
     
     // If config was already loaded during firmware version check, don't load again
     if (m_configLoaded) {
@@ -69,90 +59,26 @@ bool ConfigManager::initialize() {
 }
 
 bool ConfigManager::loadConfiguration() {
-    if (!m_initialized) {
-        return false;
+    if (!m_initialized) return false;
+    // Attempt primary load
+    if (loadFromStorage()) return true;
+    Serial.println("WARN: Primary config load failed, attempting backup restore");
+    if (restoreFromBackup()) {
+        Serial.println("INFO: Backup restored, re-attempting load");
+        if (loadFromStorage()) return true;
     }
-    
-#if CONFIG_MODE == CONFIG_MODE_STATIC
-    return loadStaticConfiguration();
-    
-#elif CONFIG_MODE == CONFIG_MODE_STORAGE
-    #if CONFIG_FEATURE_STORAGE_ENABLED
-        if(loadFromStorage()) {
-            return true;
-        }
-        Serial.println("WARN: Primary config load failed, attempting backup restore");
-        if(restoreFromBackup()) {
-            Serial.println("INFO: Backup restored, re-attempting load");
-            if(loadFromStorage()) return true;
-        }
-        Serial.println("WARN: Backup restore failed or invalid, generating defaults");
-        generateDefaultPinMap();
-        generateDefaultLogicalInputs();
-        generateDefaultAxisConfigs();
-        generateDefaultUSBDescriptor();
-        m_configLoaded = true;
-        m_usingDefaults = true;
-        saveToStorage();
-        return true;
-    #else
-        // Storage not available, fall back to static
-        return loadStaticConfiguration();
-    #endif
-    
-#elif CONFIG_MODE == CONFIG_MODE_HYBRID
-    #if CONFIG_FEATURE_STORAGE_ENABLED
-        // Try storage first, fall back to static if failed
-        if (loadFromStorage()) {
-            return true;
-        }
-        Serial.println("WARN: Hybrid mode primary storage load failed, trying backup");
-        if(restoreFromBackup() && loadFromStorage()) return true;
-        Serial.println("INFO: Falling back to static configuration in hybrid mode");
-    #endif
-    return loadStaticConfiguration();
-    
-#else
-    #error "Invalid CONFIG_MODE specified"
-#endif
-}
-
-bool ConfigManager::loadStaticConfiguration() {
-    // Load compile-time configuration from ConfigDigital.h and ConfigAxis.h
-    
-    // Copy pin map
-    m_currentPinMapCount = min((uint8_t)hardwarePinMapCount, (uint8_t)MAX_PIN_MAP_ENTRIES);
-    for (uint8_t i = 0; i < m_currentPinMapCount; i++) {
-        m_currentPinMap[i] = hardwarePinMap[i];
-    }
-    
-    // Copy logical inputs  
-    m_currentLogicalInputCount = min((uint8_t)logicalInputCount, (uint8_t)MAX_LOGICAL_INPUTS);
-    for (uint8_t i = 0; i < m_currentLogicalInputCount; i++) {
-        m_currentLogicalInputs[i] = logicalInputs[i];
-    }
-    
-    // Set shift register count
-    m_currentShiftRegCount = SHIFTREG_COUNT;
-    
-    // Load axis configurations from ConfigAxis.h
+    Serial.println("WARN: No valid config found, generating defaults");
+    generateDefaultPinMap();
+    generateDefaultLogicalInputs();
     generateDefaultAxisConfigs();
-    
-    // Load USB descriptor from static configuration
-    m_currentUSBDescriptor.vendorID = staticUSBDescriptor.vendorID;
-    m_currentUSBDescriptor.productID = staticUSBDescriptor.productID;
-    strncpy(m_currentUSBDescriptor.manufacturer, staticUSBDescriptor.manufacturer, 
-            sizeof(m_currentUSBDescriptor.manufacturer) - 1);
-    m_currentUSBDescriptor.manufacturer[sizeof(m_currentUSBDescriptor.manufacturer) - 1] = '\0';
-    strncpy(m_currentUSBDescriptor.product, staticUSBDescriptor.product,
-            sizeof(m_currentUSBDescriptor.product) - 1);
-    m_currentUSBDescriptor.product[sizeof(m_currentUSBDescriptor.product) - 1] = '\0';
-    memset(m_currentUSBDescriptor.reserved, 0, sizeof(m_currentUSBDescriptor.reserved));
-    
+    generateDefaultUSBDescriptor();
     m_configLoaded = true;
-    m_usingDefaults = false;
+    m_usingDefaults = true;
+    saveToStorage();
     return true;
 }
+
+// loadStaticConfiguration removed (always storage-based). Defaults are generated via generateDefault* helpers.
 
 #if CONFIG_FEATURE_STORAGE_ENABLED
 
@@ -297,7 +223,6 @@ ConfigStatus ConfigManager::getStatus() const {
     
     status.configLoaded = m_configLoaded;
     status.usingDefaults = m_usingDefaults;
-    status.currentMode = CONFIG_MODE;
     status.configVersion = CONFIG_VERSION;
     
 #if CONFIG_FEATURE_STORAGE_ENABLED
@@ -473,39 +398,39 @@ void ConfigManager::generateDefaultPinMap() {
 }
 
 void ConfigManager::generateDefaultLogicalInputs() {
-    // Generate basic default logical inputs
-    m_currentLogicalInputCount = 0;
-    
-    // Add a basic button input for testing
-    if (m_currentLogicalInputCount < MAX_LOGICAL_INPUTS) {
-        m_currentLogicalInputs[m_currentLogicalInputCount].type = INPUT_PIN;
-        m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.pin = 5;
-        m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.joyButtonID = 5;
-        m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.behavior = NORMAL;
-        m_currentLogicalInputs[m_currentLogicalInputCount].u.pin.reverse = 0;
-        m_currentLogicalInputCount++;
+    // Mirror static logicalInputs[] from ConfigDigital.h exactly
+    m_currentLogicalInputCount = min((uint8_t)logicalInputCount, (uint8_t)MAX_LOGICAL_INPUTS);
+    for(uint8_t i=0;i<m_currentLogicalInputCount;i++) {
+        m_currentLogicalInputs[i] = logicalInputs[i]; // struct copy (includes union + encoderLatchMode)
     }
 }
 
 void ConfigManager::generateDefaultAxisConfigs() {
-    // Initialize all axes as disabled by default
-    for (uint8_t i = 0; i < 8; i++) {
+    // Start with all axes disabled
+    for(uint8_t i=0;i<8;i++) {
         m_currentAxisConfigs[i].enabled = 0;
         m_currentAxisConfigs[i].pin = 0;
         m_currentAxisConfigs[i].minValue = 0;
-        m_currentAxisConfigs[i].maxValue = 32767;
-        m_currentAxisConfigs[i].filterLevel = 0; // AXIS_FILTER_OFF
-        m_currentAxisConfigs[i].ewmaAlpha = 200;
+        m_currentAxisConfigs[i].maxValue = 0;
+        m_currentAxisConfigs[i].filterLevel = 0;
+        m_currentAxisConfigs[i].ewmaAlpha = 0;
         m_currentAxisConfigs[i].deadband = 0;
-        m_currentAxisConfigs[i].curve = 0; // CURVE_LINEAR
+        m_currentAxisConfigs[i].curve = 0;
+        memset(m_currentAxisConfigs[i].reserved, 0, sizeof(m_currentAxisConfigs[i].reserved));
     }
-    
-    // Enable X and Y axes by default with basic configuration
-    m_currentAxisConfigs[0].enabled = 1; // X axis
-    m_currentAxisConfigs[0].pin = A1;
-    
-    m_currentAxisConfigs[1].enabled = 1; // Y axis  
-    m_currentAxisConfigs[1].pin = A2;
+
+    // Populate from axisDescriptors[] defined in ConfigAxis.h (reflecting user/static config)
+    for (auto &d : axisDescriptors) {
+        if (d.idx >= 8) continue; // safety
+        m_currentAxisConfigs[d.idx].enabled = 1;
+        m_currentAxisConfigs[d.idx].pin = (uint8_t)d.pin; // assumes pin fits in uint8_t for built-in / ADS proxy values
+        m_currentAxisConfigs[d.idx].minValue = (uint16_t)d.minv;
+        m_currentAxisConfigs[d.idx].maxValue = (uint16_t)d.maxv;
+        m_currentAxisConfigs[d.idx].filterLevel = (uint8_t)d.filter;
+        m_currentAxisConfigs[d.idx].ewmaAlpha = (uint16_t)d.alpha;
+        m_currentAxisConfigs[d.idx].deadband = (uint16_t)d.deadband;
+        m_currentAxisConfigs[d.idx].curve = (uint8_t)d.curve;
+    }
 }
 
 void ConfigManager::generateDefaultUSBDescriptor() {
@@ -530,72 +455,32 @@ void ConfigManager::generateDefaultUSBDescriptor() {
 
 bool ConfigManager::checkAndUpdateFirmwareVersion() {
     DEBUG_PRINTLN("DEBUG: checkAndUpdateFirmwareVersion() - ENTRY");
-    
     uint32_t storedVersion = readStoredFirmwareVersion();
     uint32_t currentVersion = FIRMWARE_VERSION;
-    
     DEBUG_PRINT("DEBUG: checkAndUpdateFirmwareVersion - stored: "); DEBUG_PRINT(storedVersion); DEBUG_PRINT(", current: "); DEBUG_PRINTLN(currentVersion);
-    
-    // If firmware version has changed, this is a fresh upload
     if (storedVersion != currentVersion) {
-    DEBUG_PRINTLN("DEBUG: Firmware version changed, creating default config");
-        Serial.print("DEBUG: CONFIG_MODE = ");
-        Serial.println(CONFIG_MODE);
-        Serial.print("DEBUG: CONFIG_MODE_STORAGE = ");
-        Serial.println(CONFIG_MODE_STORAGE);
-        
-        // For ALL modes in STORAGE mode, generate minimal defaults on fresh upload
-        #if CONFIG_MODE == CONFIG_MODE_STORAGE
-            DEBUG_PRINTLN("DEBUG: In CONFIG_MODE_STORAGE block");
-            
-            // Generate minimal defaults
-            DEBUG_PRINTLN("DEBUG: Generating default pin map...");
-            generateDefaultPinMap();
-            DEBUG_PRINTLN("DEBUG: Generating default logical inputs...");
-            generateDefaultLogicalInputs();
-            DEBUG_PRINTLN("DEBUG: Generating default axis configs...");
-            generateDefaultAxisConfigs();
-            DEBUG_PRINTLN("DEBUG: Generating default USB descriptor...");
-            generateDefaultUSBDescriptor();
-            
-            m_configLoaded = true;
-            m_usingDefaults = true;
-            DEBUG_PRINTLN("DEBUG: Default config generated, flags set");
-            
-            // Save the minimal defaults to storage
-            DEBUG_PRINTLN("DEBUG: About to call saveConfiguration()...");
-            bool saveResult = saveConfiguration();
-            DEBUG_PRINT("DEBUG: saveConfiguration() returned: "); DEBUG_PRINTLN(saveResult ? "SUCCESS" : "FAILED");
-            
-            // Only update firmware version if config save was successful
-            if (saveResult) {
-                DEBUG_PRINTLN("DEBUG: Config save succeeded, updating firmware version...");
-                bool versionResult = writeStoredFirmwareVersion(currentVersion);
-                DEBUG_PRINT("DEBUG: writeStoredFirmwareVersion() returned: "); DEBUG_PRINTLN(versionResult ? "SUCCESS" : "FAILED");
-                
-                if (!versionResult) {
-                    DEBUG_PRINTLN("ERROR: Failed to update firmware version file");
-                    return false;
-                }
-            } else {
-                DEBUG_PRINTLN("ERROR: Config save failed, not updating firmware version");
+        DEBUG_PRINTLN("DEBUG: Firmware version changed -> regenerating defaults and saving");
+        generateDefaultPinMap();
+        generateDefaultLogicalInputs();
+        generateDefaultAxisConfigs();
+        generateDefaultUSBDescriptor();
+        m_configLoaded = true;
+        m_usingDefaults = true;
+        bool saveResult = saveConfiguration();
+        DEBUG_PRINT("DEBUG: saveConfiguration() returned: "); DEBUG_PRINTLN(saveResult ? "SUCCESS" : "FAILED");
+        if (saveResult) {
+            if (!writeStoredFirmwareVersion(currentVersion)) {
+                DEBUG_PRINTLN("ERROR: Failed to update firmware version file");
                 return false;
             }
-            
-            DEBUG_PRINTLN("DEBUG: checkAndUpdateFirmwareVersion() - SUCCESS EXIT");
-            return true;
-        #else
-            DEBUG_PRINTLN("DEBUG: Not in CONFIG_MODE_STORAGE block");
-        #endif
-        
-        // For STATIC and HYBRID modes, just update the version
-        // They will load configuration normally through loadConfiguration()
-        writeStoredFirmwareVersion(currentVersion);
+        } else {
+            DEBUG_PRINTLN("ERROR: Config save failed after firmware version change");
+            return false;
+        }
     } else {
-    DEBUG_PRINTLN("DEBUG: Firmware version unchanged, no action needed");
+        DEBUG_PRINTLN("DEBUG: Firmware version unchanged");
     }
-    
-    return true; // Version unchanged or non-storage mode, proceed normally
+    return true;
 }
 
 uint32_t ConfigManager::readStoredFirmwareVersion() {

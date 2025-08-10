@@ -137,11 +137,10 @@ struct ConfigStatus {
     bool storageInitialized;
     bool configLoaded;
     bool usingDefaults;
-    uint8_t currentMode;     // CONFIG_MODE_* value
     uint32_t storageUsed;
     uint32_t storageAvailable;
     uint16_t configVersion;
-    uint8_t reserved[6];
+    uint8_t reserved[7]; // size adjusted after removing currentMode
 } __attribute__((packed));
 
 // Constants for configuration limits

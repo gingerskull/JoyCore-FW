@@ -122,9 +122,8 @@ constexpr LogicalInput logicalInputs[] = {
 // USB DESCRIPTOR CONFIGURATION
 // ===========================
 
-// Static USB descriptor configuration (used when CONFIG_MODE_STATIC or as fallback)
-// These values will be used directly in CONFIG_MODE_STATIC
-// In CONFIG_MODE_STORAGE/HYBRID, they serve as defaults when no stored config exists
+// USB descriptor defaults used when generating a new config.bin after firmware version change
+// or when no valid stored configuration exists.
 static const struct {
     uint16_t vendorID;
     uint16_t productID;

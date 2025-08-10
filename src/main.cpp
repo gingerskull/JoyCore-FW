@@ -93,8 +93,7 @@ void setup() {
     Serial.println("JoyCore Configuration System Ready");
 #if CONFIG_DEBUG
     ConfigStatus status = g_configManager.getStatus();
-    Serial.print("Config Mode: "); Serial.print(status.currentMode == 0 ? "STATIC" : status.currentMode == 1 ? "STORAGE" : "HYBRID");
-    Serial.print(", Loaded: "); Serial.print(status.configLoaded ? "YES" : "NO");
+    Serial.print("Config Loaded: "); Serial.print(status.configLoaded ? "YES" : "NO");
     Serial.print(", Using Defaults: "); Serial.println(status.usingDefaults ? "YES" : "NO");
 #endif
 }

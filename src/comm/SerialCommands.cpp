@@ -20,7 +20,6 @@ static void cmdStatus(const String&) {
     ConfigStatus status = g_configManager.getStatus();
     Serial.print("Config Status - Storage: "); Serial.print(status.storageInitialized ? "OK" : "FAIL");
     Serial.print(", Loaded: "); Serial.print(status.configLoaded ? "YES" : "NO");
-    Serial.print(", Mode: "); Serial.print(status.currentMode);
     Serial.print(", Version: "); Serial.println(status.configVersion);
 }
 static void cmdForceDefaults(const String&) {
@@ -64,6 +63,16 @@ static void cmdStorageInfo(const String&) {
     Serial.print("STORAGE_AVAILABLE:"); Serial.println(g_configManager.getStorageAvailable());
     Serial.print("STORAGE_INITIALIZED:"); Serial.println(g_configManager.isStorageInitialized()?"YES":"NO");
 }
+static void cmdDebugStorage(const String&) {
+    // Provide a concise storage debug dump; mirrors old inline debug previously in main.cpp
+    Serial.println("DEBUG_STORAGE:BEGIN");
+    Serial.print("STORAGE_INITIALIZED:"); Serial.println(g_configManager.isStorageInitialized()?"YES":"NO");
+    Serial.print("USED:"); Serial.println(g_configManager.getStorageUsed());
+    Serial.print("AVAILABLE:"); Serial.println(g_configManager.getStorageAvailable());
+    // Dump internal file table
+    g_configManager.debugStorage();
+    Serial.println("DEBUG_STORAGE:END");
+}
 static void cmdReadFile(const String& args) {
     String f = String(args); f.trim();
     if(f.length()==0){ Serial.println("ERROR:NO_FILENAME"); return; }
@@ -90,6 +99,7 @@ static const SerialCommand kCommands[] = {
 #if CONFIG_FEATURE_STORAGE_ENABLED
     {"LIST_FILES", cmdListFiles},
     {"STORAGE_INFO", cmdStorageInfo},
+    {"DEBUG_STORAGE", cmdDebugStorage},
     {"READ_FILE", cmdReadFile},
     {"INIT_STORAGE", [](const String&){ RP2040EEPROMStorage storage; auto r=storage.initialize(); Serial.print("Storage init result: "); Serial.println((int)r); }},
     {"FORMAT_STORAGE", [](const String&){ RP2040EEPROMStorage storage; auto r=storage.format(); Serial.print("Format result: "); Serial.println((int)r); if(r==StorageResult::SUCCESS){ storage.initialize(); Serial.print("Available space: "); Serial.println(storage.getAvailableSpace()); } }},
