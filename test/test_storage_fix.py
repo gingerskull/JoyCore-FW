@@ -355,7 +355,31 @@ def print_config(config):
         print(f"\nLOGICAL INPUTS ({len(config['logicalInputs'])} entries):")
         for inp in config['logicalInputs']:
             print(f"  [{inp['index']}] {inp['typeName']}:")
-            print(f"    Button ID: {inp['joyButtonID']}, Behavior: {inp.get('behavior', 'N/A')}, Reverse: {inp['reverse']}")
+            # Decode behavior names if known (fallback to numeric)
+            # From Config.h:
+            # enum ButtonBehavior { NORMAL=0, MOMENTARY=1, ENC_A=2, ENC_B=3 };
+            behavior_names = {
+                0: 'NORMAL',
+                1: 'MOMENTARY',
+                2: 'ENC_A',
+                3: 'ENC_B'
+            }
+            # enum LatchMode { FOUR3=1, FOUR0=2, TWO03=3 };  (0 not stored = default FOUR3)
+            latch_mode_names = {
+                0: 'DEFAULT(FOUR3)',
+                1: 'FOUR3',
+                2: 'FOUR0',
+                3: 'TWO03'
+            }
+            behavior_val = inp.get('behavior')
+            behavior_name = behavior_names.get(behavior_val, f"{behavior_val}")
+            is_encoder = behavior_val in (2, 3)  # ENC_A or ENC_B
+            base_line = f"    Button ID: {inp['joyButtonID']}, Behavior: {behavior_val} ({behavior_name}), Reverse: {inp['reverse']}"
+            if is_encoder:
+                latch_val = inp.get('encoderLatchMode')
+                latch_name = latch_mode_names.get(latch_val, f"{latch_val}")
+                base_line += f", LatchMode: {latch_val} ({latch_name})"
+            print(base_line)
             if inp['type'] == 0:  # INPUT_PIN
                 print(f"    Pin: {inp.get('pin', 'N/A')}")
             elif inp['type'] == 1:  # INPUT_MATRIX
