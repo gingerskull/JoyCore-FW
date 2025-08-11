@@ -4,22 +4,21 @@
 #include "../../rp2040/JoystickWrapper.h"
 #include "ButtonMatrix.h"
 #include <new>
-#include "../../config/PoolConfig.h"
 #include "LogicalButton.h"
 
-// Static matrix config and storage
+// Dynamic matrix config and storage
 static uint8_t ROWS = 0;
 static uint8_t COLS = 0;
-static byte rowPins[MAX_MATRIX_ROWS];
-static byte colPins[MAX_MATRIX_COLS];
-static char keymap[MAX_MATRIX_ROWS * MAX_MATRIX_COLS];
-// ButtonMatrix instance (placement-new to avoid heap)
+static uint16_t PREV_TOTAL = 0;
+static byte* rowPins = nullptr;
+static byte* colPins = nullptr;
+static char* keymap = nullptr;
+// ButtonMatrix instance
 static ButtonMatrix* buttonMatrix = nullptr;
-static uint8_t buttonMatrixStorage[sizeof(ButtonMatrix)];
 
 // Per-position logical button storage
-static RuntimeLogicalButton matrixLogicalButtons[MAX_MATRIX_ROWS * MAX_MATRIX_COLS][MAX_LOGICAL_PER_MATRIX_POS];
-static uint8_t matrixLogicalCounts[MAX_MATRIX_ROWS * MAX_MATRIX_COLS];
+static RuntimeLogicalButton** matrixLogicalButtons = nullptr; // [ROWS*COLS][variable]
+static uint8_t* matrixLogicalCounts = nullptr; // counts per position
 
 bool g_encoderMatrixPinStates[20] = {1};
 
@@ -39,10 +38,27 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
     }
     ROWS = maxRow + 1;
     COLS = maxCol + 1;
-    if (ROWS > MAX_MATRIX_ROWS) ROWS = MAX_MATRIX_ROWS;
-    if (COLS > MAX_MATRIX_COLS) COLS = MAX_MATRIX_COLS;
-    uint16_t total = ROWS * COLS;
-    for (uint16_t i = 0; i < total; ++i) matrixLogicalCounts[i] = 0;
+    // Allocate dynamic storage sized to discovered matrix
+    uint16_t total = (uint16_t)ROWS * (uint16_t)COLS;
+    // Free previous allocations if reinitialized
+    delete[] rowPins; rowPins = nullptr;
+    delete[] colPins; colPins = nullptr;
+    delete[] keymap; keymap = nullptr;
+    if (matrixLogicalButtons) {
+        for (uint16_t i = 0; i < PREV_TOTAL; ++i) delete[] matrixLogicalButtons[i];
+        delete[] matrixLogicalButtons;
+        matrixLogicalButtons = nullptr;
+    }
+    delete[] matrixLogicalCounts; matrixLogicalCounts = nullptr;
+
+    if (ROWS == 0 || COLS == 0) return;
+
+    rowPins = new byte[ROWS]();
+    colPins = new byte[COLS]();
+    keymap = new char[total]();
+    matrixLogicalCounts = new uint8_t[total]();
+    matrixLogicalButtons = new RuntimeLogicalButton*[total]();
+    PREV_TOTAL = total;
 
     // Fill row/col pins excluding encoder pins
     uint8_t rowIdx = 0, colIdx = 0;
@@ -56,8 +72,8 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
         }
         if (!isEncoderPin) {
             PinType type = getPinType(pinName);
-            if (type == BTN_ROW && rowIdx < ROWS) rowPins[rowIdx++] = atoi(pinName);
-            if (type == BTN_COL && colIdx < COLS) colPins[colIdx++] = atoi(pinName);
+            if (type == BTN_ROW && rowIdx < ROWS) rowPins[rowIdx++] = (byte)atoi(pinName);
+            if (type == BTN_COL && colIdx < COLS) colPins[colIdx++] = (byte)atoi(pinName);
         }
     }
 
@@ -67,29 +83,49 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
         }
     }
 
-    // Fill logical buttons
+    // Fill logical buttons (per position dynamic arrays sized to count)
+    // First pass: count per position
     for (uint8_t i = 0; i < logicalCount; ++i) {
         if (logicals[i].type == INPUT_MATRIX) {
             uint8_t r = logicals[i].u.matrix.row;
             uint8_t c = logicals[i].u.matrix.col;
             if (r < ROWS && c < COLS) {
                 uint16_t idx = r * COLS + c;
-                uint8_t &cnt = matrixLogicalCounts[idx];
-                if (cnt < MAX_LOGICAL_PER_MATRIX_POS) {
-                    RuntimeLogicalButton &dest = matrixLogicalButtons[idx][cnt++];
-                    dest.joyButtonID = logicals[i].u.matrix.joyButtonID;
-                    dest.behavior = logicals[i].u.matrix.behavior;
-                    dest.reverse = logicals[i].u.matrix.reverse;
-                    dest.lastState = false;
-                    dest.momentaryStartTime = 0;
-                    dest.momentaryActive = false;
-                }
+                matrixLogicalCounts[idx]++;
+            }
+        }
+    }
+    // Allocate per position arrays
+    for (uint16_t idx = 0; idx < total; ++idx) {
+        uint8_t cnt = matrixLogicalCounts[idx];
+        matrixLogicalButtons[idx] = (cnt > 0) ? new RuntimeLogicalButton[cnt]() : nullptr;
+        matrixLogicalCounts[idx] = 0; // reuse as write index in next pass
+    }
+    // Second pass: populate
+    for (uint8_t i = 0; i < logicalCount; ++i) {
+        if (logicals[i].type == INPUT_MATRIX) {
+            uint8_t r = logicals[i].u.matrix.row;
+            uint8_t c = logicals[i].u.matrix.col;
+            if (r < ROWS && c < COLS) {
+                uint16_t idx = r * COLS + c;
+                uint8_t w = matrixLogicalCounts[idx]++;
+                RuntimeLogicalButton &dest = matrixLogicalButtons[idx][w];
+                dest.joyButtonID = logicals[i].u.matrix.joyButtonID;
+                dest.behavior = logicals[i].u.matrix.behavior;
+                dest.reverse = logicals[i].u.matrix.reverse;
+                dest.lastState = false;
+                dest.momentaryStartTime = 0;
+                dest.momentaryActive = false;
             }
         }
     }
 
     if (!buttonMatrix) {
-        buttonMatrix = new (buttonMatrixStorage) ButtonMatrix(keymap, rowPins, colPins, ROWS, COLS);
+        buttonMatrix = new ButtonMatrix(keymap, rowPins, colPins, ROWS, COLS);
+    } else {
+        // Recreate on size change
+        delete buttonMatrix;
+        buttonMatrix = new ButtonMatrix(keymap, rowPins, colPins, ROWS, COLS);
     }
 
     buttonMatrix->getKeys();
@@ -112,13 +148,13 @@ void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount) {
 void updateMatrix() {
     uint32_t now = millis();
     if (buttonMatrix->getKeys()) {
-        for (int i = 0; i < MATRIX_MAX_KEYS; i++) {
+    for (uint16_t i = 0; i < buttonMatrix->getKeyCount(); i++) {
             if (buttonMatrix->key[i].stateChanged) {
                 char keyChar = buttonMatrix->key[i].kchar;
                 MatrixKeyState keyState = buttonMatrix->key[i].kstate;
                 uint16_t idx = 0;
                 for (uint16_t j = 0; j < (uint16_t)ROWS * COLS; ++j) { if (keymap[j] == keyChar) { idx = j; break; } }
-                for (uint8_t b = 0; b < matrixLogicalCounts[idx]; ++b) {
+        for (uint8_t b = 0; b < matrixLogicalCounts[idx]; ++b) {
                     RuntimeLogicalButton &btn = matrixLogicalButtons[idx][b];
                     if (btn.behavior == ENC_A || btn.behavior == ENC_B) continue;
                     bool physicalPressed = (keyState == MATRIX_PRESSED || keyState == MATRIX_HELD);
@@ -138,3 +174,6 @@ void updateMatrix() {
         }
     }
 }
+
+uint8_t getMatrixRows() { return ROWS; }
+uint8_t getMatrixCols() { return COLS; }

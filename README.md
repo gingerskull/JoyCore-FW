@@ -205,30 +205,23 @@ The default custom curve is linear (1:1 response). You can define your own curve
 
 ---
 
-## 🧮 Deterministic Digital Input Memory Model
+## 🧮 Dynamic Digital Input Allocation
 
-All digital input subsystems (direct buttons, shift‑register buttons, matrix, encoders) now use fixed compile‑time
-memory pools (see `src/config/PoolConfig.h`). No dynamic allocation occurs in the scan/update path.
+All digital input subsystems (direct buttons, shift‑register buttons, matrix, encoders) allocate memory dynamically
+based on your actual configuration at startup. Nothing is allocated per-scan; the update path remains allocation‑free.
 
-Pool limits:
+What’s sized dynamically:
+- Direct pin buttons: one group per unique pin with N logical mappings
+- Shift‑register buttons: one group per (reg, bit) with N logical mappings
+- Matrix: row/col pin lists, key map, and per‑position logical lists sized to ROWS × COLS and position usage
+- Encoders: instances and timing buffers sized to the number of configured encoder pairs
 
-```
-MAX_BUTTON_PIN_GROUPS
-MAX_LOGICAL_PER_PIN
-MAX_SHIFTREG_GROUPS
-MAX_LOGICAL_PER_SHIFT_BIT
-MAX_MATRIX_ROWS / MAX_MATRIX_COLS
-MAX_LOGICAL_PER_MATRIX_POS
-MAX_ENCODERS
-```
+Benefits:
+- Minimal RAM footprint for small setups, scales with your config
+- No compile‑time pool tuning required
+- Still deterministic at runtime (no heap ops in the scan loop)
 
-If configuration exceeds a limit, extra logical inputs are ignored (clamped). During development you can add
-`static_assert`s or debug prints to catch this early.
-
-### Tuning
-Lower limits to save RAM; raise to support bigger control panels. Cost is linear static BSS; no runtime penalty.
-
-Future ideas: clamp warning counters, SMALL/DEFAULT/LARGE presets, utilization reporting.
+Debugging: with CONFIG_DEBUG enabled, setup logs a short allocation summary (buttons, matrix size, encoders).
 
 ---
 

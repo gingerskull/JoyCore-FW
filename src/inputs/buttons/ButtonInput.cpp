@@ -3,7 +3,7 @@
 #include "../../rp2040/JoystickWrapper.h"
 #include "../../Config.h"
 #include "../shift_register/ShiftRegister165.h"
-#include "../../config/PoolConfig.h"
+#include <vector>
 
 // Unified runtime logical button state used for all digital sources
 struct RuntimeLogicalButton {
@@ -17,22 +17,18 @@ struct RuntimeLogicalButton {
 
 struct PinButtonGroup {
     uint8_t pin = 0;
-    RuntimeLogicalButton logicalButtons[MAX_LOGICAL_PER_PIN];
-    uint8_t count = 0; // active logical buttons
+    std::vector<RuntimeLogicalButton> logicalButtons;
 };
 
-static PinButtonGroup pinGroups[MAX_BUTTON_PIN_GROUPS];
-static uint8_t pinGroupCount = 0; // active pin groups
+static std::vector<PinButtonGroup> pinGroups; // dynamic
 
 struct ShiftRegButtonGroup {
     uint8_t regIndex = 0;
     uint8_t bitIndex = 0;
-    RuntimeLogicalButton logicalButtons[MAX_LOGICAL_PER_SHIFT_BIT];
-    uint8_t count = 0; // active logical buttons
+    std::vector<RuntimeLogicalButton> logicalButtons;
 };
 
-static ShiftRegButtonGroup shiftRegGroups[MAX_SHIFTREG_GROUPS];
-static uint8_t shiftRegGroupCount = 0; // active shift-register groups
+static std::vector<ShiftRegButtonGroup> shiftRegGroups; // dynamic
 
 // Shared helper for NORMAL / MOMENTARY behaviors (non-blocking)
 static inline void processLogicalButton(uint32_t now, bool pressedPhysical, uint8_t joyButtonID, ButtonBehavior behavior, bool reverse, bool &lastState, uint32_t &pulseStart, bool &pulseActive) {
@@ -71,31 +67,32 @@ void initButtons(const ButtonConfig* configs, uint8_t count) {
     // This function is deprecated - use initButtonsFromLogical instead
     // Keeping for backward compatibility
     
-    pinGroupCount = (count > MAX_BUTTON_PIN_GROUPS) ? MAX_BUTTON_PIN_GROUPS : count;
-    for (uint8_t i = 0; i < pinGroupCount; i++) {
-        pinGroups[i].pin = configs[i].pin;
-        pinGroups[i].count = 1;
-        pinGroups[i].logicalButtons[0].joyButtonID = configs[i].joyButtonID;
-        pinGroups[i].logicalButtons[0].behavior = configs[i].behavior;
-        pinGroups[i].logicalButtons[0].reverse = configs[i].reverse;
-        pinMode(pinGroups[i].pin, INPUT_PULLUP);
-        bool physicalPressed = (digitalRead(pinGroups[i].pin) == LOW);
-        if (pinGroups[i].logicalButtons[0].reverse) physicalPressed = !physicalPressed;
-        pinGroups[i].logicalButtons[0].lastState = physicalPressed;
-        pinGroups[i].logicalButtons[0].momentaryStartTime = 0;
-        pinGroups[i].logicalButtons[0].momentaryActive = false;
+    pinGroups.clear();
+    pinGroups.reserve(count);
+    for (uint8_t i = 0; i < count; i++) {
+        PinButtonGroup grp;
+        grp.pin = configs[i].pin;
+        grp.logicalButtons.resize(1);
+        grp.logicalButtons[0].joyButtonID = configs[i].joyButtonID;
+        grp.logicalButtons[0].behavior = configs[i].behavior;
+        grp.logicalButtons[0].reverse = configs[i].reverse;
+        pinMode(grp.pin, INPUT_PULLUP);
+        bool physicalPressed = (digitalRead(grp.pin) == LOW);
+        if (grp.logicalButtons[0].reverse) physicalPressed = !physicalPressed;
+        grp.logicalButtons[0].lastState = physicalPressed;
+        grp.logicalButtons[0].momentaryStartTime = 0;
+        grp.logicalButtons[0].momentaryActive = false;
+        pinGroups.push_back(grp);
     }
 }
 
 void updateButtons() {
     // Update direct pin buttons
     uint32_t now = millis();
-    for (uint8_t groupIdx = 0; groupIdx < pinGroupCount; groupIdx++) {
-        PinButtonGroup& group = pinGroups[groupIdx];
+    for (auto &group : pinGroups) {
         bool currentPhysicalState = digitalRead(group.pin);
         bool physicalPressed = (currentPhysicalState == LOW);
-        for (uint8_t btnIdx = 0; btnIdx < group.count; btnIdx++) {
-            RuntimeLogicalButton& logicalBtn = group.logicalButtons[btnIdx];
+        for (auto &logicalBtn : group.logicalButtons) {
             processLogicalButton(now, physicalPressed, logicalBtn.joyButtonID, logicalBtn.behavior, logicalBtn.reverse, logicalBtn.lastState, logicalBtn.momentaryStartTime, logicalBtn.momentaryActive);
         }
     }
@@ -109,16 +106,14 @@ void updateShiftRegisterButtons() {
     uint32_t now = millis();
     
     // Update shift register groups
-    for (uint8_t groupIdx = 0; groupIdx < shiftRegGroupCount; groupIdx++) {
-        ShiftRegButtonGroup& group = shiftRegGroups[groupIdx];
+    for (auto &group : shiftRegGroups) {
         
         if (group.regIndex >= SHIFTREG_COUNT || group.bitIndex >= 8) continue;
         
         bool physicalPressed = (shiftRegBuffer[group.regIndex] & (1 << group.bitIndex)) == 0; // 74HC165: LOW = pressed
         
         // Process all logical buttons for this shift register bit
-        for (uint8_t btnIdx = 0; btnIdx < group.count; btnIdx++) {
-            RuntimeLogicalButton& logicalBtn = group.logicalButtons[btnIdx];
+        for (auto &logicalBtn : group.logicalButtons) {
             processLogicalButton(now, physicalPressed, logicalBtn.joyButtonID, logicalBtn.behavior, logicalBtn.reverse, logicalBtn.lastState, logicalBtn.momentaryStartTime, logicalBtn.momentaryActive);
         }
     }
@@ -148,11 +143,11 @@ bool isRegularButton(const LogicalInput& input) {
 
 void initRegularButtons(const LogicalInput* logicals, uint8_t logicalCount, uint8_t count) {
     // Reset
-    pinGroupCount = 0;
+    pinGroups.clear();
     if (count == 0) return;
     
     // Count unique pins
-    uint8_t uniquePins[32]; // Assume max 32 pins
+    uint8_t uniquePins[64]; // Increased temporary capacity
     uint8_t uniquePinCount = 0;
     
     for (uint8_t i = 0; i < logicalCount; ++i) {
@@ -171,50 +166,52 @@ void initRegularButtons(const LogicalInput* logicals, uint8_t logicalCount, uint
         }
     }
     
-    pinGroupCount = (uniquePinCount > MAX_BUTTON_PIN_GROUPS) ? MAX_BUTTON_PIN_GROUPS : uniquePinCount;
-    
     // Initialize pin groups
-    for (uint8_t pinIdx = 0; pinIdx < pinGroupCount; pinIdx++) {
-        pinGroups[pinIdx].pin = uniquePins[pinIdx];
-    pinGroups[pinIdx].count = 0;
+    pinGroups.reserve(uniquePinCount);
+    for (uint8_t pinIdx = 0; pinIdx < uniquePinCount; pinIdx++) {
+        PinButtonGroup grp;
+        grp.pin = uniquePins[pinIdx];
         
         // Initialize pin once
         pinMode(uniquePins[pinIdx], INPUT_PULLUP);
         bool physicalPressed = digitalRead(uniquePins[pinIdx]) == LOW;
         
-        // Count logical buttons (bounded)
-        for (uint8_t i = 0; i < logicalCount && pinGroups[pinIdx].count < MAX_LOGICAL_PER_PIN; ++i) {
+        // Count logical buttons for this pin
+        uint8_t logicalCnt = 0;
+        for (uint8_t i = 0; i < logicalCount; ++i) {
             if (isRegularButton(logicals[i]) && logicals[i].u.pin.pin == uniquePins[pinIdx]) {
-                pinGroups[pinIdx].count++;
+                logicalCnt++;
             }
         }
+        grp.logicalButtons.resize(logicalCnt);
         
         // Fill logical buttons
         uint8_t btnIdx = 0;
-        for (uint8_t i = 0, btnIdx = 0; i < logicalCount && btnIdx < pinGroups[pinIdx].count; ++i) {
+        for (uint8_t i = 0; i < logicalCount && btnIdx < logicalCnt; ++i) {
             if (isRegularButton(logicals[i]) && logicals[i].u.pin.pin == uniquePins[pinIdx]) {
-                pinGroups[pinIdx].logicalButtons[btnIdx].joyButtonID = logicals[i].u.pin.joyButtonID;
-                pinGroups[pinIdx].logicalButtons[btnIdx].behavior = logicals[i].u.pin.behavior;
-                pinGroups[pinIdx].logicalButtons[btnIdx].reverse = logicals[i].u.pin.reverse;
+                grp.logicalButtons[btnIdx].joyButtonID = logicals[i].u.pin.joyButtonID;
+                grp.logicalButtons[btnIdx].behavior = logicals[i].u.pin.behavior;
+                grp.logicalButtons[btnIdx].reverse = logicals[i].u.pin.reverse;
                 
                 // Initialize lastState with effective pressed state
                 bool effectivePressed = physicalPressed;
-                if (pinGroups[pinIdx].logicalButtons[btnIdx].reverse) {
+                if (grp.logicalButtons[btnIdx].reverse) {
                     effectivePressed = !effectivePressed;
                 }
-                pinGroups[pinIdx].logicalButtons[btnIdx].lastState = effectivePressed;
-                pinGroups[pinIdx].logicalButtons[btnIdx].momentaryStartTime = 0;
-                pinGroups[pinIdx].logicalButtons[btnIdx].momentaryActive = false;
+                grp.logicalButtons[btnIdx].lastState = effectivePressed;
+                grp.logicalButtons[btnIdx].momentaryStartTime = 0;
+                grp.logicalButtons[btnIdx].momentaryActive = false;
                 
                 btnIdx++;
             }
         }
+        pinGroups.push_back(grp);
     }
 }
 
 void initShiftRegisterIfNeeded(const LogicalInput* logicals, uint8_t logicalCount) {
     // Reset
-    shiftRegGroupCount = 0;
+    shiftRegGroups.clear();
     
     // Check if any shift register inputs are present
     bool hasShiftReg = false;
@@ -251,7 +248,7 @@ void initShiftRegisterIfNeeded(const LogicalInput* logicals, uint8_t logicalCoun
         uint8_t regIndex;
         uint8_t bitIndex;
     };
-    ShiftRegPosition uniquePositions[64]; // Assume max 64 positions
+    ShiftRegPosition uniquePositions[128]; // temp storage
     uint8_t uniquePositionCount = 0;
     
     for (uint8_t i = 0; i < logicalCount; ++i) {
@@ -279,41 +276,47 @@ void initShiftRegisterIfNeeded(const LogicalInput* logicals, uint8_t logicalCoun
     
     if (uniquePositionCount == 0) return;
     
-    shiftRegGroupCount = (uniquePositionCount > MAX_SHIFTREG_GROUPS) ? MAX_SHIFTREG_GROUPS : uniquePositionCount;
-    
     // Initialize shift register groups
-    for (uint8_t posIdx = 0; posIdx < shiftRegGroupCount; posIdx++) {
-        shiftRegGroups[posIdx].regIndex = uniquePositions[posIdx].regIndex;
-        shiftRegGroups[posIdx].bitIndex = uniquePositions[posIdx].bitIndex;
-    shiftRegGroups[posIdx].count = 0;
+    shiftRegGroups.reserve(uniquePositionCount);
+    for (uint8_t posIdx = 0; posIdx < uniquePositionCount; posIdx++) {
+        ShiftRegButtonGroup grp;
+        grp.regIndex = uniquePositions[posIdx].regIndex;
+        grp.bitIndex = uniquePositions[posIdx].bitIndex;
         
-        // Count logical buttons (bounded)
-        for (uint8_t i = 0; i < logicalCount && shiftRegGroups[posIdx].count < MAX_LOGICAL_PER_SHIFT_BIT; ++i) {
+        // Count logical buttons for this position
+        uint8_t logicalCnt = 0;
+        for (uint8_t i = 0; i < logicalCount; ++i) {
             if (logicals[i].type == INPUT_SHIFTREG && 
                 logicals[i].u.shiftreg.behavior != ENC_A && 
                 logicals[i].u.shiftreg.behavior != ENC_B &&
-                logicals[i].u.shiftreg.regIndex == uniquePositions[posIdx].regIndex &&
-                logicals[i].u.shiftreg.bitIndex == uniquePositions[posIdx].bitIndex) {
-                shiftRegGroups[posIdx].count++;
+                logicals[i].u.shiftreg.regIndex == grp.regIndex &&
+                logicals[i].u.shiftreg.bitIndex == grp.bitIndex) {
+                logicalCnt++;
             }
         }
+        grp.logicalButtons.resize(logicalCnt);
         
         // Fill logical buttons
         uint8_t btnIdx = 0;
-        for (uint8_t i = 0; i < logicalCount && btnIdx < shiftRegGroups[posIdx].count; ++i) {
+        for (uint8_t i = 0; i < logicalCount && btnIdx < logicalCnt; ++i) {
             if (logicals[i].type == INPUT_SHIFTREG && 
                 logicals[i].u.shiftreg.behavior != ENC_A && 
                 logicals[i].u.shiftreg.behavior != ENC_B &&
-                logicals[i].u.shiftreg.regIndex == uniquePositions[posIdx].regIndex &&
-                logicals[i].u.shiftreg.bitIndex == uniquePositions[posIdx].bitIndex) {
-                shiftRegGroups[posIdx].logicalButtons[btnIdx].joyButtonID = logicals[i].u.shiftreg.joyButtonID;
-                shiftRegGroups[posIdx].logicalButtons[btnIdx].behavior = logicals[i].u.shiftreg.behavior;
-                shiftRegGroups[posIdx].logicalButtons[btnIdx].reverse = logicals[i].u.shiftreg.reverse;
-                shiftRegGroups[posIdx].logicalButtons[btnIdx].lastState = false; // Initialize to not pressed
-                shiftRegGroups[posIdx].logicalButtons[btnIdx].momentaryStartTime = 0;
-                shiftRegGroups[posIdx].logicalButtons[btnIdx].momentaryActive = false;
+                logicals[i].u.shiftreg.regIndex == grp.regIndex &&
+                logicals[i].u.shiftreg.bitIndex == grp.bitIndex) {
+                grp.logicalButtons[btnIdx].joyButtonID = logicals[i].u.shiftreg.joyButtonID;
+                grp.logicalButtons[btnIdx].behavior = logicals[i].u.shiftreg.behavior;
+                grp.logicalButtons[btnIdx].reverse = logicals[i].u.shiftreg.reverse;
+                grp.logicalButtons[btnIdx].lastState = false; // Initialize to not pressed
+                grp.logicalButtons[btnIdx].momentaryStartTime = 0;
+                grp.logicalButtons[btnIdx].momentaryActive = false;
                 btnIdx++;
             }
         }
+        shiftRegGroups.push_back(grp);
     }
 }
+
+// Debug helpers
+uint16_t getButtonPinGroupCount() { return static_cast<uint16_t>(pinGroups.size()); }
+uint16_t getShiftRegGroupCount() { return static_cast<uint16_t>(shiftRegGroups.size()); }

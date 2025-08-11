@@ -2,25 +2,23 @@
 #include "EncoderBuffer.h"
 #include "../../rp2040/JoystickWrapper.h"
 
-// Global encoder buffer storage
-static EncoderBuffer encoderBuffers[MAX_ENCODERS];
+// Global encoder buffer storage (dynamic)
+static EncoderBuffer* encoderBuffers = nullptr;
 static uint8_t bufferCount = 0;
+static uint8_t bufferCapacity = 0;
 
-void initEncoderBuffers() {
+void initEncoderBuffers(uint8_t capacity) {
+    // Free previous
+    delete[] encoderBuffers;
+    encoderBuffers = nullptr;
     bufferCount = 0;
-    for (uint8_t i = 0; i < MAX_ENCODERS; i++) {
-        encoderBuffers[i].cwButtonId = 0;
-        encoderBuffers[i].ccwButtonId = 0;
-        encoderBuffers[i].pendingCwSteps = 0;
-        encoderBuffers[i].pendingCcwSteps = 0;
-        encoderBuffers[i].lastUsbPressTime = 0;
-        encoderBuffers[i].usbButtonPressed = false;
-        encoderBuffers[i].currentDirection = 0;
-    }
+    bufferCapacity = capacity;
+    if (bufferCapacity == 0) bufferCapacity = 8; // default small capacity
+    encoderBuffers = new EncoderBuffer[bufferCapacity]();
 }
 
 uint8_t createEncoderBufferEntry(uint8_t cwButtonId, uint8_t ccwButtonId) {
-    if (bufferCount >= MAX_ENCODERS) {
+    if (bufferCount >= bufferCapacity) {
         return 255; // Failed - buffer full
     }
     

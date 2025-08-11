@@ -1,21 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <Arduino.h>
-#include "../../config/PoolConfig.h"
 
 // Button matrix scanner - replacement for external Keypad library
 // Provides simple matrix button scanning with state change detection
-// 
-// This is a built-in implementation that replaces the Chris--A/Keypad library
-// dependency while maintaining API compatibility with the existing MatrixInput.cpp code.
-// Features:
-// - Row/column matrix scanning
-// - Debounce support
-// - State change detection
-// - Compatible key structure format
-
-#undef MATRIX_MAX_KEYS
-#define MATRIX_MAX_KEYS (MAX_MATRIX_ROWS * MAX_MATRIX_COLS)  // Maximum keys tracked derives from pool config
+//
+// This implementation uses dynamic allocation sized to the configured
+// matrix (numRows * numCols) to minimize memory usage.
 
 enum MatrixKeyState : uint8_t {
     MATRIX_IDLE = 0,
@@ -37,23 +28,27 @@ private:
     byte* colPins;        // Array of column pins
     uint8_t numRows;      // Number of rows
     uint8_t numCols;      // Number of columns
-    
-    bool currentStates[MATRIX_MAX_KEYS];  // Current button states
-    bool lastStates[MATRIX_MAX_KEYS];     // Previous button states
-    
-    uint8_t debounceTime; // Debounce delay in milliseconds
-    unsigned long lastChangeTime[MATRIX_MAX_KEYS]; // Last change time for each key
+
+    // Dynamic storage sized to totalKeys = numRows * numCols
+    bool* currentStates;   // Current button states
+    bool* lastStates;      // Previous button states
+    unsigned long* lastChangeTime; // Last change time for each key
+    uint16_t totalKeys;    // Cached total keys
+
+    uint8_t debounceTime;  // Debounce delay in milliseconds
     
     void scanMatrix();    // Internal matrix scanning function
     
 public:
-    MatrixKey key[MATRIX_MAX_KEYS]; // Array of key states (compatible with Keypad library)
+    // Array of key states (compatible with Keypad library). Length is keyCount.
+    MatrixKey* key;
+    uint16_t keyCount;
     
     // Constructor
     ButtonMatrix(char* keymap, byte* rowPins, byte* colPins, uint8_t numRows, uint8_t numCols);
     
-    // Destructor (no dynamic resources)
-    ~ButtonMatrix() = default;
+    // Destructor
+    ~ButtonMatrix();
     
     // Scan the matrix and update key states
     // Returns true if any key state changed
@@ -64,4 +59,8 @@ public:
     
     // Set debounce time (default is 10ms)
     void setDebounceTime(uint8_t debounce);
+    
+    // Accessors for dynamic key array
+    inline uint16_t getKeyCount() const { return keyCount; }
+    inline const MatrixKey* getKeyArray() const { return key; }
 };

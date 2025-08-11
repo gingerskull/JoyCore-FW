@@ -95,6 +95,17 @@ void setup() {
     ConfigStatus status = g_configManager.getStatus();
     Serial.print("Config Loaded: "); Serial.print(status.configLoaded ? "YES" : "NO");
     Serial.print(", Using Defaults: "); Serial.println(status.usingDefaults ? "YES" : "NO");
+    // Dynamic allocation summary
+    extern uint16_t getButtonPinGroupCount();
+    extern uint16_t getShiftRegGroupCount();
+    extern uint8_t getMatrixRows();
+    extern uint8_t getMatrixCols();
+    extern uint8_t getEncoderCount();
+    Serial.print("Alloc Buttons(pinGroups/shiftGroups): ");
+    Serial.print(getButtonPinGroupCount()); Serial.print("/"); Serial.println(getShiftRegGroupCount());
+    Serial.print("Alloc Matrix(rows x cols): ");
+    Serial.print(getMatrixRows()); Serial.print(" x "); Serial.println(getMatrixCols());
+    Serial.print("Alloc Encoders: "); Serial.println(getEncoderCount());
 #endif
 }
 

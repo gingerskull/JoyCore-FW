@@ -13,6 +13,36 @@
 			"problemMatcher": [
 				"$gcc"
 			]
+		},
+		{
+			"label": "PlatformIO Build",
+			"type": "shell",
+			"command": "platformio",
+			"args": [
+				"run"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "PlatformIO Build",
+			"type": "shell",
+			"command": "platformio",
+			"args": [
+				"run"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "PlatformIO Build",
+			"type": "shell",
+			"command": "platformio",
+			"args": [
+				"run"
+			],
+			"isBackground": false,
+			"group": "build"
 		}
 	]
 }

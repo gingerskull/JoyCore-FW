@@ -6,3 +6,7 @@
 void initMatrix();
 void initMatrixFromLogical(const LogicalInput* logicals, uint8_t logicalCount);
 void updateMatrix();
+
+// Optional: allocation summary for debug
+uint8_t getMatrixRows();
+uint8_t getMatrixCols();

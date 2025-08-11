@@ -2,9 +2,6 @@
 #pragma once
 #include <Arduino.h>
 
-// Maximum number of encoders supported
-#define MAX_ENCODERS 16
-
 // Timing constants for encoder buffer system
 static const uint32_t PRESS_INTERVAL_US = 40000;  // 40ms interval between presses
 static const uint32_t PRESS_DURATION_US = 40000;  // 40ms press duration for USB
@@ -25,7 +22,8 @@ struct EncoderBuffer {
 /**
  * @brief Initialize encoder buffer system
  */
-void initEncoderBuffers();
+// Initialize encoder buffer system, optionally reserving capacity
+void initEncoderBuffers(uint8_t capacity = 0);
 
 /**
  * @brief Add steps to buffer for consistent timing

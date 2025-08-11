@@ -5,7 +5,7 @@
 #include "../../Config.h"
 #include "RotaryEncoder.h"
 #include "../shift_register/ShiftRegister165.h"
-#include "../../config/PoolConfig.h"
+#include <vector>
 
 // External variable for matrix pin states
 extern bool g_encoderMatrixPinStates[20];
@@ -50,16 +50,19 @@ static int encoderReadPin(uint8_t pin) {
 
 
 
-// Unified encoder system with static pools
-static RotaryEncoder* encoders[MAX_ENCODERS];
-static EncoderButtons encoderBtnMap[MAX_ENCODERS];
-static int lastPositions[MAX_ENCODERS];
+// Unified encoder system with dynamic storage
+static std::vector<RotaryEncoder*> encoders;
+static std::vector<EncoderButtons> encoderBtnMap;
+static std::vector<int> lastPositions;
 static uint8_t encoderTotal = 0;
 
 void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_t count) {
-    if (count > MAX_ENCODERS) count = MAX_ENCODERS;
+    // Free previous encoder objects
+    for (auto* e : encoders) { delete e; }
     encoderTotal = count;
-    initEncoderBuffers();
+    encoders.clear(); encoderBtnMap.clear(); lastPositions.clear();
+    encoders.reserve(count); encoderBtnMap.reserve(count); lastPositions.reserve(count);
+    initEncoderBuffers(count);
     for (uint8_t i = 0; i < count; i++) {
         RotaryEncoder::LatchMode latchMode;
         switch (pins[i].latchMode) {
@@ -68,13 +71,14 @@ void initEncoders(const EncoderPins* pins, const EncoderButtons* buttons, uint8_
             case TWO03: latchMode = RotaryEncoder::LatchMode::TWO03; break;
             default: latchMode = RotaryEncoder::LatchMode::FOUR3; break;
         }
-        encoders[i] = new RotaryEncoder(pins[i].pinA, pins[i].pinB, latchMode, encoderReadPin);
+        RotaryEncoder* enc = new RotaryEncoder(pins[i].pinA, pins[i].pinB, latchMode, encoderReadPin);
         if (pins[i].pinA < 100 && pins[i].pinB < 100) {
             pinMode(pins[i].pinA, INPUT_PULLUP);
             pinMode(pins[i].pinB, INPUT_PULLUP);
         }
-        encoderBtnMap[i] = buttons[i];
-        lastPositions[i] = encoders[i]->getPosition();
+        encoders.push_back(enc);
+        encoderBtnMap.push_back(buttons[i]);
+        lastPositions.push_back(enc->getPosition());
         createEncoderBufferEntry(buttons[i].cw, buttons[i].ccw);
     }
 }
@@ -129,10 +133,9 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
             encoderCount++;
         }
     }
-    if (encoderCount > MAX_ENCODERS) encoderCount = MAX_ENCODERS;
     if (encoderCount > 0) {
-        EncoderPins pinsLocal[MAX_ENCODERS];
-        EncoderButtons buttonsLocal[MAX_ENCODERS];
+        std::vector<EncoderPins> pinsLocal(encoderCount);
+        std::vector<EncoderButtons> buttonsLocal(encoderCount);
         uint8_t idx = 0;
         for (uint8_t i = 0; i < logicalCount - 1 && idx < encoderCount; ++i) {
             // Check for any encoder pairs
@@ -211,6 +214,8 @@ void initEncodersFromLogical(const LogicalInput* logicals, uint8_t logicalCount)
                 }
             }
         }
-        initEncoders(pinsLocal, buttonsLocal, encoderCount);
+        initEncoders(pinsLocal.data(), buttonsLocal.data(), encoderCount);
     }
 }
+
+uint8_t getEncoderCount() { return encoderTotal; }
