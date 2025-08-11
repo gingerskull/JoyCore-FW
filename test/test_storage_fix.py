@@ -216,9 +216,17 @@ def decode_config_data(hex_data):
                     'nameHex': name_bytes.hex(),
                     'type': entry_data[8]
                 }
-                # Decode pin type
-                pin_types = {0: "UNUSED", 1: "BTN", 2: "BTN_GND", 3: "BTN_ROW", 4: "BTN_COL",
-                            5: "ENC_A", 6: "ENC_B", 7: "ANALOG"}
+                # Decode pin type (must match firmware enum PinType in Config.h)
+                # enum PinType : uint8_t { PIN_UNUSED=0, BTN=1, BTN_ROW=2, BTN_COL=3, SHIFTREG_PL=4, SHIFTREG_CLK=5, SHIFTREG_QH=6 };
+                pin_types = {
+                    0: "PIN_UNUSED",
+                    1: "BTN",
+                    2: "BTN_ROW",
+                    3: "BTN_COL",
+                    4: "SHIFTREG_PL",
+                    5: "SHIFTREG_CLK",
+                    6: "SHIFTREG_QH"
+                }
                 pin_entry['typeName'] = pin_types.get(pin_entry['type'], f"UNKNOWN({pin_entry['type']})")
                 result['pinMap'].append(pin_entry)
                 variable_offset += 10
@@ -347,7 +355,31 @@ def print_config(config):
         print(f"\nLOGICAL INPUTS ({len(config['logicalInputs'])} entries):")
         for inp in config['logicalInputs']:
             print(f"  [{inp['index']}] {inp['typeName']}:")
-            print(f"    Button ID: {inp['joyButtonID']}, Behavior: {inp.get('behavior', 'N/A')}, Reverse: {inp['reverse']}")
+            # Decode behavior names if known (fallback to numeric)
+            # From Config.h:
+            # enum ButtonBehavior { NORMAL=0, MOMENTARY=1, ENC_A=2, ENC_B=3 };
+            behavior_names = {
+                0: 'NORMAL',
+                1: 'MOMENTARY',
+                2: 'ENC_A',
+                3: 'ENC_B'
+            }
+            # enum LatchMode { FOUR3=1, FOUR0=2, TWO03=3 };  (0 not stored = default FOUR3)
+            latch_mode_names = {
+                0: 'DEFAULT(FOUR3)',
+                1: 'FOUR3',
+                2: 'FOUR0',
+                3: 'TWO03'
+            }
+            behavior_val = inp.get('behavior')
+            behavior_name = behavior_names.get(behavior_val, f"{behavior_val}")
+            is_encoder = behavior_val in (2, 3)  # ENC_A or ENC_B
+            base_line = f"    Button ID: {inp['joyButtonID']}, Behavior: {behavior_val} ({behavior_name}), Reverse: {inp['reverse']}"
+            if is_encoder:
+                latch_val = inp.get('encoderLatchMode')
+                latch_name = latch_mode_names.get(latch_val, f"{latch_val}")
+                base_line += f", LatchMode: {latch_val} ({latch_name})"
+            print(base_line)
             if inp['type'] == 0:  # INPUT_PIN
                 print(f"    Pin: {inp.get('pin', 'N/A')}")
             elif inp['type'] == 1:  # INPUT_MATRIX
@@ -390,24 +422,36 @@ def main():
             print(initial_data.decode('utf-8', errors='ignore'))
             print("=== END STARTUP DEBUG ===\n")
         
-        # Test basic communication
-        print("2. Testing basic communication...")
-        response = send_command(ser, "STATUS")
-        print(f"   STATUS response: {response[0] if response else 'No response'}")
-        
+        # Test basic communication & fetch version via IDENTIFY (semantic version string)
+        print("2. Testing basic communication & identifying firmware...")
+        status_response = send_command(ser, "STATUS")
+        print(f"   STATUS response: {status_response[0] if status_response else 'No response'}")
+        identify_response = send_command(ser, "IDENTIFY")
+        fw_version_identify = None
+        for line in identify_response:
+            if line.startswith("JOYCORE_ID:"):
+                parts = line.strip().split(':')
+                if len(parts) >= 4:
+                    fw_version_identify = parts[-1]
+                    print(f"   IDENTIFY firmware version: {fw_version_identify}")
+        if not fw_version_identify:
+            print("   IDENTIFY firmware version: <not received>")
+        # Store for later summary
+        semantic_version_identify = fw_version_identify
+
         # Debug storage state
         print("\n3. Debugging storage state...")
         response = send_command(ser, "DEBUG_STORAGE", wait_time=0.5)
         print("   Storage debug output:")
         for line in response:
             print(f"     {line}")
-        
+
         # Get storage info
         print("\n4. Getting storage information...")
-        response = send_command(ser, "STORAGE_INFO")
-        for line in response:
+        storage_info_response = send_command(ser, "STORAGE_INFO")
+        for line in storage_info_response:
             print(f"   {line}")
-        
+
         # List files (now should query actual storage)
         print("\n5. Listing files (from actual storage)...")
         response = send_command(ser, "LIST_FILES")
@@ -422,16 +466,16 @@ def main():
             elif in_file_list:
                 files.append(line)
                 print(f"     - {line}")
-        
+
         if not files:
             print("   No files found in storage!")
-            
+
             # Try to create test files
             print("\n6. Creating test files...")
             response = send_command(ser, "CREATE_TEST_FILES", wait_time=1.0)
             for line in response:
                 print(f"   {line}")
-            
+
             # List files again
             print("\n7. Listing files after creation...")
             response = send_command(ser, "LIST_FILES")
@@ -446,15 +490,15 @@ def main():
                 elif in_file_list:
                     files.append(line)
                     print(f"     - {line}")
-        
+
         # Try to read each file
+        firmware_version_file = None
         if files:
             print("\n8. Reading files...")
             for filename in files:
                 print(f"\n   Reading {filename}:")
-                response = send_command(ser, f"READ_FILE {filename}")
-                
-                for line in response:
+                file_response = send_command(ser, f"READ_FILE {filename}")
+                for line in file_response:
                     if line.startswith("FILE_DATA:"):
                         parts = line.split(':', 3)
                         if len(parts) >= 3:
@@ -465,12 +509,13 @@ def main():
                             if len(parts) > 3:
                                 hex_data = parts[3]
                                 if filename == "/fw_version.txt":
-                                    # Decode firmware version
+                                    # Decode semantic firmware version string
                                     try:
                                         data = bytes.fromhex(hex_data)
-                                        version = data.decode('utf-8', errors='ignore')
-                                        print(f"     Content: '{version}'")
-                                    except:
+                                        version = data.decode('utf-8', errors='ignore').strip('\x00\r\n ')
+                                        firmware_version_file = version
+                                        print(f"     Firmware Version (file): '{version}'")
+                                    except Exception:
                                         print(f"     Raw hex: {hex_data[:64]}...")
                                 elif filename == "/config.bin":
                                     # Decode and display configuration
@@ -481,12 +526,20 @@ def main():
                     elif line.startswith("ERROR:"):
                         print(f"     {line}")
                         break
-        
+
         print("\n9. Test complete!")
         print("\nSUMMARY:")
-        print(f"  - Storage initialized: {'YES' if 'STORAGE_INITIALIZED:YES' in str(response) else 'UNKNOWN'}")
+        # Determine storage initialized state from STORAGE_INFO response (unified storage-only system)
+        storage_initialized = any('STORAGE_INITIALIZED:YES' in line for line in storage_info_response)
+        print(f"  - Storage initialized: {'YES' if storage_initialized else 'NO'}")
         print(f"  - Files found: {len(files)}")
         print(f"  - Files readable: {'YES' if files and not any('ERROR:' in str(r) for r in response) else 'NO'}")
+        if 'semantic_version_identify' in locals() and semantic_version_identify:
+            print(f"  - Firmware (IDENTIFY): {semantic_version_identify}")
+        if firmware_version_file:
+            print(f"  - Firmware (/fw_version.txt): {firmware_version_file}")
+        if firmware_version_file and 'semantic_version_identify' in locals() and semantic_version_identify and firmware_version_file != semantic_version_identify:
+            print(f"  - NOTE: Version mismatch (IDENTIFY vs file)")
         
     except serial.SerialException as e:
         print(f"Error opening serial port: {e}")
