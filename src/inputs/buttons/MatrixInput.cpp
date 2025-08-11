@@ -4,7 +4,7 @@
 #include "../../rp2040/JoystickWrapper.h"
 #include "ButtonMatrix.h"
 #include <new>
-#include "../PoolConfig.h"
+#include "../../config/PoolConfig.h"
 #include "LogicalButton.h"
 
 // Static matrix config and storage

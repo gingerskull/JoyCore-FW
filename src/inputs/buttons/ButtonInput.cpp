@@ -3,7 +3,7 @@
 #include "../../rp2040/JoystickWrapper.h"
 #include "../../Config.h"
 #include "../shift_register/ShiftRegister165.h"
-#include "../PoolConfig.h"
+#include "../../config/PoolConfig.h"
 
 // Unified runtime logical button state used for all digital sources
 struct RuntimeLogicalButton {

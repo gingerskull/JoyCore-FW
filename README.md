@@ -208,7 +208,7 @@ The default custom curve is linear (1:1 response). You can define your own curve
 ## 🧮 Deterministic Digital Input Memory Model
 
 All digital input subsystems (direct buttons, shift‑register buttons, matrix, encoders) now use fixed compile‑time
-memory pools (see `src/inputs/PoolConfig.h`). No dynamic allocation occurs in the scan/update path.
+memory pools (see `src/config/PoolConfig.h`). No dynamic allocation occurs in the scan/update path.
 
 Pool limits:
 

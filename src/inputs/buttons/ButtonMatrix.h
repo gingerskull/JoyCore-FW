@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <Arduino.h>
-#include "../PoolConfig.h"
+#include "../../config/PoolConfig.h"
 
 // Button matrix scanner - replacement for external Keypad library
 // Provides simple matrix button scanning with state change detection

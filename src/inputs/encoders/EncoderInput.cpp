@@ -5,7 +5,7 @@
 #include "../../Config.h"
 #include "RotaryEncoder.h"
 #include "../shift_register/ShiftRegister165.h"
-#include "../PoolConfig.h"
+#include "../../config/PoolConfig.h"
 
 // External variable for matrix pin states
 extern bool g_encoderMatrixPinStates[20];
