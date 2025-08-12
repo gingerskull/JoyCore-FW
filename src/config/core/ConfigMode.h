@@ -10,6 +10,9 @@
 #define CONFIG_FEATURE_STORAGE_ENABLED      1  // Storage system always enabled
 #define CONFIG_FEATURE_VALIDATION_ENABLED   1  // Enable configuration validation
 
+// Default generation policy: Defaults are ONLY generated when no config file exists.
+// Firmware version changes NEVER auto-reset stored configuration anymore.
+
 // Storage configuration
 #define CONFIG_STORAGE_USE_LITTLEFS         0  // Use EEPROM instead of LittleFS
 #define CONFIG_STORAGE_FILENAME            "/config.bin"
@@ -17,8 +20,9 @@
 #define CONFIG_STORAGE_FIRMWARE_VERSION    "/fw_version.txt"  // Firmware version tracking file
 #define CONFIG_VERSION                     7   // Configuration format version
 
-// Firmware version tracking (semantic versioning MAJOR.MINOR.PATCH)
+// Firmware version tracking (semantic versioning MAJOR.MINOR.PATCH[-PRERELEASE])
 // Bump according to semantic versioning rules: MAJOR (breaking), MINOR (features), PATCH (bug fixes)
-#define FIRMWARE_VERSION_STRING            "0.1.0"
+// NOTE: Changing the version string no longer regenerates defaults automatically.
+#define FIRMWARE_VERSION_STRING            "0.1.0-alpha.2"
 
 // (CONFIG_MODE macros removed; any old references should be deleted. Update external tools accordingly.)

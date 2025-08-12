@@ -32,7 +32,7 @@ def send_command(ser, command, wait_time=0.1):
     time.sleep(wait_time)
     
     response_lines = []
-    timeout = time.time() + 5.0  # 5 second timeout
+    timeout = time.time() + 2.0  # 2 second timeout
     
     while time.time() < timeout:
         if ser.in_waiting:
@@ -409,6 +409,8 @@ def main():
     
     print(f"Found JoyCore on {port}")
     
+    result_code = 0  # 0=success, 2=no files, 3=read errors
+
     try:
         # Open serial connection
         print("\n1. Opening serial connection...")
@@ -452,7 +454,7 @@ def main():
         for line in storage_info_response:
             print(f"   {line}")
 
-        # List files (now should query actual storage)
+    # List files (now should query actual storage)
         print("\n5. Listing files (from actual storage)...")
         response = send_command(ser, "LIST_FILES")
         files = []
@@ -468,33 +470,14 @@ def main():
                 print(f"     - {line}")
 
         if not files:
-            print("   No files found in storage!")
+            print("   No files found in storage (will not auto-create).")
+            result_code = 2
 
-            # Try to create test files
-            print("\n6. Creating test files...")
-            response = send_command(ser, "CREATE_TEST_FILES", wait_time=1.0)
-            for line in response:
-                print(f"   {line}")
-
-            # List files again
-            print("\n7. Listing files after creation...")
-            response = send_command(ser, "LIST_FILES")
-            files = []
-            in_file_list = False
-            for line in response:
-                if line == "FILES:":
-                    in_file_list = True
-                    print("   Found files:")
-                elif line == "END_FILES":
-                    break
-                elif in_file_list:
-                    files.append(line)
-                    print(f"     - {line}")
-
-        # Try to read each file
+        # Prepare for optional file reading
         firmware_version_file = None
+        read_errors = False
         if files:
-            print("\n8. Reading files...")
+            print("\n6. Reading files...")
             for filename in files:
                 print(f"\n   Reading {filename}:")
                 file_response = send_command(ser, f"READ_FILE {filename}")
@@ -525,31 +508,42 @@ def main():
                                     print(f"     Data (hex): {hex_data[:64]}...")
                     elif line.startswith("ERROR:"):
                         print(f"     {line}")
+                        read_errors = True
                         break
 
-        print("\n9. Test complete!")
+        print("\n7. Test complete!")
         print("\nSUMMARY:")
         # Determine storage initialized state from STORAGE_INFO response (unified storage-only system)
         storage_initialized = any('STORAGE_INITIALIZED:YES' in line for line in storage_info_response)
         print(f"  - Storage initialized: {'YES' if storage_initialized else 'NO'}")
         print(f"  - Files found: {len(files)}")
-        print(f"  - Files readable: {'YES' if files and not any('ERROR:' in str(r) for r in response) else 'NO'}")
+        files_readable = (files and not read_errors)
+        print(f"  - Files readable: {'YES' if files_readable else 'NO'}")
         if 'semantic_version_identify' in locals() and semantic_version_identify:
             print(f"  - Firmware (IDENTIFY): {semantic_version_identify}")
         if firmware_version_file:
             print(f"  - Firmware (/fw_version.txt): {firmware_version_file}")
         if firmware_version_file and 'semantic_version_identify' in locals() and semantic_version_identify and firmware_version_file != semantic_version_identify:
             print(f"  - NOTE: Version mismatch (IDENTIFY vs file)")
+
+        # Set result codes based on outcomes (don't override earlier non-zero code from missing files)
+        if files and read_errors and result_code == 0:
+            result_code = 3
         
     except serial.SerialException as e:
         print(f"Error opening serial port: {e}")
+        return 1
     except Exception as e:
         print(f"Unexpected error: {e}")
         import traceback
         traceback.print_exc()
+        return 1
     finally:
         if 'ser' in locals() and ser.is_open:
             ser.close()
 
+    return result_code
+
 if __name__ == "__main__":
-    main()
+    import sys
+    sys.exit(main())
