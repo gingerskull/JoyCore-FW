@@ -28,6 +28,11 @@ public:
     
     // Reset to factory defaults
     bool resetToDefaults();
+
+#if CONFIG_FEATURE_STORAGE_ENABLED
+    // Format storage (ERASE ALL FILES). Use with caution. Returns true on success.
+    bool formatStorage() { return m_storage.format() == StorageResult::SUCCESS; }
+#endif
     
     // Get current configuration status
     ConfigStatus getStatus() const;
@@ -105,7 +110,7 @@ private:
     bool m_initialized;
     bool m_configLoaded;
     bool m_usingDefaults;
-    
+
 #if CONFIG_FEATURE_STORAGE_ENABLED
     RP2040EEPROMStorage m_storage;
     

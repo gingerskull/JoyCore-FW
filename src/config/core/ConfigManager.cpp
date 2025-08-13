@@ -217,6 +217,8 @@ bool ConfigManager::resetToDefaults() {
 #endif
 }
 
+// formatStorage implemented inline in header when storage enabled.
+
 ConfigStatus ConfigManager::getStatus() const {
     ConfigStatus status;
     memset(&status, 0, sizeof(status));
@@ -460,22 +462,12 @@ bool ConfigManager::checkAndUpdateFirmwareVersion() {
     uint8_t buf[24]; size_t br=0; StorageResult r = m_storage.read(CONFIG_STORAGE_FIRMWARE_VERSION, buf, sizeof(buf)-1, &br);
     if (r == StorageResult::SUCCESS && br>0) { memcpy(storedStr, buf, br); storedStr[br]='\0'; bytesRead=br; }
     DEBUG_PRINT("DEBUG: Stored FW version raw: '"); DEBUG_PRINT(storedStr); DEBUG_PRINTLN("'");
-    if (strncmp(storedStr, FIRMWARE_VERSION_STRING, sizeof(storedStr)) != 0) {
-        DEBUG_PRINTLN("DEBUG: Firmware version changed => regenerating defaults");
-        generateDefaultPinMap();
-        generateDefaultLogicalInputs();
-        generateDefaultAxisConfigs();
-        generateDefaultUSBDescriptor();
-        m_configLoaded = true; m_usingDefaults = true;
-        bool saveResult = saveConfiguration();
-        DEBUG_PRINT("DEBUG: saveConfiguration() returned: "); DEBUG_PRINTLN(saveResult?"SUCCESS":"FAILED");
-        if (saveResult) {
-            if (!writeStoredFirmwareVersionString(FIRMWARE_VERSION_STRING)) {
-                DEBUG_PRINTLN("ERROR: Failed to update firmware version file (semantic)");
-                return false;
-            }
-        } else {
-            DEBUG_PRINTLN("ERROR: Config save failed after firmware version change");
+
+    bool versionMatches = (strncmp(storedStr, FIRMWARE_VERSION_STRING, sizeof(storedStr)) == 0);
+    if (!versionMatches) {
+        DEBUG_PRINTLN("INFO: Firmware version changed; updating version file only (no default regen)");
+        if (!writeStoredFirmwareVersionString(FIRMWARE_VERSION_STRING)) {
+            DEBUG_PRINTLN("ERROR: Failed to update firmware version file (semantic)");
             return false;
         }
     } else {

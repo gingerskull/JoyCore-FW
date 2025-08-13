@@ -101,8 +101,16 @@ static const SerialCommand kCommands[] = {
     {"STORAGE_INFO", cmdStorageInfo},
     {"DEBUG_STORAGE", cmdDebugStorage},
     {"READ_FILE", cmdReadFile},
-    {"INIT_STORAGE", [](const String&){ RP2040EEPROMStorage storage; auto r=storage.initialize(); Serial.print("Storage init result: "); Serial.println((int)r); }},
-    {"FORMAT_STORAGE", [](const String&){ RP2040EEPROMStorage storage; auto r=storage.format(); Serial.print("Format result: "); Serial.println((int)r); if(r==StorageResult::SUCCESS){ storage.initialize(); Serial.print("Available space: "); Serial.println(storage.getAvailableSpace()); } }},
+    {"INIT_STORAGE", [](const String&){ Serial.println("INIT_STORAGE not needed (storage auto-initialized at boot)"); }},
+    {"FORMAT_STORAGE", [](const String&){
+        Serial.println("Formatting storage (erasing all files)...");
+        bool res = g_configManager.formatStorage();
+        Serial.print("Format result: "); Serial.println(res?"SUCCESS":"FAILED");
+        if(res){
+            RP2040EEPROMStorage probe; probe.initialize();
+            Serial.print("Available space: "); Serial.println(probe.getAvailableSpace());
+        }
+    }},
 #endif
 };
 static constexpr size_t kCommandCount = sizeof(kCommands)/sizeof(kCommands[0]);
