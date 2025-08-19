@@ -33,6 +33,7 @@
 #include "config/core/DeviceIdentifier.h"
 #include "utils/Debug.h"
 #include "comm/SerialCommands.h"
+#include "rp2040/hid/HIDMapping.h"
 
 #if CONFIG_FEATURE_STORAGE_ENABLED
     #include "rp2040/storage/RP2040EEPROMStorage.h"
@@ -84,6 +85,14 @@ void setup() {
 
     // Initialize axis system
     setupUserAxes(MyJoystick);
+    
+    // Initialize HID mapping system
+    HIDMappingManager::initialize();
+    
+    // Set up configuration change callback to update HID mapping
+    g_configManager.setConfigChangeCallback([]() {
+        HIDMappingManager::updateFromConfig();
+    });
     
     // Delay for USB enumeration BEFORE enabling Serial
     delay(500);

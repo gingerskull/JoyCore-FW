@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "TinyUSBGamepad.h"
+#include "HIDMapping.h"
 #include <string.h>
 
 // Custom HID descriptor for 128 buttons, 16 axes, 4 hat switches
@@ -17,7 +18,46 @@ const uint8_t TinyUSBGamepad::_hid_descriptor[] = {
     0xB1, 0x02,                    //   FEATURE (Data,Var,Abs)
     0xc0,                          // END_COLLECTION
     
-    // Gamepad Collection - SECOND
+    // HID Mapping Info Collection
+    0x06, 0x00, 0xFF,              // USAGE_PAGE (Vendor Defined)
+    0x09, 0x02,                    // USAGE (Vendor Usage 2)
+    0xa1, 0x01,                    // COLLECTION (Application)
+    0x85, 0x03,                    //   REPORT_ID (3) - HID Mapping Info
+    0x09, 0x00,                    //   USAGE (Undefined)
+    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+    0x26, 0xFF, 0x00,              //   LOGICAL_MAXIMUM (255)
+    0x75, 0x08,                    //   REPORT_SIZE (8)
+    0x95, 0x10,                    //   REPORT_COUNT (16)
+    0xB1, 0x02,                    //   FEATURE (Data,Var,Abs)
+    0xc0,                          // END_COLLECTION
+    
+    // Button Map Collection
+    0x06, 0x00, 0xFF,              // USAGE_PAGE (Vendor Defined)
+    0x09, 0x03,                    // USAGE (Vendor Usage 3)
+    0xa1, 0x01,                    // COLLECTION (Application)
+    0x85, 0x04,                    //   REPORT_ID (4) - Button Map
+    0x09, 0x00,                    //   USAGE (Undefined)
+    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+    0x26, 0xFF, 0x00,              //   LOGICAL_MAXIMUM (255)
+    0x75, 0x08,                    //   REPORT_SIZE (8)
+    0x95, 0x80,                    //   REPORT_COUNT (128)
+    0xB1, 0x02,                    //   FEATURE (Data,Var,Abs)
+    0xc0,                          // END_COLLECTION
+    
+    // Self-Test Control Collection
+    0x06, 0x00, 0xFF,              // USAGE_PAGE (Vendor Defined)
+    0x09, 0x04,                    // USAGE (Vendor Usage 4)
+    0xa1, 0x01,                    // COLLECTION (Application)
+    0x85, 0x05,                    //   REPORT_ID (5) - Self-Test Control
+    0x09, 0x00,                    //   USAGE (Undefined)
+    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+    0x26, 0xFF, 0x00,              //   LOGICAL_MAXIMUM (255)
+    0x75, 0x08,                    //   REPORT_SIZE (8)
+    0x95, 0x08,                    //   REPORT_COUNT (8)
+    0xB1, 0x02,                    //   FEATURE (Data,Var,Abs)
+    0xc0,                          // END_COLLECTION
+    
+    // Gamepad Collection - LAST
     0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
     0x09, 0x05,                    // USAGE (Game Pad)
     0xa1, 0x01,                    // COLLECTION (Application)
@@ -57,8 +97,16 @@ const uint8_t TinyUSBGamepad::_hid_descriptor[] = {
     0x75, 0x10,                    // REPORT_SIZE (16)
     0x81, 0x02,                    // INPUT (Data,Var,Abs)
     
-    // Explicit padding to ensure byte alignment (0 bits padding)
-    // Total so far: 128 bits (buttons) + 256 bits (axes) = 384 bits = 48 bytes - already aligned
+    // Frame Counter (16-bit)
+    0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+    0x09, 0x3B,                    // USAGE (Byte Count) - reused for frame counter
+    0x15, 0x00,                    // LOGICAL_MINIMUM (0)
+    0x27, 0xFF, 0xFF, 0x00, 0x00,  // LOGICAL_MAXIMUM (65535)
+    0x95, 0x01,                    // REPORT_COUNT (1)
+    0x75, 0x10,                    // REPORT_SIZE (16)
+    0x81, 0x02,                    // INPUT (Data,Var,Abs)
+    
+    // Total: 128 bits (buttons) + 256 bits (axes) + 16 bits (frame counter) = 400 bits = 50 bytes
     
     // Hat switches temporarily removed due to phantom input issues
     // TODO: Re-enable when hat switch phantom issues are resolved
@@ -107,20 +155,15 @@ bool TinyUSBGamepad::begin(bool auto_send) {
     _usb_hid.setPollInterval(1); // 1ms polling = 1000Hz
     _usb_hid.setReportDescriptor(_hid_descriptor, _hid_descriptor_len);
     
-    // Set up TinyUSB callbacks for feature reports
+    // Set up TinyUSB callbacks for feature reports using unified handlers
     _usb_hid.setReportCallback(
         [](uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) -> uint16_t {
-            // GET_REPORT callback
-            if (_get_feature_callback) {
-                return _get_feature_callback(report_id, report_type, buffer, reqlen);
-            }
-            return 0;
+            // GET_REPORT callback - use unified handler
+            return TinyUSBGamepad::handleFeatureReportGet(report_id, report_type, buffer, reqlen);
         },
         [](uint8_t report_id, hid_report_type_t report_type, const uint8_t* buffer, uint16_t bufsize) {
-            // SET_REPORT callback  
-            if (_set_feature_callback) {
-                _set_feature_callback(report_id, report_type, buffer, bufsize);
-            }
+            // SET_REPORT callback - use unified handler
+            TinyUSBGamepad::handleFeatureReportSet(report_id, report_type, buffer, bufsize);
         }
     );
     
@@ -200,6 +243,9 @@ bool TinyUSBGamepad::sendReport() {
         return false;
     }
     
+    // Increment frame counter before sending
+    _report.frameCounter++;
+    
     bool success = _usb_hid.sendReport(1, &_report, sizeof(_report));
     
     if (success) {
@@ -242,4 +288,41 @@ void TinyUSBGamepad::setFeatureReportCallback(uint16_t (*get_callback)(uint8_t r
                                              void (*set_callback)(uint8_t report_id, hid_report_type_t report_type, const uint8_t* buffer, uint16_t bufsize)) {
     _get_feature_callback = get_callback;
     _set_feature_callback = set_callback;
+}
+
+uint16_t TinyUSBGamepad::handleFeatureReportGet(uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
+    // Handle HID mapping feature reports
+    if (report_type == HID_REPORT_TYPE_FEATURE) {
+        switch (report_id) {
+            case 3: // HID_FEATURE_MAPPING_INFO
+                return HIDMappingManager::handleGetMappingInfo(buffer, reqlen);
+            case 4: // HID_FEATURE_BUTTON_MAP
+                return HIDMappingManager::handleGetButtonMap(buffer, reqlen);
+            case 5: // HID_FEATURE_SELFTEST
+                return HIDMappingManager::handleGetSelfTest(buffer, reqlen);
+        }
+    }
+    
+    // Fall back to external callback for other reports (like config protocol)
+    if (_get_feature_callback) {
+        return _get_feature_callback(report_id, report_type, buffer, reqlen);
+    }
+    
+    return 0;
+}
+
+void TinyUSBGamepad::handleFeatureReportSet(uint8_t report_id, hid_report_type_t report_type, const uint8_t* buffer, uint16_t bufsize) {
+    // Handle HID mapping feature reports
+    if (report_type == HID_REPORT_TYPE_FEATURE) {
+        switch (report_id) {
+            case 5: // HID_FEATURE_SELFTEST
+                HIDMappingManager::handleSetSelfTest(buffer, bufsize);
+                return;
+        }
+    }
+    
+    // Fall back to external callback for other reports (like config protocol)
+    if (_set_feature_callback) {
+        _set_feature_callback(report_id, report_type, buffer, bufsize);
+    }
 }

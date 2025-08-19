@@ -75,6 +75,7 @@ bool ConfigManager::loadConfiguration() {
     m_configLoaded = true;
     m_usingDefaults = true;
     saveToStorage();
+    notifyConfigurationChanged();
     return true;
 }
 
@@ -135,6 +136,9 @@ bool ConfigManager::loadFromStorage() {
     bool ok = convertStoredToRuntime(storedConfig, variableData, variableSize);
     if(!ok) {
     DEBUG_PRINTLN("DEBUG: convertStoredToRuntime failed");
+    } else {
+        // Configuration successfully loaded from storage
+        notifyConfigurationChanged();
     }
     return ok;
 }
@@ -211,8 +215,11 @@ bool ConfigManager::resetToDefaults() {
     
 #if CONFIG_FEATURE_STORAGE_ENABLED
     // Save defaults to storage
-    return saveToStorage();
+    bool result = saveToStorage();
+    notifyConfigurationChanged();
+    return result;
 #else
+    notifyConfigurationChanged();
     return true;
 #endif
 }
@@ -483,3 +490,16 @@ bool ConfigManager::writeStoredFirmwareVersionString(const char* versionStr) {
 }
 
 #endif // CONFIG_FEATURE_STORAGE_ENABLED
+
+// Static callback for configuration changes
+static void (*g_configChangeCallback)() = nullptr;
+
+void ConfigManager::setConfigChangeCallback(void (*callback)()) {
+    g_configChangeCallback = callback;
+}
+
+void ConfigManager::notifyConfigurationChanged() {
+    if (g_configChangeCallback) {
+        g_configChangeCallback();
+    }
+}

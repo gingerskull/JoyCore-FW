@@ -5,11 +5,12 @@
 #include "Adafruit_TinyUSB.h"
 
 // HID Report structure for high-capacity gamepad
-// 128 buttons (16 bytes) + 16 axes (32 bytes) = 48 bytes total
+// 128 buttons (16 bytes) + 16 axes (32 bytes) + frame counter (2 bytes) = 50 bytes total
 // Hat switches temporarily removed due to phantom input issues
 typedef struct __attribute__((packed)) {
     uint8_t buttons[16];      // 128 buttons, 1 bit each (16 bytes)
     int16_t axes[16];         // 16 axes, 16-bit signed values (32 bytes)
+    uint16_t frameCounter;    // Frame counter for report tracking (2 bytes)
     // uint8_t hats;          // Hat switches temporarily disabled
     // uint8_t hats2;         // Hat switches temporarily disabled
 } joycore_gamepad_report_t;
@@ -90,9 +91,13 @@ public:
     // USB device descriptor configuration
     static void setUSBDescriptor(uint16_t vid, uint16_t pid, const char* manufacturer = nullptr, const char* product = nullptr);
     
-    // Feature report support for configuration protocol
+    // Feature report support for configuration protocol and HID mapping
     static void setFeatureReportCallback(uint16_t (*get_callback)(uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen), 
                                         void (*set_callback)(uint8_t report_id, hid_report_type_t report_type, const uint8_t* buffer, uint16_t bufsize));
+    
+    // Built-in feature report handler for HID mapping
+    static uint16_t handleFeatureReportGet(uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen);
+    static void handleFeatureReportSet(uint8_t report_id, hid_report_type_t report_type, const uint8_t* buffer, uint16_t bufsize);
     
 private:
     void _updateStateChanged();
