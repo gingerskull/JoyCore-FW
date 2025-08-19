@@ -62,6 +62,10 @@ public:
     // Get configuration in serialized format (for USB transmission)
     bool getSerializedConfig(uint8_t* buffer, size_t bufferSize, size_t* actualSize) const;
     
+    // Configuration change notification callback
+    static void setConfigChangeCallback(void (*callback)());
+    static void notifyConfigurationChanged();
+    
     // Direct file access methods for external tools
     #if CONFIG_FEATURE_STORAGE_ENABLED
     StorageResult readFile(const char* filename, uint8_t* buffer, size_t bufferSize, size_t* bytesRead) {

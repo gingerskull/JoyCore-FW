@@ -8,14 +8,16 @@
 /**
  * @file AxisProcessing.h
  * @brief Analog axis signal processing library for joystick controllers
- * 
- * This library provides advanced signal processing capabilities for analog axes including:
- * - Noise filtering with configurable thresholds
- * - Adaptive smoothing based on movement velocity
- * - Response curve shaping (linear, S-curve, exponential, custom)
- * - Configurable filter levels for different use cases
- * 
- * The processing chain: Raw Input -> Noise Filter -> Velocity-Adaptive Smoothing -> Response Curve -> Output
+ *
+ * This library provides signal processing capabilities for analog axes including:
+ * - EWMA (Exponentially Weighted Moving Average) filtering
+ * - Deadband filtering to eliminate jitter at rest
+ * - Custom response curve shaping
+ *
+ * The processing components can be used independently:
+ * - EwmaFilter: Smooth filtering with configurable responsiveness
+ * - AxisDeadband: Eliminates small fluctuations when control is at rest
+ * - AxisCurve: Applies custom response curves to axis values
  */
 
 // =============================================================================
@@ -113,16 +115,14 @@ public:
 // =============================================================================
 
 /**
- * @brief Advanced noise filtering and smoothing for analog axis values
- * 
- * This class provides multi-stage filtering:
- * 1. Noise threshold filtering - ignores small changes below threshold
- * 2. Velocity calculation - measures rate of change
- * 3. Adaptive smoothing - reduces smoothing during fast movements
- * 4. Emergency pass-through - bypasses smoothing for very fast movements
- * 
- * The filter adapts its behavior based on movement velocity to provide
- * both stability during slow movements and responsiveness during fast movements.
+ * @brief Filtering for analog axis values
+ *
+ * This class provides simple filtering for analog axis values:
+ * - No filtering (raw values pass through)
+ * - EWMA (Exponentially Weighted Moving Average) filtering
+ *
+ * The filter can be configured to use EWMA filtering for smoothing
+ * or bypass filtering entirely for maximum responsiveness.
  */
 class AxisFilter {
 private:
@@ -232,7 +232,7 @@ public:
     
     /**
      * @brief Set settle duration - time to wait before activating deadband
-     * @param duration Time in milliseconds (default: 100ms)
+     * @param duration Time in milliseconds (default: 150ms)
      */
     void setSettleDuration(uint32_t duration);
     
@@ -260,14 +260,10 @@ private:
 
 /**
  * @brief Response curve shaping for analog axis values
- * 
- * This class applies response curves to modify the relationship between
- * input and output values. Useful for:
- * - Creating dead zones
- * - Adjusting sensitivity curves
- * - Implementing custom response characteristics
- * 
- * Supports linear interpolation between curve points for smooth transitions.
+ *
+ * This class applies custom response curves to modify the relationship between
+ * input and output values. The curve is defined by a lookup table with
+ * linear interpolation between points.
  */
 class AxisCurve {
 private:
@@ -278,14 +274,14 @@ private:
 public:
     /**
      * @brief Apply response curve to input value
-     * @param input Input value (typically 0-1023 range)
+     * @param input Input value (0-32767 range)
      * @return Curve-shaped output value
      */
     int32_t apply(int32_t input);
     
     /**
      * @brief Set response curve type
-     * @param newType Curve type (LINEAR, S_CURVE, EXPONENTIAL, CUSTOM)
+     * @param newType Curve type (only CUSTOM is currently supported)
      */
     void setType(ResponseCurveType newType);
     
@@ -327,7 +323,7 @@ inline const char* getFilterLevelName(AxisFilterLevel level) {
 /**
  * @brief Get human-readable name for curve type
  * @param type Curve type
- * @return String representation
+ * @return String representation ("Custom" for CURVE_CUSTOM, "Unknown" otherwise)
  */
 inline const char* getCurveTypeName(ResponseCurveType type) {
     switch (type) {

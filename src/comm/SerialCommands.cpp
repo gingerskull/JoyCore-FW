@@ -3,6 +3,7 @@
 #include "../config/core/DeviceIdentifier.h"
 #include "../utils/Debug.h"
 #include "../Config.h"
+#include "../rp2040/hid/HIDMapping.h"
 #if CONFIG_FEATURE_STORAGE_ENABLED
 #include "../rp2040/storage/RP2040EEPROMStorage.h"
 #endif
@@ -88,6 +89,66 @@ static void cmdReadFile(const String& args) {
 }
 #endif
 
+// HID Mapping test commands
+static void cmdHIDMappingInfo(const String&) {
+    const HIDMappingInfo* info = HIDMappingManager::getMappingInfo();
+    Serial.print("HID_MAPPING_INFO:");
+    Serial.print("ver="); Serial.print(info->protocol_version);
+    Serial.print(",rid="); Serial.print(info->report_id);
+    Serial.print(",btn="); Serial.print(info->button_count);
+    Serial.print(",axis="); Serial.print(info->axis_count);
+    Serial.print(",btn_offset="); Serial.print(info->button_byte_offset);
+    Serial.print(",bit_order="); Serial.print(info->button_bit_order);
+    Serial.print(",crc=0x"); Serial.print(info->mapping_crc, HEX);
+    Serial.print(",fc_offset="); Serial.println(info->frame_counter_offset);
+}
+
+static void cmdHIDButtonMap(const String&) {
+    const HIDMappingInfo* info = HIDMappingManager::getMappingInfo();
+    if (info->mapping_crc == 0x0000) {
+        Serial.println("HID_BUTTON_MAP:SEQUENTIAL");
+    } else {
+        Serial.print("HID_BUTTON_MAP:");
+        uint8_t mapping[128];
+        uint16_t size = HIDMappingManager::handleGetButtonMap(mapping, sizeof(mapping));
+        for (uint16_t i = 0; i < size; i++) {
+            if (i > 0) Serial.print(",");
+            Serial.print(mapping[i]);
+        }
+        Serial.println();
+    }
+}
+
+static void cmdHIDSelfTest(const String& args) {
+    String arg = String(args); arg.trim();
+    if (arg == "start") {
+        SelfTestControl cmd = {0};
+        cmd.command = SELFTEST_CMD_START_WALK;
+        cmd.interval_ms = SELFTEST_DEFAULT_INTERVAL_MS;
+        HIDMappingManager::handleSetSelfTest((const uint8_t*)&cmd, sizeof(cmd));
+        Serial.println("HID_SELFTEST:STARTED");
+    } else if (arg == "stop") {
+        SelfTestControl cmd = {0};
+        cmd.command = SELFTEST_CMD_STOP;
+        HIDMappingManager::handleSetSelfTest((const uint8_t*)&cmd, sizeof(cmd));
+        Serial.println("HID_SELFTEST:STOPPED");
+    } else if (arg == "status") {
+        SelfTestControl status = {0};
+        HIDMappingManager::handleGetSelfTest((uint8_t*)&status, sizeof(status));
+        Serial.print("HID_SELFTEST:status=");
+        switch(status.status) {
+            case SELFTEST_STATUS_IDLE: Serial.print("IDLE"); break;
+            case SELFTEST_STATUS_RUNNING: Serial.print("RUNNING"); break;
+            case SELFTEST_STATUS_COMPLETE: Serial.print("COMPLETE"); break;
+            default: Serial.print("UNKNOWN"); break;
+        }
+        Serial.print(",btn="); Serial.print(status.current_button);
+        Serial.print(",interval="); Serial.println(status.interval_ms);
+    } else {
+        Serial.println("HID_SELFTEST:USAGE:start|stop|status");
+    }
+}
+
 static const SerialCommand kCommands[] = {
     {"IDENTIFY", cmdIdentify},
     {JoyCore::IDENTIFY_COMMAND, cmdIdentify},
@@ -112,6 +173,10 @@ static const SerialCommand kCommands[] = {
         }
     }},
 #endif
+    // HID Mapping test commands
+    {"HID_MAPPING_INFO", cmdHIDMappingInfo},
+    {"HID_BUTTON_MAP", cmdHIDButtonMap},
+    {"HID_SELFTEST", cmdHIDSelfTest},
 };
 static constexpr size_t kCommandCount = sizeof(kCommands)/sizeof(kCommands[0]);
 

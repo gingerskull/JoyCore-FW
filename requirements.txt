@@ -1,3 +1,0 @@
-hidapi>=0.14.0
-pywinusb>=0.4.2  # Windows-specific
-pytest>=8.0.0

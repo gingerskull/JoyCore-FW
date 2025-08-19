@@ -52,7 +52,7 @@ static const PinMapEntry hardwarePinMap[] = {
 // ===========================
 
  // 74HC165 configuration: number of chained devices (8 inputs each). Active-low inputs.
- // Example mapping below assumes 2 devices (16 inputs). Increase this if you chain more 74HC165s
+ // Current configuration uses 2 devices (16 inputs). Increase this if you chain more 74HC165s
  // and add corresponding INPUT_SHIFTREG entries in logicalInputs. Encoders must be defined as
  // consecutive bits (ENC_A followed by ENC_B) and can specify FOUR0/FOUR3 latch modes per pair.
  #define SHIFTREG_COUNT    2
