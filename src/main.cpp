@@ -33,6 +33,7 @@
 #include "config/core/DeviceIdentifier.h"
 #include "utils/Debug.h"
 #include "comm/SerialCommands.h"
+#include "comm/RawStateReader.h"
 #include "rp2040/hid/HIDMapping.h"
 
 #if CONFIG_FEATURE_STORAGE_ENABLED
@@ -124,4 +125,5 @@ void loop() {
         processSerialLine(line);
     }
     g_inputManager.update(MyJoystick);
+    RawStateReader::updateRawMonitoring();
 }
