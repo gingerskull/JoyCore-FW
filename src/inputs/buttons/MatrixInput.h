@@ -10,3 +10,9 @@ void updateMatrix();
 // Optional: allocation summary for debug
 uint8_t getMatrixRows();
 uint8_t getMatrixCols();
+
+// Raw state access for configuration tools
+namespace MatrixRawAccess {
+    uint8_t* getRowPins();
+    uint8_t* getColPins();
+}

@@ -4,6 +4,7 @@
 #include "../utils/Debug.h"
 #include "../Config.h"
 #include "../rp2040/hid/HIDMapping.h"
+#include "RawStateReader.h"
 #if CONFIG_FEATURE_STORAGE_ENABLED
 #include "../rp2040/storage/RP2040EEPROMStorage.h"
 #endif
@@ -149,6 +150,27 @@ static void cmdHIDSelfTest(const String& args) {
     }
 }
 
+// Raw state reading commands
+static void cmdReadGpioStates(const String&) {
+    RawStateReader::readGpioStates();
+}
+
+static void cmdReadMatrixState(const String&) {
+    RawStateReader::readMatrixState();
+}
+
+static void cmdReadShiftReg(const String&) {
+    RawStateReader::readShiftRegState();
+}
+
+static void cmdStartRawMonitor(const String&) {
+    RawStateReader::startRawMonitor();
+}
+
+static void cmdStopRawMonitor(const String&) {
+    RawStateReader::stopRawMonitor();
+}
+
 static const SerialCommand kCommands[] = {
     {"IDENTIFY", cmdIdentify},
     {JoyCore::IDENTIFY_COMMAND, cmdIdentify},
@@ -177,6 +199,12 @@ static const SerialCommand kCommands[] = {
     {"HID_MAPPING_INFO", cmdHIDMappingInfo},
     {"HID_BUTTON_MAP", cmdHIDButtonMap},
     {"HID_SELFTEST", cmdHIDSelfTest},
+    // Raw state reading commands
+    {"READ_GPIO_STATES", cmdReadGpioStates},
+    {"READ_MATRIX_STATE", cmdReadMatrixState},
+    {"READ_SHIFT_REG", cmdReadShiftReg},
+    {"START_RAW_MONITOR", cmdStartRawMonitor},
+    {"STOP_RAW_MONITOR", cmdStopRawMonitor},
 };
 static constexpr size_t kCommandCount = sizeof(kCommands)/sizeof(kCommands[0]);
 

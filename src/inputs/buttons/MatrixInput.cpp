@@ -177,3 +177,9 @@ void updateMatrix() {
 
 uint8_t getMatrixRows() { return ROWS; }
 uint8_t getMatrixCols() { return COLS; }
+
+// Raw state access for configuration tools
+namespace MatrixRawAccess {
+    uint8_t* getRowPins() { return rowPins; }
+    uint8_t* getColPins() { return colPins; }
+}
