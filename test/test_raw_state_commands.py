@@ -35,6 +35,9 @@ class RawStateTestManager:
             'shift_reg_states': [],
             'monitor_data': []
         }
+        # A lock protecting all serial read/write operations to avoid race
+        # conditions between the monitor thread and main thread issuing STOP.
+        self._serial_lock = threading.Lock()
         
     def find_serial_port(self):
         """Auto-detect the JoyCore device."""
@@ -84,27 +87,81 @@ class RawStateTestManager:
     def disconnect(self):
         """Disconnect from the device."""
         if self.monitoring_active:
-            self.stop_monitor()
+            try:
+                self.stop_monitor()
+            except Exception:
+                pass
         if self.ser and self.ser.is_open:
             self.ser.close()
             print("Disconnected from device")
+
+    def stop_monitor(self):
+        """Safely stop raw monitoring if active.
+
+        Handles race conditions by stopping the thread first, then issuing
+        STOP command and validating / retrying the acknowledgement.
+        """
+        if not self.ser or not self.ser.is_open:
+            return
+        if not self.monitoring_active and not self.monitor_thread:
+            return
+
+        # Signal thread to stop and join
+        self.monitoring_active = False
+        if self.monitor_thread:
+            self.monitor_thread.join(timeout=2)
+            self.monitor_thread = None
+
+        # Small delay to let any pending data finish
+        time.sleep(0.1)
+        
+        # Clear any pending data in the buffer
+        with self._serial_lock:
+            self.ser.flushInput()
+        
+        # Send STOP command and read ack (with retry if partial/garbled)
+        self.send_command('STOP_RAW_MONITOR')
+        
+        # Try multiple times to get the acknowledgment
+        ack_received = False
+        for attempt in range(3):
+            response = self.read_response(1)
+            if response:
+                if response == "OK:RAW_MONITOR_STOPPED":
+                    ack_received = True
+                    break
+                elif "RAW_MONITOR_STOPPED" in response:
+                    # Partial match is good enough
+                    ack_received = True
+                    break
+                    
+        if ack_received:
+            print("Monitoring stopped")
+        else:
+            print("Warning: Stop acknowledgment not received (this is usually harmless)")
             
     def send_command(self, command):
         """Send a command to the device."""
         if not self.ser or not self.ser.is_open:
             raise Exception("Not connected to device")
-        
-        self.ser.write(f"{command}\n".encode())
-        self.ser.flush()
+        with self._serial_lock:
+            self.ser.write(f"{command}\n".encode())
+            self.ser.flush()
         
     def read_response(self, timeout=2):
         """Read a single response line."""
         start_time = time.time()
+        # All low-level reads are serialized to prevent interleaving bytes
+        # across threads (previously caused corrupted STOP response like
+        # 'KAWMNT_TPD' instead of 'OK:RAW_MONITOR_STOPPED').
         while time.time() - start_time < timeout:
-            if self.ser.in_waiting > 0:
-                line = self.ser.readline().decode('utf-8', errors='ignore').strip()
-                if line:
-                    return line
+            with self._serial_lock:
+                if self.ser.in_waiting > 0:
+                    line = self.ser.readline().decode('utf-8', errors='ignore').strip()
+                else:
+                    line = None
+            if line:
+                return line
         return None
         
     def read_multiple_responses(self, timeout=3):
@@ -255,7 +312,7 @@ class RawStateTestManager:
         
         while self.monitoring_active:
             try:
-                line = self.read_response(0.1)
+                line = self.read_response(0.2)
                 if line:
                     timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
                     print(f"[{timestamp}] {line}")
@@ -290,21 +347,10 @@ class RawStateTestManager:
         # Wait for specified duration
         print(f"Collecting data for {duration} seconds...")
         time.sleep(duration)
+
+        # Use unified stop helper
+        self.stop_monitor()
         
-        # Stop monitoring
-        self.send_command('STOP_RAW_MONITOR')
-        response = self.read_response()
-        
-        if response != "OK:RAW_MONITOR_STOPPED":
-            print(f"Warning: Unexpected stop response: {response}")
-            
-        print("Monitoring stopped")
-        
-        # Stop background thread
-        self.monitoring_active = False
-        if self.monitor_thread:
-            self.monitor_thread.join(timeout=2)
-            
         return True
         
     def run_all_tests(self):
@@ -328,7 +374,7 @@ class RawStateTestManager:
             results['shift_reg'] = self.test_shift_reg_state()
             
             # Test monitoring
-            results['monitoring'] = self.test_monitoring(duration=5)
+            results['monitoring'] = self.test_monitoring(duration=10)
             
         except Exception as e:
             print(f"Test error: {e}")

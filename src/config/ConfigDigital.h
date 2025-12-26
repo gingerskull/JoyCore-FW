@@ -72,16 +72,16 @@ constexpr LogicalInput logicalInputs[] = {
   //{ INPUT_PIN, { .pin = {7, 2, ENC_B, 0} }, FOUR3 },
 
   // Direct pin buttons (pins 4-13 mapped to joystick buttons 1-10)
-  { INPUT_PIN, { .pin = {4, 9, MOMENTARY, 0} } },    // Pin 4 -> Button 9 (MOMENTARY)
-  { INPUT_PIN, { .pin = {5, 10, MOMENTARY, 0} } },   // Pin 5 -> Button 10 (MOMENTARY)
-  { INPUT_PIN, { .pin = {6, 1, NORMAL, 0} } },       // Pin 6 -> Button 1 (NORMAL)
-  { INPUT_PIN, { .pin = {7, 2, NORMAL, 0} } },       // Pin 7 -> Button 2 (NORMAL)
-  { INPUT_PIN, { .pin = {8, 3, MOMENTARY, 0} } },    // Pin 8 -> Button 3 (MOMENTARY)
-  { INPUT_PIN, { .pin = {9, 4, MOMENTARY, 0} } },    // Pin 9 -> Button 4 (MOMENTARY)
-  { INPUT_PIN, { .pin = {10, 5, NORMAL, 0} } },      // Pin 10 -> Button 5 (NORMAL)
-  { INPUT_PIN, { .pin = {11, 6, NORMAL, 0} } },      // Pin 11 -> Button 6 (NORMAL)
-  { INPUT_PIN, { .pin = {12, 7, NORMAL, 0} } },      // Pin 12 -> Button 7 (NORMAL)
-  { INPUT_PIN, { .pin = {13, 8, NORMAL, 0} } },      // Pin 13 -> Button 8 (NORMAL)
+  { INPUT_PIN, { .pin = {4, 10, MOMENTARY, 0} } },    // Pin 4 -> Button 9 (MOMENTARY)
+  { INPUT_PIN, { .pin = {5, 9, MOMENTARY, 0} } },   // Pin 5 -> Button 10 (MOMENTARY)
+  { INPUT_PIN, { .pin = {6, 8, NORMAL, 0} } },       // Pin 6 -> Button 1 (NORMAL)
+  { INPUT_PIN, { .pin = {7, 7, NORMAL, 0} } },       // Pin 7 -> Button 2 (NORMAL)
+  { INPUT_PIN, { .pin = {8, 6, MOMENTARY, 0} } },    // Pin 8 -> Button 3 (MOMENTARY)
+  { INPUT_PIN, { .pin = {9, 5, MOMENTARY, 0} } },    // Pin 9 -> Button 4 (MOMENTARY)
+  { INPUT_PIN, { .pin = {10, 4, NORMAL, 0} } },      // Pin 10 -> Button 5 (NORMAL)
+  { INPUT_PIN, { .pin = {11, 3, NORMAL, 0} } },      // Pin 11 -> Button 6 (NORMAL)
+  { INPUT_PIN, { .pin = {12, 2, NORMAL, 0} } },      // Pin 12 -> Button 7 (NORMAL)
+  { INPUT_PIN, { .pin = {13, 1, NORMAL, 0} } },      // Pin 13 -> Button 8 (NORMAL)
 
   // Matrix buttons (available but disabled). To enable:
   // 1) Add BTN_ROW/BTN_COL pins to hardwarePinMap above.
